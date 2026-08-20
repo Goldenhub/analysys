@@ -1,10 +1,17 @@
+
 # Design: Analysys — System Architecture & Data Structures
 
 #[[file:.kiro/specs/requirements.md]]
 
 ---
 
-## 1. Architecture Overview
+## Overview
+
+Analysys is a browser-based discrete-event simulation tool for modeling distributed system architectures. Users compose topology graphs of infrastructure components (traffic generators, load balancers, app servers, caches, databases, message queues) on a visual canvas, configure each node's parameters, and run simulations that produce real-time telemetry including throughput, latency percentiles, queue depths, and Little's Law validation metrics. The simulation runs in a Web Worker using a min-heap priority queue, seeded PRNG for determinism, and batched event processing for responsiveness.
+
+---
+
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -48,9 +55,11 @@
 
 ---
 
-## 2. Canvas Node Data Structures
+## Components and Interfaces
 
-### 2.1 Node Type Discriminated Union
+### Canvas Node Data Structures
+
+### Node Type Discriminated Union
 
 All canvas nodes extend a shared base and are discriminated by the `nodeType` field. This enables exhaustive pattern matching in both the UI configuration panel and the simulation engine.
 
@@ -186,7 +195,7 @@ export type SimulationNode =
   | MessageQueueNode;
 ```
 
-### 2.2 React Flow Integration
+### React Flow Integration
 
 React Flow requires its own `Node` type. We wrap `SimulationNode` as the generic data payload:
 
@@ -199,9 +208,9 @@ export type AnalysysEdge = RFEdge<EdgeData>;
 
 ---
 
-## 3. Edge Connection Data Structures & Validation
+### Edge Connection Data Structures & Validation
 
-### 3.1 Edge Data Model
+#### Edge Data Model
 
 ```typescript
 export enum EdgeProtocol {
@@ -217,7 +226,7 @@ export interface EdgeData {
 }
 ```
 
-### 3.2 Connection Validation Rules
+#### Connection Validation Rules
 
 Edge creation is validated at interaction time (before persisting to the store) and again during simulation initialization for imported topologies.
 
@@ -290,7 +299,7 @@ export const CONNECTION_RULES: Record<NodeType, { allowedTargets: NodeType[]; al
 };
 ```
 
-### 3.3 Cycle Detection (Graph Validation)
+#### Cycle Detection (Graph Validation)
 
 Used before simulation start and during import to warn about circular topologies:
 
@@ -353,9 +362,9 @@ export function detectCycles(
 
 ---
 
-## 4. Web Worker Discrete-Event Loop Algorithm
+### Web Worker Discrete-Event Loop Algorithm
 
-### 4.1 Core Data Structures
+#### Core Data Structures
 
 ```typescript
 // ─── Simulation Event ────────────────────────────────────────────
@@ -470,7 +479,7 @@ export class MinHeap<T> {
 }
 ```
 
-### 4.2 Seeded PRNG (Deterministic Randomness)
+#### Seeded PRNG (Deterministic Randomness)
 
 Uses a 32-bit xoshiro128** algorithm for speed and determinism:
 
@@ -536,7 +545,7 @@ export class SeededRNG {
 }
 ```
 
-### 4.3 Simulation Engine — Event Loop
+#### Simulation Engine — Event Loop
 
 ```typescript
 export enum SimState {
@@ -780,7 +789,7 @@ export class SimulationEngine {
 }
 ```
 
-### 4.4 Node Runtime State
+#### Node Runtime State
 
 Each node maintains mutable simulation state tracked by its processor:
 
@@ -815,9 +824,9 @@ export interface NodeProcessor {
 
 ---
 
-## 5. Little's Law Queue Metrics Parser
+### Little's Law Queue Metrics Parser
 
-### 5.1 Theory
+#### Theory
 
 Little's Law states that in a stable system:
 
@@ -832,7 +841,7 @@ Where:
 
 We compute these per-node over sliding time windows to validate simulation correctness and surface bottleneck indicators.
 
-### 5.2 Data Structures
+#### Data Structures
 
 ```typescript
 /**
@@ -987,7 +996,7 @@ export class NodeMetricsAccumulator {
 }
 ```
 
-### 5.3 Aggregate Metrics Collector
+#### Aggregate Metrics Collector
 
 Orchestrates all per-node accumulators and produces the `METRICS_BATCH` payload:
 
@@ -1145,7 +1154,7 @@ export class MetricsCollector {
 
 ---
 
-## 6. Worker Communication Protocol (TypeScript Types)
+### Worker Communication Protocol (TypeScript Types)
 
 ```typescript
 // ─── Main Thread → Worker Messages ──────────────────────────────
@@ -1197,7 +1206,7 @@ export interface SimulationSummary {
 
 ---
 
-## 7. File Structure (Proposed)
+### File Structure (Proposed)
 
 ```
 src/
@@ -1272,7 +1281,57 @@ src/
 
 ---
 
-## 8. Design Decisions & Rationale
+## Data Models
+
+The core data models are defined above in the Components and Interfaces section. Here is a summary of the key model relationships:
+
+- **SimulationNode** — discriminated union of 6 node types, each with a type-specific config interface
+- **EdgeData** — directed connection between nodes with a protocol discriminator (Sync/Async)
+- **SimEvent** — the unit of work in the discrete-event loop, ordered by virtual timestamp in a min-heap
+- **SimRequest** — tracks a single request's lifecycle across the topology graph, accumulating latency and hop path
+- **NodeRuntimeState** — mutable per-node state (queue depth, pool occupancy, buffered messages, metrics accumulators)
+- **MetricsBatchPayload** — periodic snapshot emitted from worker to main thread with per-node and system-wide metrics
+- **LittlesLawMetrics** — per-node computed values (L, λ, W) with stability deviation tracking
+
+All models use TypeScript interfaces/enums for compile-time safety. The discriminated union pattern on `nodeType` enables exhaustive matching in both the UI config panel and simulation processors.
+
+---
+
+## Correctness Properties
+
+- **Determinism**: Given the same seed and topology, the simulation produces identical event sequences and metrics. Guaranteed by the seeded xoshiro128** PRNG and deterministic min-heap ordering (timestamp-based, tie-broken by monotonic event ID).
+- **Little's Law Validation**: For each node in steady state, the deviation |L - λW| / L must remain below 5%. This validates that the simulation's queuing behavior is internally consistent.
+- **Cycle Guard**: Requests traversing more than `maxHops` (default 20) are terminated with `LoopDetected` status, preventing infinite loops in cyclic topologies.
+- **Event Ordering**: The min-heap guarantees events are always processed in non-decreasing timestamp order. Events with equal timestamps are processed in insertion order (FIFO via monotonic ID).
+- **Resource Conservation**: Active connections never exceed pool size; buffer occupancy never exceeds capacity. Overflow triggers backpressure or drop behavior per node configuration.
+- **Graph Validity**: Edges must conform to the connection compatibility matrix. Self-referencing edges and duplicate connections are rejected. Cycle detection warns users before simulation start.
+
+---
+
+## Error Handling
+
+- **Worker Errors**: Uncaught exceptions in the Web Worker are caught and forwarded to the main thread via `{ type: 'ERROR', payload: { message, stack } }`. The simulation transitions to `Complete` state and surfaces the error in the UI.
+- **Invalid Topology**: If the graph has no traffic generators or disconnected components, simulation initialization rejects with a descriptive validation error before entering the event loop.
+- **Queue Overflow**: When a node's request queue exceeds `requestQueueDepth`, incoming requests are dropped with `RequestDrop` events and counted in the error rate metric.
+- **Connection Pool Exhaustion**: When all database connections are occupied, requests are queued up to `requestQueueDepth`. If the queue is also full, requests are dropped. Lock timeouts produce `RequestTimeout` events.
+- **Message Queue Backpressure**: When buffer occupancy exceeds `backpressureThresholdPct`, the configured strategy is applied (DROP_OLDEST removes the oldest buffered message, BLOCK_PRODUCER delays the producer event, REJECT_NEW drops the incoming message).
+- **No Route**: If a traffic generator has no outgoing edges, requests are immediately marked `NoRoute` and recorded as errors.
+- **Import Validation**: JSON topology imports are validated against the connection rules and config constraints. Invalid imports surface specific validation errors without corrupting the store.
+
+---
+
+## Testing Strategy
+
+- **Unit Tests**: Each processor, the MinHeap, SeededRNG, NodeMetricsAccumulator, and edge/cycle validators are tested in isolation using Vitest. Tests verify deterministic output given fixed seeds and inputs.
+- **Integration Tests**: The SimulationEngine is tested end-to-end with small topologies (2-5 nodes), verifying that metrics converge to expected steady-state values and that Little's Law deviation stays below threshold.
+- **PRNG Determinism Tests**: Run the same seed twice and assert byte-identical event sequences.
+- **Boundary Tests**: Zero RPS, max pool size, empty topology, single-node topology, fully saturated queues, and maximum hop count scenarios.
+- **Performance Benchmarks**: Verify that the engine processes ≥1,000 events/sec (wall clock) for topologies up to 200 nodes, measured via `eventsPerSecond` in `SimulationSummary`.
+- **Worker Communication Tests**: Mock `postMessage` to verify the correct message sequence (INIT → START → METRICS_BATCH* → SIM_COMPLETE) and that PAUSE/RESUME/RESET commands are handled within one batch cycle.
+
+---
+
+## Design Decisions & Rationale
 
 | Decision | Rationale |
 |----------|-----------|
@@ -1288,7 +1347,7 @@ src/
 
 ---
 
-## 9. Traceability Matrix
+## Traceability Matrix
 
 | Requirement | Design Section | Key Types/Functions |
 |-------------|---------------|---------------------|
