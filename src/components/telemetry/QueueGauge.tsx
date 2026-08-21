@@ -12,6 +12,14 @@ interface GaugeBarProps {
   max: number;
 }
 
+interface NodePeaks {
+  queue: number;
+  conn: number;
+  buffer: number;
+  connMax: number;
+  queueMax: number;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function getGaugeColor(pct: number): string {
@@ -44,7 +52,7 @@ function GaugeBar({ label, current, max }: GaugeBarProps) {
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${colorClass} ${
+          className={`h-full rounded-full transition-all duration-500 ${colorClass} ${
             isPulsing ? 'animate-pulse' : ''
           }`}
           style={{ width: `${pct}%` }}
@@ -53,6 +61,10 @@ function GaugeBar({ label, current, max }: GaugeBarProps) {
     </div>
   );
 }
+
+// ─── Module-level peak tracking (survives re-renders without lint issues) ──
+
+const peakValues = new Map<string, NodePeaks>();
 
 // ─── Main Component ──────────────────────────────────────────────
 
@@ -65,12 +77,29 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
     );
   }
 
-  // Filter to nodes that have meaningful queue/connection data
-  const relevantNodes = metrics.nodes.filter(
-    (n) => n.queueDepth > 0 || n.activeConnections > 0 || n.bufferOccupancy > 0,
-  );
+  // Update peak values
+  for (const node of metrics.nodes) {
+    const prev = peakValues.get(node.nodeId) ?? {
+      queue: 0, conn: 0, buffer: 0, connMax: 50, queueMax: 100,
+    };
+    peakValues.set(node.nodeId, {
+      queue: Math.max(prev.queue, node.queueDepth),
+      conn: Math.max(prev.conn, node.activeConnections),
+      buffer: Math.max(prev.buffer, node.bufferOccupancy),
+      connMax: Math.max(prev.connMax, node.activeConnections, 50),
+      queueMax: Math.max(prev.queueMax, node.queueDepth, 100),
+    });
+  }
 
-  if (relevantNodes.length === 0) {
+  // Show all nodes that have ever had non-zero resource usage
+  const relevantNodeIds: string[] = [];
+  for (const [nodeId, peaks] of peakValues) {
+    if (peaks.queue > 0 || peaks.conn > 0 || peaks.buffer > 0) {
+      relevantNodeIds.push(nodeId);
+    }
+  }
+
+  if (relevantNodeIds.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-gray-500">
         No active queues or pools
@@ -80,34 +109,43 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
 
   return (
     <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
-      {relevantNodes.map((node: NodeMetricsSnapshot) => (
-        <div key={node.nodeId} className="space-y-1">
-          <span className="text-[10px] font-medium text-gray-300">
-            {node.nodeId.slice(0, 8)}…
-          </span>
-          {node.queueDepth > 0 && (
-            <GaugeBar
-              label="Queue"
-              current={node.queueDepth}
-              max={Math.max(node.queueDepth, 100)}
-            />
-          )}
-          {node.activeConnections > 0 && (
-            <GaugeBar
-              label="Connections"
-              current={node.activeConnections}
-              max={Math.max(node.activeConnections, 50)}
-            />
-          )}
-          {node.bufferOccupancy > 0 && (
-            <GaugeBar
-              label="Buffer"
-              current={Math.round(node.bufferOccupancy * 100)}
-              max={100}
-            />
-          )}
-        </div>
-      ))}
+      {relevantNodeIds.map((nodeId) => {
+        const currentSnapshot = metrics.nodes.find((n: NodeMetricsSnapshot) => n.nodeId === nodeId);
+        const peaks = peakValues.get(nodeId)!;
+
+        const currentQueue = currentSnapshot?.queueDepth ?? 0;
+        const currentConn = currentSnapshot?.activeConnections ?? 0;
+        const currentBuffer = currentSnapshot?.bufferOccupancy ?? 0;
+
+        return (
+          <div key={nodeId} className="space-y-1">
+            <span className="text-[10px] font-medium text-gray-300">
+              {nodeId.slice(0, 8)}…
+            </span>
+            {peaks.queue > 0 && (
+              <GaugeBar
+                label="Queue"
+                current={currentQueue}
+                max={peaks.queueMax}
+              />
+            )}
+            {peaks.conn > 0 && (
+              <GaugeBar
+                label="Connections"
+                current={currentConn}
+                max={peaks.connMax}
+              />
+            )}
+            {peaks.buffer > 0 && (
+              <GaugeBar
+                label="Buffer"
+                current={Math.round(currentBuffer * 100)}
+                max={100}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

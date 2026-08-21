@@ -36,9 +36,11 @@ export class SimulationEngine {
   private onEventLog: ((entries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }>) => void) | null = null;
   private onComplete: ((summary: { totalEvents: number; totalRequests: number; successRate: number; avgEndToEndLatencyMs: number; simulatedDurationMs: number; wallClockDurationMs: number; eventsPerSecond: number }) => void) | null = null;
 
-  // In-flight request tracking (for active requests metric)
+  // In-flight request tracking (time-weighted average)
   private inFlightCount = 0;
-  private peakInFlightSinceLastSnapshot = 0;
+  private inFlightTimeWeightedSum = 0;
+  private lastInFlightChangeTime = 0;
+  private lastSnapshotTime = 0;
   private countedAsComplete: Set<string> = new Set();
 
   // Event log batching — accumulate entries and flush on metrics snapshot
@@ -126,7 +128,9 @@ export class SimulationEngine {
     this.eventCounter = 0;
     this.requestCounter = 0;
     this.inFlightCount = 0;
-    this.peakInFlightSinceLastSnapshot = 0;
+    this.inFlightTimeWeightedSum = 0;
+    this.lastInFlightChangeTime = 0;
+    this.lastSnapshotTime = 0;
     this.countedAsComplete.clear();
     this.pendingLogEntries = [];
     this.completionLogCounter = 0;
@@ -237,6 +241,12 @@ export class SimulationEngine {
       case SimEventType.ConsumerPoll:
         this.handleConsumerPoll(event);
         break;
+      case SimEventType.ResponseRoute:
+        this.handleResponseRoute(event);
+        break;
+      case SimEventType.ResponseComplete:
+        this.handleResponseComplete(event);
+        break;
       default:
         break;
     }
@@ -259,8 +269,8 @@ export class SimulationEngine {
       accumulatedLatencyMs: 0,
     };
     this.requests.set(requestId, request);
+    this.updateInFlightWeightedSum();
     this.inFlightCount++;
-    this.peakInFlightSinceLastSnapshot = Math.max(this.peakInFlightSinceLastSnapshot, this.inFlightCount);
 
     // Route to first downstream node
     const outEdges = this.getOutgoingEdges(event.nodeId);
@@ -351,8 +361,10 @@ export class SimulationEngine {
       (state.processor as DatabaseProcessor).onProcessComplete(event, request, this.getProcessorContext());
     }
 
-    // If request is now complete, record it
-    if (request.status === RequestStatus.Success || request.status === RequestStatus.Timeout) {
+    // If request is now complete, start response traversal
+    if (request.status === RequestStatus.Success) {
+      this.startResponseTraversal(event, request);
+    } else if (request.status === RequestStatus.Timeout) {
       this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
     }
@@ -363,12 +375,78 @@ export class SimulationEngine {
     if (!request) return;
     if (request.status === RequestStatus.InFlight) {
       request.status = RequestStatus.Success;
-      request.completedAt = event.timestamp;
     }
+    if (request.status !== RequestStatus.Success) return;
+
+    // Start response traversal
+    this.startResponseTraversal(event, request);
+  }
+
+  private startResponseTraversal(event: SimEvent, request: SimRequest): void {
+    if (request.responseStartedAt) return; // Already started
+    request.responseStartedAt = event.timestamp;
+
+    const pathLen = request.path.length;
+    if (pathLen > 1) {
+      // Traverse back through the path
+      this.scheduleEvent({
+        type: SimEventType.ResponseRoute,
+        timestamp: event.timestamp,
+        nodeId: request.path[pathLen - 2]!,
+        requestId: request.id,
+        payload: { responseHopIndex: pathLen - 2 },
+      });
+    } else {
+      // Single-node path — complete immediately
+      this.scheduleEvent({
+        type: SimEventType.ResponseComplete,
+        timestamp: event.timestamp,
+        nodeId: request.path[0]!,
+        requestId: request.id,
+        payload: {},
+      });
+    }
+  }
+
+  private handleResponseRoute(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request || !request.responseStartedAt) return;
+
+    // Add response hop latency (network + serialization)
+    const hopLatency = this.rng.normalPositive(2, 0.5);
+    request.accumulatedLatencyMs += hopLatency;
+
+    const responseHopIndex = event.payload.responseHopIndex as number;
+
+    if (responseHopIndex <= 0) {
+      // Reached origin — complete
+      this.scheduleEvent({
+        type: SimEventType.ResponseComplete,
+        timestamp: event.timestamp + hopLatency,
+        nodeId: request.path[0]!,
+        requestId: request.id,
+        payload: {},
+      });
+    } else {
+      // Continue backwards
+      this.scheduleEvent({
+        type: SimEventType.ResponseRoute,
+        timestamp: event.timestamp + hopLatency,
+        nodeId: request.path[responseHopIndex - 1]!,
+        requestId: request.id,
+        payload: { responseHopIndex: responseHopIndex - 1 },
+      });
+    }
+  }
+
+  private handleResponseComplete(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+    request.completedAt = event.timestamp;
     this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
 
-    // Log every Nth completion to show flow without flooding
+    // Log every Nth completion
     this.completionLogCounter++;
     if (this.completionLogCounter >= this.COMPLETION_LOG_SAMPLE_RATE) {
       this.completionLogCounter = 0;
@@ -376,10 +454,10 @@ export class SimulationEngine {
       this.pendingLogEntries.push({
         id: this.eventCounter,
         timestamp: event.timestamp,
-        type: 'REQUEST_COMPLETE',
+        type: 'RESPONSE_COMPLETE',
         nodeId: event.nodeId,
         requestId: request.id,
-        message: `Request completed (latency: ${latency}ms)`,
+        message: `← Response complete (round-trip: ${latency}ms, ${request.path.length} hops)`,
       });
     }
   }
@@ -415,10 +493,16 @@ export class SimulationEngine {
   }
 
   private handleMetricsSnapshot(): void {
+    this.updateInFlightWeightedSum();
+    const windowDuration = this.virtualClockMs - this.lastSnapshotTime;
+    const avgInFlight = windowDuration > 0
+      ? Math.round(this.inFlightTimeWeightedSum / windowDuration)
+      : this.inFlightCount;
+
     const batch = this.metricsCollector.generateBatch(
       this.virtualClockMs,
       this.nodeStates,
-      this.peakInFlightSinceLastSnapshot,
+      avgInFlight,
     );
     this.onMetricsBatch?.(batch);
 
@@ -428,8 +512,9 @@ export class SimulationEngine {
       this.pendingLogEntries = [];
     }
 
-    // Reset peak to current level for next window
-    this.peakInFlightSinceLastSnapshot = this.inFlightCount;
+    // Reset for next window
+    this.inFlightTimeWeightedSum = 0;
+    this.lastSnapshotTime = this.virtualClockMs;
 
     // Emit node statuses
     for (const nodeSnapshot of batch.nodes) {
@@ -550,8 +635,18 @@ export class SimulationEngine {
   private markRequestDone(requestId: string): void {
     if (!this.countedAsComplete.has(requestId)) {
       this.countedAsComplete.add(requestId);
+      this.updateInFlightWeightedSum();
       this.inFlightCount = Math.max(0, this.inFlightCount - 1);
     }
+  }
+
+  private updateInFlightWeightedSum(): void {
+    const now = this.virtualClockMs;
+    const dt = now - this.lastInFlightChangeTime;
+    if (dt > 0) {
+      this.inFlightTimeWeightedSum += this.inFlightCount * dt;
+    }
+    this.lastInFlightChangeTime = now;
   }
 
   private scheduleEvent(partial: Omit<SimEvent, 'id'>): void {

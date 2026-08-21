@@ -12,6 +12,8 @@ export enum SimEventType {
   RequestTimeout = 'REQUEST_TIMEOUT',
   RequestDrop = 'REQUEST_DROP',
   RequestLoopDetected = 'REQUEST_LOOP_DETECTED',
+  ResponseRoute = 'RESPONSE_ROUTE',
+  ResponseComplete = 'RESPONSE_COMPLETE',
   ChaosStart = 'CHAOS_START',
   ChaosEnd = 'CHAOS_END',
   MetricsSnapshot = 'METRICS_SNAPSHOT',
@@ -43,6 +45,7 @@ export interface SimRequest {
   originNodeId: string;
   createdAt: number;
   completedAt?: number;
+  responseStartedAt?: number;
   status: RequestStatus;
   hopCount: number;
   maxHops: number;

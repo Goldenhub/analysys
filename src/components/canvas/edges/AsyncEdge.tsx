@@ -57,6 +57,47 @@ export function AsyncEdge({
         }}
         markerEnd={markerEnd}
       />
+
+      {/* Animated packet dots when simulation is running */}
+      {isRunning && (
+        <>
+          {/* Request packets (blue, source → target, slower for async) */}
+          {[0, 0.5].map((delay) => (
+            <circle
+              key={`req-${delay}`}
+              r={3}
+              fill="#3b82f6"
+              opacity={0.85}
+            >
+              <animateMotion
+                dur="2.5s"
+                repeatCount="indefinite"
+                begin={`${delay * 2.5}s`}
+                path={edgePath}
+              />
+            </circle>
+          ))}
+          {/* Response packets (green, target → source) */}
+          {[0.3].map((delay) => (
+            <circle
+              key={`resp-${delay}`}
+              r={2.5}
+              fill="#22c55e"
+              opacity={0.75}
+            >
+              <animateMotion
+                dur="3s"
+                repeatCount="indefinite"
+                begin={`${delay * 3}s`}
+                path={edgePath}
+                keyPoints="1;0"
+                keyTimes="0;1"
+              />
+            </circle>
+          ))}
+        </>
+      )}
+
       {/* Protocol label on hover */}
       {hovered && (
         <EdgeLabelRenderer>
@@ -70,7 +111,7 @@ export function AsyncEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-      {/* CSS animation for moving dots effect */}
+      {/* CSS animation for dashed line movement */}
       <style>{`
         @keyframes async-flow {
           0% { stroke-dashoffset: 0; }

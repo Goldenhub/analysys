@@ -105,9 +105,8 @@ export class DatabaseProcessor implements NodeProcessor {
     state.totalProcessed++;
     state.latencySamples.push(request.accumulatedLatencyMs);
 
-    // DB is terminal — mark request complete
+    // DB is terminal — mark request as successful (response traversal handles completedAt)
     request.status = RequestStatus.Success;
-    request.completedAt = event.timestamp;
     context.recordDeparture(event.nodeId, request.id, event.timestamp);
 
     // Dequeue waiting request if any

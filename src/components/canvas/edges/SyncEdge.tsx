@@ -52,10 +52,50 @@ export function SyncEdge({
           ...style,
           stroke: '#6b7280',
           strokeWidth: 2,
-          animation: isRunning ? 'sync-pulse 2s ease-in-out infinite' : undefined,
         }}
         markerEnd={markerEnd}
       />
+
+      {/* Animated packet dots when simulation is running */}
+      {isRunning && (
+        <>
+          {/* Request packets (blue, source → target) */}
+          {[0, 0.4, 0.8].map((delay) => (
+            <circle
+              key={`req-${delay}`}
+              r={3}
+              fill="#3b82f6"
+              opacity={0.85}
+            >
+              <animateMotion
+                dur="1.8s"
+                repeatCount="indefinite"
+                begin={`${delay * 1.8}s`}
+                path={edgePath}
+              />
+            </circle>
+          ))}
+          {/* Response packets (green, target → source) */}
+          {[0.2, 0.6].map((delay) => (
+            <circle
+              key={`resp-${delay}`}
+              r={2.5}
+              fill="#22c55e"
+              opacity={0.75}
+            >
+              <animateMotion
+                dur="2.2s"
+                repeatCount="indefinite"
+                begin={`${delay * 2.2}s`}
+                path={edgePath}
+                keyPoints="1;0"
+                keyTimes="0;1"
+              />
+            </circle>
+          ))}
+        </>
+      )}
+
       {/* Protocol label on hover */}
       {hovered && (
         <EdgeLabelRenderer>
@@ -69,13 +109,6 @@ export function SyncEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-      {/* CSS animation keyframe injected via style tag */}
-      <style>{`
-        @keyframes sync-pulse {
-          0%, 100% { stroke-opacity: 1; }
-          50% { stroke-opacity: 0.4; }
-        }
-      `}</style>
     </>
   );
 }
