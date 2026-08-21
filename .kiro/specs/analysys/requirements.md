@@ -110,6 +110,9 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 4. WHEN a request arrives at a Cache node, THE Simulation_Engine SHALL return immediately with configured access latency on a cache hit, or trigger a downstream Database call on a cache miss.
 5. WHEN a Message_Queue node's buffer capacity is reached, THE Simulation_Engine SHALL activate backpressure behavior (block or drop upstream producers) as configured.
 6. THE Telemetry_Dashboard SHALL display real-time L (queue length), λ (arrival rate), and W (wait time) per node, validating Little's_Law within 5% tolerance under steady state.
+7. WHEN a request reaches a terminal node (Database or Cache hit), THE Simulation_Engine SHALL generate response events that traverse the request path in reverse, accumulating response latency (network + serialization) at each hop.
+8. THE Telemetry_Dashboard SHALL display round-trip latency (request + response) as the end-to-end metric.
+9. WHEN the simulation is running, THE Canvas SHALL render animated packet dots traveling along edges: blue dots in the request direction (source → target) and green dots in the response direction (target → source).
 
 ### Requirement 7: Real-Time Latency and Throughput Charts
 
