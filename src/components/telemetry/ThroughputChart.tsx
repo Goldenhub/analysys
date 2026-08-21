@@ -1,4 +1,5 @@
-import { useReducer, useMemo, useRef } from 'react';
+/* oxlint-disable react/set-state-in-effect */
+import { useReducer, useMemo, useRef, useEffect } from 'react';
 import {
   AreaChart,
   Area,
@@ -64,8 +65,9 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
   const lastTimeRef = useRef<number>(-1);
 
-  // Dispatch new data point when metrics change (ref-guard prevents infinite re-render)
-  if (metrics && metrics.simulatedTimeMs !== lastTimeRef.current) {
+  useEffect(() => {
+    if (!metrics) return;
+    if (metrics.simulatedTimeMs === lastTimeRef.current) return;
     lastTimeRef.current = metrics.simulatedTimeMs;
 
     const totalThroughput = metrics.systemWide.totalThroughput;
@@ -88,7 +90,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
       errors: Math.round(errorThroughput * 100) / 100,
       chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
     });
-  }
+  }, [metrics, activeChaosEffects]);
 
   // Compute reference lines for chaos start times that fall within our data window
   const chaosReferenceLines = useMemo(() => {

@@ -1,4 +1,5 @@
-import { useReducer, useMemo, useRef } from 'react';
+/* oxlint-disable react/set-state-in-effect */
+import { useReducer, useMemo, useRef, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -66,8 +67,9 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
   const lastTimeRef = useRef<number>(-1);
 
-  // Dispatch new data point when metrics change (ref-guard prevents infinite re-render)
-  if (metrics && metrics.simulatedTimeMs !== lastTimeRef.current) {
+  useEffect(() => {
+    if (!metrics) return;
+    if (metrics.simulatedTimeMs === lastTimeRef.current) return;
     lastTimeRef.current = metrics.simulatedTimeMs;
 
     const activeLabels = activeChaosEffects
@@ -86,7 +88,7 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
       p99: metrics.systemWide.endToEndLatency.p99,
       chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
     });
-  }
+  }, [metrics, activeChaosEffects]);
 
   // Compute reference lines for chaos start times that fall within our data window
   const chaosReferenceLines = useMemo(() => {
