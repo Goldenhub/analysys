@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "name": "Queue Backpressure",
+  "description": "Demonstrates message queue backpressure when a slow consumer cannot keep up with 1000 RPS production rate.",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "High-Volume Producer",
+        "position": { "x": 50, "y": 200 },
+        "config": {
+          "rps": 1000,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "mq-1",
+        "nodeType": "MESSAGE_QUEUE",
+        "label": "Message Queue",
+        "position": { "x": 350, "y": 200 },
+        "config": {
+          "consumerBatchSize": 10,
+          "bufferCapacity": 500,
+          "backpressureThresholdPct": 80,
+          "backpressureStrategy": "DROP_OLDEST"
+        }
+      },
+      {
+        "id": "app-1",
+        "nodeType": "APP_SERVER",
+        "label": "Slow Consumer",
+        "position": { "x": 650, "y": 200 },
+        "config": {
+          "workerThreadPoolSize": 4,
+          "requestQueueDepth": 50,
+          "processingTimeMeanMs": 50,
+          "processingTimeStdDevMs": 15
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-tg1-mq1", "source": "tg-1", "target": "mq-1", "protocol": "ASYNC" },
+      { "id": "e-mq1-app1", "source": "mq-1", "target": "app-1", "protocol": "ASYNC" }
+    ]
+  },
+  "chaosTimeline": []
+}

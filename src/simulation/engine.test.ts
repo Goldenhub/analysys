@@ -113,16 +113,25 @@ describe('SimulationEngine', () => {
     const engine1 = new SimulationEngine(config1);
     const engine2 = new SimulationEngine(config2);
 
-    let summary1: unknown = null;
-    let summary2: unknown = null;
+    let summary1: Record<string, unknown> | null = null;
+    let summary2: Record<string, unknown> | null = null;
 
-    engine1.setCallbacks({ onComplete: (s) => { summary1 = s; } });
-    engine2.setCallbacks({ onComplete: (s) => { summary2 = s; } });
+    engine1.setCallbacks({ onComplete: (s) => { summary1 = s as Record<string, unknown>; } });
+    engine2.setCallbacks({ onComplete: (s) => { summary2 = s as Record<string, unknown>; } });
 
     await engine1.run();
     await engine2.run();
 
-    expect(summary1).toEqual(summary2);
+    // Compare only deterministic fields (exclude wall-clock-dependent values)
+    const deterministicFields = (s: Record<string, unknown>) => ({
+      totalEvents: s.totalEvents,
+      totalRequests: s.totalRequests,
+      successRate: s.successRate,
+      avgEndToEndLatencyMs: s.avgEndToEndLatencyMs,
+      simulatedDurationMs: s.simulatedDurationMs,
+    });
+
+    expect(deterministicFields(summary1!)).toEqual(deterministicFields(summary2!));
   });
 
   it('pause stops the simulation loop', async () => {
