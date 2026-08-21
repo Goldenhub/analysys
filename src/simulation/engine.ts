@@ -327,7 +327,12 @@ export class SimulationEngine {
       state.processor.onRequestArrived(event, request, this.getProcessorContext());
       // If the processor set a terminal status, mark this request as done
       if (request.status !== RequestStatus.InFlight) {
-        this.markRequestDone(request.id);
+        // A Success status kicks off a response traversal (the processor schedules
+        // RequestComplete), and ResponseComplete owns the in-flight decrement.
+        // Only failure statuses terminate the request here.
+        if (request.status !== RequestStatus.Success) {
+          this.markRequestDone(request.id);
+        }
         // Log dropped requests (queue full / pool exhausted)
         if (request.status === RequestStatus.Dropped) {
           const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
@@ -495,8 +500,10 @@ export class SimulationEngine {
   private handleMetricsSnapshot(): void {
     this.updateInFlightWeightedSum();
     const windowDuration = this.virtualClockMs - this.lastSnapshotTime;
+    // Keep one decimal place: low-traffic topologies have a true average well
+    // below 1, which a plain Math.round would collapse to 0.
     const avgInFlight = windowDuration > 0
-      ? Math.round(this.inFlightTimeWeightedSum / windowDuration)
+      ? Math.round((this.inFlightTimeWeightedSum / windowDuration) * 10) / 10
       : this.inFlightCount;
 
     const batch = this.metricsCollector.generateBatch(

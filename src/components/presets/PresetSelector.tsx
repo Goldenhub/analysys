@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { MarkerType } from '@xyflow/react';
 import { presets, type PresetTopology, type ChaosTimelineEntry } from '@/presets';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
@@ -25,6 +26,15 @@ function edgeDataToRFEdges(edges: EdgeData[]): AnalysysEdge[] {
     id: edgeData.id,
     source: edgeData.source,
     target: edgeData.target,
+    // `type` selects the registered custom edge renderer (SyncEdge / AsyncEdge).
+    // Without it React Flow falls back to the default edge and packet dots never render.
+    type: edgeData.protocol,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 16,
+      height: 16,
+      color: '#6b7280',
+    },
     data: edgeData as AnalysysEdge['data'],
   }));
 }

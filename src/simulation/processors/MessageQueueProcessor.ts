@@ -58,11 +58,19 @@ export class MessageQueueProcessor implements NodeProcessor {
 
     state.totalProcessed++;
 
-    // The request is now "in the queue" — mark as success from producer perspective
-    // The consumer will drain it asynchronously
+    // The request is now "in the queue" — success from the producer's perspective.
+    // The consumer drains it asynchronously.
     request.status = RequestStatus.Success;
-    request.completedAt = event.timestamp;
     context.recordDeparture(event.nodeId, request.id, event.timestamp);
+    // Schedule a completion event so the MQ follows the same lifecycle as every
+    // other terminal path. The engine sets `completedAt` when the response completes.
+    context.scheduleEvent({
+      type: SimEventType.RequestComplete,
+      timestamp: event.timestamp,
+      nodeId: event.nodeId,
+      requestId: request.id,
+      payload: { enqueued: true },
+    });
 
     // Ensure consumer polling is scheduled
     if (!this.consumerScheduled) {

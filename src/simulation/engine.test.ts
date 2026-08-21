@@ -383,4 +383,78 @@ describe('SimulationEngine', () => {
     const last = cacheUtilization[cacheUtilization.length - 1]!;
     expect(last).toBeLessThan(0.15);
   });
+
+  it('reports non-zero active requests without leaking the in-flight counter', async () => {
+    // Low-traffic gen → cache → db topology. The true average in-flight count here
+    // is a fraction of a request, which must not be reported as 0.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        config: { rps: 20, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+      },
+      {
+        id: 'cache-1',
+        nodeType: NodeType.Cache,
+        label: 'Cache',
+        position: { x: 200, y: 0 },
+        config: { hitRatio: 0.9, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 5000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number; successRate: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => { summary = s; },
+    });
+
+    await engine.run();
+
+    expect(batches.length).toBeGreaterThanOrEqual(4);
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    // The final batch is the completion snapshot, which reports the instantaneous
+    // count rather than a windowed average. Only the mid-run windows exercise the
+    // time-weighted average, so the "is it live?" check must ignore the tail.
+    const midRun = activeSeries.slice(0, -1);
+
+    // (1) The counter is live. True steady-state occupancy here is ~0.1 requests:
+    // rounding to whole numbers, or releasing cache hits before their response
+    // traversal finishes, both collapse every one of these windows to 0.
+    expect(Math.max(...midRun)).toBeGreaterThan(0);
+
+    // (2) No leak. ResponseComplete now owns the decrement for every success path
+    // (cache hits and MQ enqueues included). If any success path failed to release
+    // its slot, the count would grow monotonically toward totalRequests.
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(100);
+    const lastActive = activeSeries[activeSeries.length - 1]!;
+    expect(lastActive).toBeLessThan(total * 0.1);
+    // Steady state for this topology is well under one request in flight.
+    expect(lastActive).toBeLessThan(10);
+
+    // (3) Requests reach a terminal state rather than hanging in flight.
+    expect(summary!.successRate).toBeGreaterThan(0.9);
+  });
 });
