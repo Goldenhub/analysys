@@ -4,3 +4,4 @@ export { AppServerNode } from './AppServerNode';
 export { CacheNode } from './CacheNode';
 export { DatabaseNode } from './DatabaseNode';
 export { MessageQueueNode } from './MessageQueueNode';
+export { ChaosStatusBadge } from './ChaosStatusBadge';

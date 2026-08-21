@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -9,8 +9,10 @@ import {
   Brush,
   ResponsiveContainer,
   Legend,
+  ReferenceLine,
 } from 'recharts';
 import type { MetricsBatchPayload } from '@/types/metrics';
+import { useSimulationStore } from '@/store/simulationStore';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -20,6 +22,7 @@ interface LatencyDataPoint {
   p50: number;
   p90: number;
   p99: number;
+  chaosAnnotation?: string;
 }
 
 interface LatencyChartProps {
@@ -29,6 +32,12 @@ interface LatencyChartProps {
 // ─── Constants ───────────────────────────────────────────────────
 
 const MAX_BUFFER_SIZE = 120;
+
+const CHAOS_LABELS: Record<string, string> = {
+  FLUSH_CACHE: '\ud83d\udd25 Cache Flush',
+  DROP_DB: '\u26a0\ufe0f DB Partition',
+  SPIKE_TRAFFIC: '\u26a1 Traffic Spike',
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -43,6 +52,7 @@ function formatTime(ms: number): string {
 
 export function LatencyChart({ metrics }: LatencyChartProps) {
   const [data, setData] = useState<LatencyDataPoint[]>([]);
+  const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
 
   useEffect(() => {
     if (!metrics) return;
@@ -53,17 +63,43 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
         return prev;
       }
 
+      // Determine if any chaos effect is active at this time
+      const activeLabels = activeChaosEffects
+        .filter(
+          (e) =>
+            metrics.simulatedTimeMs >= e.startTimeMs &&
+            metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
+        )
+        .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
+
       const newPoint: LatencyDataPoint = {
         time: metrics.simulatedTimeMs,
         timeLabel: formatTime(metrics.simulatedTimeMs),
         p50: metrics.systemWide.endToEndLatency.p50,
         p90: metrics.systemWide.endToEndLatency.p90,
         p99: metrics.systemWide.endToEndLatency.p99,
+        chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
       };
 
       return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
     });
-  }, [metrics]);
+  }, [metrics, activeChaosEffects]);
+
+  // Compute reference lines for chaos start times that fall within our data window
+  const chaosReferenceLines = useMemo(() => {
+    if (data.length === 0) return [];
+    const minTime = data[0]!.time;
+    const maxTime = data[data.length - 1]!.time;
+
+    return activeChaosEffects
+      .filter((e) => e.startTimeMs >= minTime && e.startTimeMs <= maxTime)
+      .map((e) => ({
+        time: formatTime(e.startTimeMs),
+        label: CHAOS_LABELS[e.chaosType] ?? e.label,
+        chaosType: e.chaosType,
+        id: e.id,
+      }));
+  }, [activeChaosEffects, data]);
 
   if (data.length === 0) {
     return (
@@ -99,6 +135,24 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
         <Legend
           wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
         />
+
+        {/* Chaos event reference lines */}
+        {chaosReferenceLines.map((ref) => (
+          <ReferenceLine
+            key={ref.id}
+            x={ref.time}
+            stroke={ref.chaosType === 'DROP_DB' ? '#ef4444' : '#f59e0b'}
+            strokeDasharray="4 2"
+            strokeWidth={1.5}
+            label={{
+              value: ref.label,
+              position: 'top',
+              fill: ref.chaosType === 'DROP_DB' ? '#fca5a5' : '#fcd34d',
+              fontSize: 9,
+            }}
+          />
+        ))}
+
         <Line
           type="monotone"
           dataKey="p50"

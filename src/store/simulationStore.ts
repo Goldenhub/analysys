@@ -7,6 +7,28 @@ import type {
   SimEventLogEntry,
 } from '@/types/messages';
 
+// ─── Chaos Effect ────────────────────────────────────────────────
+
+export interface ActiveChaosEffect {
+  id: string;
+  chaosType: string;
+  targetNodeId?: string;
+  label: string;
+  description: string;
+  startTimeMs: number;
+  durationMs: number;
+}
+
+// ─── Metrics Snapshot for Impact Comparison ─────────────────────
+
+export interface ChaosMetricsSnapshot {
+  effectId: string;
+  latencyP50: number;
+  latencyP99: number;
+  errorRate: number;
+  throughput: number;
+}
+
 // ─── Store State ─────────────────────────────────────────────────
 
 interface SimulationState {
@@ -15,6 +37,8 @@ interface SimulationState {
   metrics: MetricsBatchPayload | null;
   eventLog: SimEventLogEntry[];
   nodeStatuses: Map<string, 'green' | 'yellow' | 'red'>;
+  activeChaosEffects: ActiveChaosEffect[];
+  chaosMetricsSnapshots: ChaosMetricsSnapshot[];
 }
 
 // ─── Store Actions ───────────────────────────────────────────────
@@ -25,6 +49,10 @@ interface SimulationActions {
   updateMetrics: (payload: MetricsBatchPayload) => void;
   appendEventLog: (entries: SimEventLogEntry[]) => void;
   setNodeStatus: (nodeId: string, status: 'green' | 'yellow' | 'red') => void;
+  addChaosEffect: (effect: ActiveChaosEffect) => void;
+  removeChaosEffect: (id: string) => void;
+  addChaosMetricsSnapshot: (snapshot: ChaosMetricsSnapshot) => void;
+  removeChaosMetricsSnapshot: (effectId: string) => void;
   resetMetrics: () => void;
   initWorker: () => void;
   terminateWorker: () => void;
@@ -43,6 +71,8 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
   metrics: null,
   eventLog: [],
   nodeStatuses: new Map(),
+  activeChaosEffects: [],
+  chaosMetricsSnapshots: [],
 
   // ─── State Actions ───────────────────────────────────────────
 
@@ -62,11 +92,33 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       return { nodeStatuses: next };
     }),
 
+  addChaosEffect: (effect) =>
+    set((state) => ({
+      activeChaosEffects: [...state.activeChaosEffects, effect],
+    })),
+
+  removeChaosEffect: (id) =>
+    set((state) => ({
+      activeChaosEffects: state.activeChaosEffects.filter((e) => e.id !== id),
+    })),
+
+  addChaosMetricsSnapshot: (snapshot) =>
+    set((state) => ({
+      chaosMetricsSnapshots: [...state.chaosMetricsSnapshots, snapshot],
+    })),
+
+  removeChaosMetricsSnapshot: (effectId) =>
+    set((state) => ({
+      chaosMetricsSnapshots: state.chaosMetricsSnapshots.filter((s) => s.effectId !== effectId),
+    })),
+
   resetMetrics: () =>
     set({
       metrics: null,
       eventLog: [],
       nodeStatuses: new Map(),
+      activeChaosEffects: [],
+      chaosMetricsSnapshots: [],
     }),
 
   // ─── Worker Lifecycle ────────────────────────────────────────

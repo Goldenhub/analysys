@@ -1,8 +1,10 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AnalysysNode } from '@/types/nodes';
 import type { CacheConfig } from '@/types/nodes';
+import { NodeType } from '@/types/nodes';
 import { useSimulationStore } from '@/store/simulationStore';
 import { useTopologyStore } from '@/store/topologyStore';
+import { ChaosStatusBadge } from './ChaosStatusBadge';
 
 const healthColors = {
   green: 'border-green-400 shadow-green-400/20',
@@ -23,11 +25,12 @@ export function CacheNode({ id, data }: NodeProps<AnalysysNode>) {
 
   return (
     <div
-      className={`w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
+      className={`relative w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
         isDisconnected ? 'opacity-50 border-dashed' : ''
       } ${nodeStatus ? 'animate-pulse' : ''}`}
       aria-label={`Cache: ${data.label}, health: ${healthLabel}`}
     >
+      <ChaosStatusBadge nodeId={id} nodeType={NodeType.Cache} />
       {/* Icon + Label */}
       <div className="flex items-center gap-2">
         <svg

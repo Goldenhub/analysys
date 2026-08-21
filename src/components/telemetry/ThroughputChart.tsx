@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -8,8 +8,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceLine,
 } from 'recharts';
 import type { MetricsBatchPayload } from '@/types/metrics';
+import { useSimulationStore } from '@/store/simulationStore';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -18,6 +20,7 @@ interface ThroughputDataPoint {
   timeLabel: string;
   success: number;
   errors: number;
+  chaosAnnotation?: string;
 }
 
 interface ThroughputChartProps {
@@ -27,6 +30,12 @@ interface ThroughputChartProps {
 // ─── Constants ───────────────────────────────────────────────────
 
 const MAX_BUFFER_SIZE = 120;
+
+const CHAOS_LABELS: Record<string, string> = {
+  FLUSH_CACHE: '\ud83d\udd25 Cache Flush',
+  DROP_DB: '\u26a0\ufe0f DB Partition',
+  SPIKE_TRAFFIC: '\u26a1 Traffic Spike',
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -41,6 +50,7 @@ function formatTime(ms: number): string {
 
 export function ThroughputChart({ metrics }: ThroughputChartProps) {
   const [data, setData] = useState<ThroughputDataPoint[]>([]);
+  const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
 
   useEffect(() => {
     if (!metrics) return;
@@ -56,16 +66,42 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
       const errorThroughput = totalThroughput * errorRate;
       const successThroughput = totalThroughput - errorThroughput;
 
+      // Determine if any chaos effect is active at this time
+      const activeLabels = activeChaosEffects
+        .filter(
+          (e) =>
+            metrics.simulatedTimeMs >= e.startTimeMs &&
+            metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
+        )
+        .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
+
       const newPoint: ThroughputDataPoint = {
         time: metrics.simulatedTimeMs,
         timeLabel: formatTime(metrics.simulatedTimeMs),
         success: Math.round(successThroughput * 100) / 100,
         errors: Math.round(errorThroughput * 100) / 100,
+        chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
       };
 
       return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
     });
-  }, [metrics]);
+  }, [metrics, activeChaosEffects]);
+
+  // Compute reference lines for chaos start times that fall within our data window
+  const chaosReferenceLines = useMemo(() => {
+    if (data.length === 0) return [];
+    const minTime = data[0]!.time;
+    const maxTime = data[data.length - 1]!.time;
+
+    return activeChaosEffects
+      .filter((e) => e.startTimeMs >= minTime && e.startTimeMs <= maxTime)
+      .map((e) => ({
+        time: formatTime(e.startTimeMs),
+        label: CHAOS_LABELS[e.chaosType] ?? e.label,
+        chaosType: e.chaosType,
+        id: e.id,
+      }));
+  }, [activeChaosEffects, data]);
 
   if (data.length === 0) {
     return (
@@ -99,6 +135,24 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
           labelStyle={{ color: '#9ca3af' }}
         />
         <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+
+        {/* Chaos event reference lines */}
+        {chaosReferenceLines.map((ref) => (
+          <ReferenceLine
+            key={ref.id}
+            x={ref.time}
+            stroke={ref.chaosType === 'DROP_DB' ? '#ef4444' : '#f59e0b'}
+            strokeDasharray="4 2"
+            strokeWidth={1.5}
+            label={{
+              value: ref.label,
+              position: 'top',
+              fill: ref.chaosType === 'DROP_DB' ? '#fca5a5' : '#fcd34d',
+              fontSize: 9,
+            }}
+          />
+        ))}
+
         <Area
           type="monotone"
           dataKey="success"
