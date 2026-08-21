@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useTopologyStore } from './topologyStore';
-import { NodeType, Distribution } from '../types/nodes';
+import { NodeType } from '../types/nodes';
 import { EdgeProtocol } from '../types/edges';
 import type { AnalysysNode } from '../types/nodes';
 import type { AnalysysEdge } from '../types/edges';

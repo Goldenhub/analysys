@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectCycles } from './cycleDetection';
-import { NodeType, Distribution, DatabaseType, LBAlgorithm, EvictionPolicy } from '@/types/nodes';
+import { NodeType } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import { EdgeProtocol } from '@/types/edges';
 import type { EdgeData } from '@/types/edges';

@@ -16,11 +16,11 @@ export function DashboardSkeleton() {
       <div className="w-72 rounded border border-gray-800 bg-gray-900 p-2">
         <div className="mb-2 h-3 w-20 animate-pulse rounded bg-gray-700" />
         <div className="flex flex-col gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {[85, 72, 90, 65, 78, 95].map((w, i) => (
             <div
               key={i}
               className="h-4 animate-pulse rounded bg-gray-800"
-              style={{ width: `${70 + Math.random() * 30}%` }}
+              style={{ width: `${w}%` }}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useReducer, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -48,42 +48,42 @@ function formatTime(ms: number): string {
   return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+// ─── Reducer ─────────────────────────────────────────────────────
+
+function dataReducer(
+  state: LatencyDataPoint[],
+  action: LatencyDataPoint,
+): LatencyDataPoint[] {
+  const lastPoint = state[state.length - 1];
+  if (lastPoint && lastPoint.time === action.time) return state;
+  return [...state, action].slice(-MAX_BUFFER_SIZE);
+}
+
 // ─── Component ───────────────────────────────────────────────────
 
 export function LatencyChart({ metrics }: LatencyChartProps) {
-  const [data, setData] = useState<LatencyDataPoint[]>([]);
+  const [data, dispatch] = useReducer(dataReducer, []);
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
 
-  useEffect(() => {
-    if (!metrics) return;
+  // Dispatch new data point when metrics change
+  if (metrics) {
+    const activeLabels = activeChaosEffects
+      .filter(
+        (e) =>
+          metrics.simulatedTimeMs >= e.startTimeMs &&
+          metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
+      )
+      .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
 
-    setData((prev) => {
-      const lastPoint = prev[prev.length - 1];
-      if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
-        return prev;
-      }
-
-      // Determine if any chaos effect is active at this time
-      const activeLabels = activeChaosEffects
-        .filter(
-          (e) =>
-            metrics.simulatedTimeMs >= e.startTimeMs &&
-            metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
-        )
-        .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
-
-      const newPoint: LatencyDataPoint = {
-        time: metrics.simulatedTimeMs,
-        timeLabel: formatTime(metrics.simulatedTimeMs),
-        p50: metrics.systemWide.endToEndLatency.p50,
-        p90: metrics.systemWide.endToEndLatency.p90,
-        p99: metrics.systemWide.endToEndLatency.p99,
-        chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
-      };
-
-      return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
+    dispatch({
+      time: metrics.simulatedTimeMs,
+      timeLabel: formatTime(metrics.simulatedTimeMs),
+      p50: metrics.systemWide.endToEndLatency.p50,
+      p90: metrics.systemWide.endToEndLatency.p90,
+      p99: metrics.systemWide.endToEndLatency.p99,
+      chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
     });
-  }, [metrics, activeChaosEffects]);
+  }
 
   // Compute reference lines for chaos start times that fall within our data window
   const chaosReferenceLines = useMemo(() => {
