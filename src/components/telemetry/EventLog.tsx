@@ -28,6 +28,21 @@ const EVENT_ICONS: Record<string, string> = {
   CONSUMER_POLL: '📨',
 };
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  REQUEST_ARRIVAL: 'Request Arrival',
+  REQUEST_ENQUEUE: 'Request Enqueued',
+  REQUEST_PROCESS: 'Request Processing',
+  REQUEST_ROUTE: 'Request Routed',
+  REQUEST_COMPLETE: 'Request Complete',
+  REQUEST_TIMEOUT: 'Request Timeout',
+  REQUEST_DROP: 'Request Dropped',
+  REQUEST_LOOP_DETECTED: 'Loop Detected',
+  CHAOS_START: 'Chaos Started',
+  CHAOS_END: 'Chaos Ended',
+  METRICS_SNAPSHOT: 'Metrics Snapshot',
+  CONSUMER_POLL: 'Consumer Poll',
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function formatSimTime(ms: number): string {
@@ -45,6 +60,7 @@ export function EventLog({ entries }: EventLogProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [nodeFilter, setNodeFilter] = useState<string>('ALL');
+  const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
 
   // Limit to last 500 entries
   const limitedEntries = useMemo(
@@ -141,25 +157,66 @@ export function EventLog({ entries }: EventLogProps) {
       >
         {filteredEntries.map((entry) => {
           const isChaos = CHAOS_EVENT_TYPES.includes(entry.type);
+          const isExpanded = selectedEntryId === entry.id;
           return (
             <div
               key={entry.id}
-              className={`flex items-start gap-1.5 border-b border-gray-800 px-2 py-1 text-[10px] ${
+              className={`border-b border-gray-800 px-2 py-1 text-[10px] cursor-pointer ${
                 isChaos
                   ? 'bg-red-950/30 border-red-900/30'
                   : 'hover:bg-gray-800/50'
-              }`}
+              } ${isExpanded ? 'bg-gray-800/70' : ''}`}
+              onClick={() => setSelectedEntryId(isExpanded ? null : entry.id)}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedEntryId(isExpanded ? null : entry.id);
+                }
+              }}
             >
-              <span className="shrink-0 font-mono text-gray-500">
-                {formatSimTime(entry.timestamp)}
-              </span>
-              <span className="shrink-0 w-4 text-center">
-                {EVENT_ICONS[entry.type] ?? '•'}
-              </span>
-              <span className="shrink-0 font-mono text-blue-400">
-                {entry.nodeId.slice(0, 6)}
-              </span>
-              <span className="truncate text-gray-300">{entry.message}</span>
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0 font-mono text-gray-500">
+                  {formatSimTime(entry.timestamp)}
+                </span>
+                <span className="shrink-0 w-4 text-center">
+                  {EVENT_ICONS[entry.type] ?? '•'}
+                </span>
+                <span className="shrink-0 font-mono text-blue-400">
+                  {entry.nodeId.slice(0, 6)}
+                </span>
+                <span className={isExpanded ? 'text-gray-300' : 'truncate text-gray-300'}>
+                  {entry.message}
+                </span>
+              </div>
+              {isExpanded && (
+                <div className="mt-1 ml-6 space-y-0.5 text-[10px] text-gray-400 border-l-2 border-gray-700 pl-2">
+                  <div>
+                    <span className="text-gray-500">Time: </span>
+                    {formatSimTime(entry.timestamp)}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Type: </span>
+                    {EVENT_TYPE_LABELS[entry.type] ?? entry.type}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Node: </span>
+                    <span className="font-mono">{entry.nodeId}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Message: </span>
+                    {entry.message}
+                  </div>
+                  {entry.requestId && (
+                    <div>
+                      <span className="text-gray-500">Request: </span>
+                      <span className="font-mono">{entry.requestId}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

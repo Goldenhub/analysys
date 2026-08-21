@@ -41,6 +41,11 @@ export class SimulationEngine {
   private peakInFlightSinceLastSnapshot = 0;
   private countedAsComplete: Set<string> = new Set();
 
+  // Event log batching — accumulate entries and flush on metrics snapshot
+  private pendingLogEntries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }> = [];
+  private completionLogCounter = 0;
+  private readonly COMPLETION_LOG_SAMPLE_RATE = 50; // log every Nth completion
+
   // Batch control
   private readonly BATCH_SIZE = 200;
 
@@ -123,6 +128,8 @@ export class SimulationEngine {
     this.inFlightCount = 0;
     this.peakInFlightSinceLastSnapshot = 0;
     this.countedAsComplete.clear();
+    this.pendingLogEntries = [];
+    this.completionLogCounter = 0;
     this.metricsCollector.reset();
     this.initializeNodeStates(this.config.topology.nodes);
     this.scheduleInitialEvents(this.config.topology.nodes);
@@ -262,6 +269,14 @@ export class SimulationEngine {
       request.completedAt = event.timestamp;
       this.markRequestDone(requestId);
       this.metricsCollector.recordCompletion(request);
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_DROP',
+        nodeId: event.nodeId,
+        requestId,
+        message: `No downstream route available from ${node.label}`,
+      });
     } else {
       const target = outEdges[0]!.target;
       this.scheduleEvent({
@@ -303,6 +318,18 @@ export class SimulationEngine {
       // If the processor set a terminal status, mark this request as done
       if (request.status !== RequestStatus.InFlight) {
         this.markRequestDone(request.id);
+        // Log dropped requests (queue full / pool exhausted)
+        if (request.status === RequestStatus.Dropped) {
+          const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+          this.pendingLogEntries.push({
+            id: this.eventCounter,
+            timestamp: event.timestamp,
+            type: 'REQUEST_DROP',
+            nodeId: event.nodeId,
+            requestId: request.id,
+            message: `Request dropped at ${nodeLabel} (queue full)`,
+          });
+        }
       }
     }
   }
@@ -340,6 +367,21 @@ export class SimulationEngine {
     }
     this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
+
+    // Log every Nth completion to show flow without flooding
+    this.completionLogCounter++;
+    if (this.completionLogCounter >= this.COMPLETION_LOG_SAMPLE_RATE) {
+      this.completionLogCounter = 0;
+      const latency = Math.round(request.accumulatedLatencyMs * 100) / 100;
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_COMPLETE',
+        nodeId: event.nodeId,
+        requestId: request.id,
+        message: `Request completed (latency: ${latency}ms)`,
+      });
+    }
   }
 
   private handleRequestTimeout(event: SimEvent): void {
@@ -358,6 +400,17 @@ export class SimulationEngine {
       this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
       this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
+
+      // Always log timeouts — they indicate problems
+      const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_TIMEOUT',
+        nodeId: event.nodeId,
+        requestId: request.id,
+        message: `Request timed out at ${nodeLabel}`,
+      });
     }
   }
 
@@ -368,6 +421,12 @@ export class SimulationEngine {
       this.peakInFlightSinceLastSnapshot,
     );
     this.onMetricsBatch?.(batch);
+
+    // Flush pending event log entries to main thread
+    if (this.pendingLogEntries.length > 0) {
+      this.onEventLog?.(this.pendingLogEntries);
+      this.pendingLogEntries = [];
+    }
 
     // Reset peak to current level for next window
     this.peakInFlightSinceLastSnapshot = this.inFlightCount;
@@ -399,6 +458,15 @@ export class SimulationEngine {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       state.processor.onChaosReverted();
+      const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+      const chaosType = (event.payload as { chaosType?: string })?.chaosType ?? 'unknown';
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'CHAOS_END',
+        nodeId: event.nodeId,
+        message: `Chaos "${chaosType}" reverted on ${nodeLabel}`,
+      });
     }
   }
 

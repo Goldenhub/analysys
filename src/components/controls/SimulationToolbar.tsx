@@ -107,7 +107,7 @@ export function SimulationToolbar() {
         seed: Date.now(),
         speedMultiplier,
         maxSimulatedTimeMs: 600_000, // 10 min default
-        metricsIntervalMs: 1000,
+        metricsIntervalMs: 500,
         maxHopsPerRequest: 20,
       },
     });
