@@ -1,4 +1,4 @@
-import { useReducer, useMemo } from 'react';
+import { useReducer, useMemo, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -64,9 +64,12 @@ function dataReducer(
 export function LatencyChart({ metrics }: LatencyChartProps) {
   const [data, dispatch] = useReducer(dataReducer, []);
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
+  const lastTimeRef = useRef<number>(-1);
 
-  // Dispatch new data point when metrics change
-  if (metrics) {
+  // Dispatch new data point when metrics change (ref-guard prevents infinite re-render)
+  if (metrics && metrics.simulatedTimeMs !== lastTimeRef.current) {
+    lastTimeRef.current = metrics.simulatedTimeMs;
+
     const activeLabels = activeChaosEffects
       .filter(
         (e) =>
