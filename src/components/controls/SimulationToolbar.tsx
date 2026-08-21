@@ -106,7 +106,7 @@ export function SimulationToolbar() {
         topology,
         seed: Date.now(),
         speedMultiplier,
-        maxSimulatedTimeMs: 300_000, // 5 min default
+        maxSimulatedTimeMs: 600_000, // 10 min default
         metricsIntervalMs: 1000,
         maxHopsPerRequest: 20,
       },

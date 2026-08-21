@@ -152,6 +152,20 @@ export class SimulationEngine {
           requestId: '',
           payload: { chaosType },
         });
+
+        // For SPIKE_TRAFFIC, immediately inject burst arrivals to make the spike feel instant
+        if (chaosType === 'SPIKE_TRAFFIC') {
+          const burstCount = 20;
+          for (let i = 0; i < burstCount; i++) {
+            this.scheduleEvent({
+              type: SimEventType.RequestArrival,
+              timestamp: this.virtualClockMs + i * 0.1,
+              nodeId,
+              requestId: '',
+              payload: {},
+            });
+          }
+        }
       }
     }
 
@@ -481,6 +495,9 @@ export class SimulationEngine {
   }
 
   private yieldToMacroTask(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
+    // At 1x speed, yield for ~50ms between batches to allow UI updates and user interaction
+    // At higher speeds, reduce the delay proportionally
+    const delayMs = Math.max(1, Math.floor(50 / this.config.speedMultiplier));
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }
