@@ -343,7 +343,15 @@ export class SimulationEngine {
   }
 
   private handleMetricsSnapshot(): void {
-    const batch = this.metricsCollector.generateBatch(this.virtualClockMs, this.nodeStates);
+    const activeRequestCount = [...this.requests.values()].filter(
+      (r) => r.status === RequestStatus.InFlight,
+    ).length;
+
+    const batch = this.metricsCollector.generateBatch(
+      this.virtualClockMs,
+      this.nodeStates,
+      activeRequestCount,
+    );
     this.onMetricsBatch?.(batch);
 
     // Emit node statuses
