@@ -598,6 +598,10 @@ export class SimulationEngine {
   }
 
   private yieldToMacroTask(): Promise<void> {
+    if (this.config.disablePacing) {
+      // In test mode, use immediate yield (no wall-clock delay)
+      return new Promise((resolve) => setTimeout(resolve, 0));
+    }
     // At 1x speed, yield for ~50ms between batches to allow UI updates and user interaction
     // At higher speeds, reduce the delay proportionally
     const delayMs = Math.max(1, Math.floor(50 / this.config.speedMultiplier));

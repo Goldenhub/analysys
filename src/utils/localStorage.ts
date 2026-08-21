@@ -160,7 +160,7 @@ export function migrateSchema(
   data: AnalysysFileSchema,
   fromVersion: number,
 ): AnalysysFileSchema {
-  let current = { ...data };
+  const current = { ...data };
 
   // Future migrations would go here:
   // if (fromVersion < 2) { current = migrateV1ToV2(current); }

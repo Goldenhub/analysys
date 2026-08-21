@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useReducer, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -46,46 +46,46 @@ function formatTime(ms: number): string {
   return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+// ─── Reducer ─────────────────────────────────────────────────────
+
+function dataReducer(
+  state: ThroughputDataPoint[],
+  action: ThroughputDataPoint,
+): ThroughputDataPoint[] {
+  const lastPoint = state[state.length - 1];
+  if (lastPoint && lastPoint.time === action.time) return state;
+  return [...state, action].slice(-MAX_BUFFER_SIZE);
+}
+
 // ─── Component ───────────────────────────────────────────────────
 
 export function ThroughputChart({ metrics }: ThroughputChartProps) {
-  const [data, setData] = useState<ThroughputDataPoint[]>([]);
+  const [data, dispatch] = useReducer(dataReducer, []);
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
 
-  useEffect(() => {
-    if (!metrics) return;
+  // Dispatch new data point when metrics change
+  if (metrics) {
+    const totalThroughput = metrics.systemWide.totalThroughput;
+    const errorRate = metrics.systemWide.totalErrorRate;
+    const errorThroughput = totalThroughput * errorRate;
+    const successThroughput = totalThroughput - errorThroughput;
 
-    setData((prev) => {
-      const lastPoint = prev[prev.length - 1];
-      if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
-        return prev;
-      }
+    const activeLabels = activeChaosEffects
+      .filter(
+        (e) =>
+          metrics.simulatedTimeMs >= e.startTimeMs &&
+          metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
+      )
+      .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
 
-      const totalThroughput = metrics.systemWide.totalThroughput;
-      const errorRate = metrics.systemWide.totalErrorRate;
-      const errorThroughput = totalThroughput * errorRate;
-      const successThroughput = totalThroughput - errorThroughput;
-
-      // Determine if any chaos effect is active at this time
-      const activeLabels = activeChaosEffects
-        .filter(
-          (e) =>
-            metrics.simulatedTimeMs >= e.startTimeMs &&
-            metrics.simulatedTimeMs <= e.startTimeMs + e.durationMs,
-        )
-        .map((e) => CHAOS_LABELS[e.chaosType] ?? e.label);
-
-      const newPoint: ThroughputDataPoint = {
-        time: metrics.simulatedTimeMs,
-        timeLabel: formatTime(metrics.simulatedTimeMs),
-        success: Math.round(successThroughput * 100) / 100,
-        errors: Math.round(errorThroughput * 100) / 100,
-        chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
-      };
-
-      return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
+    dispatch({
+      time: metrics.simulatedTimeMs,
+      timeLabel: formatTime(metrics.simulatedTimeMs),
+      success: Math.round(successThroughput * 100) / 100,
+      errors: Math.round(errorThroughput * 100) / 100,
+      chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
     });
-  }, [metrics, activeChaosEffects]);
+  }
 
   // Compute reference lines for chaos start times that fall within our data window
   const chaosReferenceLines = useMemo(() => {

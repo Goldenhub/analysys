@@ -11,6 +11,7 @@ export interface SimulationEngineConfig {
   maxSimulatedTimeMs: number;
   metricsIntervalMs: number;
   maxHopsPerRequest: number;
+  disablePacing?: boolean; // Skip yield delays (for testing)
 }
 
 // ─── Main Thread → Worker Messages ──────────────────────────────
