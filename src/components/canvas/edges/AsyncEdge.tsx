@@ -61,40 +61,28 @@ export function AsyncEdge({
       {/* Animated packet dots when simulation is running */}
       {isRunning && (
         <>
-          {/* Request packets (blue, source → target, slower for async) */}
-          {[0, 0.5].map((delay) => (
-            <circle
-              key={`req-${delay}`}
-              r={3}
-              fill="#3b82f6"
-              opacity={0.85}
-            >
-              <animateMotion
-                dur="2.5s"
-                repeatCount="indefinite"
-                begin={`${delay * 2.5}s`}
-                path={edgePath}
-              />
-            </circle>
-          ))}
-          {/* Response packets (green, target → source) */}
-          {[0.3].map((delay) => (
-            <circle
-              key={`resp-${delay}`}
-              r={2.5}
-              fill="#22c55e"
-              opacity={0.75}
-            >
-              <animateMotion
-                dur="3s"
-                repeatCount="indefinite"
-                begin={`${delay * 3}s`}
-                path={edgePath}
-                keyPoints="1;0"
-                keyTimes="0;1"
-              />
-            </circle>
-          ))}
+          {/* Request packets (blue dots moving source → target, slower for async) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth={4}
+            strokeDasharray="3 20"
+            strokeLinecap="round"
+            opacity={0.85}
+            className="animate-packet-forward-slow"
+          />
+          {/* Response packets (green dots moving target → source) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth={3}
+            strokeDasharray="2 25"
+            strokeLinecap="round"
+            opacity={0.7}
+            className="animate-packet-backward-slow"
+          />
         </>
       )}
 
@@ -111,7 +99,7 @@ export function AsyncEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-      {/* CSS animation for dashed line movement */}
+      {/* CSS animations for edge effects */}
       <style>{`
         @keyframes async-flow {
           0% { stroke-dashoffset: 0; }

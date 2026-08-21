@@ -7,9 +7,9 @@ import { useTopologyStore } from '@/store/topologyStore';
 import { ChaosStatusBadge } from './ChaosStatusBadge';
 
 const healthColors = {
-  green: 'border-green-400 shadow-green-400/20',
-  yellow: 'border-yellow-400 shadow-yellow-400/20',
-  red: 'border-red-400 shadow-red-400/20',
+  green: 'border-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]',
+  yellow: 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]',
+  red: 'border-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]',
 } as const;
 
 const algorithmLabels: Record<LBAlgorithm, string> = {
@@ -31,7 +31,7 @@ export function LoadBalancerNode({ id, data }: NodeProps<AnalysysNode>) {
     <div
       className={`relative w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
         isDisconnected ? 'opacity-50 border-dashed' : ''
-      } ${nodeStatus ? 'animate-pulse' : ''}`}
+      }`}
       aria-label={`Load Balancer: ${data.label}, health: ${healthLabel}`}
     >
       <ChaosStatusBadge nodeId={id} nodeType={NodeType.LoadBalancer} />

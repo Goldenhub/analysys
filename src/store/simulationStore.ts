@@ -80,13 +80,24 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
 
   setSpeed: (multiplier) => set({ speedMultiplier: multiplier }),
 
-  updateMetrics: (payload) => set({ metrics: payload }),
+  updateMetrics: (payload) =>
+    set((state) => {
+      // Ignore late metrics batches that arrive after pause/complete
+      if (state.simState === SimState.Paused || state.simState === SimState.Complete) {
+        return state;
+      }
+      return { metrics: payload };
+    }),
 
   appendEventLog: (entries) =>
     set((state) => ({ eventLog: [...state.eventLog, ...entries] })),
 
   setNodeStatus: (nodeId, status) =>
     set((state) => {
+      // Ignore late status updates after pause/complete
+      if (state.simState === SimState.Paused || state.simState === SimState.Complete) {
+        return state;
+      }
       const next = new Map(state.nodeStatuses);
       next.set(nodeId, status);
       return { nodeStatuses: next };

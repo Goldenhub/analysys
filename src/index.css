@@ -183,3 +183,40 @@
     box-shadow: 0 0 8px rgb(239 68 68 / 0.6);
   }
 }
+
+/* ─── Edge Packet Animations ─────────────────────────────────────── */
+@keyframes packet-forward {
+  0% { stroke-dashoffset: 18; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes packet-backward {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 22; }
+}
+
+@keyframes packet-forward-slow {
+  0% { stroke-dashoffset: 23; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes packet-backward-slow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 27; }
+}
+
+.animate-packet-forward {
+  animation: packet-forward 1.5s linear infinite;
+}
+
+.animate-packet-backward {
+  animation: packet-backward 1.8s linear infinite;
+}
+
+.animate-packet-forward-slow {
+  animation: packet-forward-slow 2.2s linear infinite;
+}
+
+.animate-packet-backward-slow {
+  animation: packet-backward-slow 2.5s linear infinite;
+}
