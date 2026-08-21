@@ -76,6 +76,7 @@ export class SimulationEngine {
 
         if (event.timestamp > this.config.maxSimulatedTimeMs) {
           this.state = SimState.Complete;
+          this.handleMetricsSnapshot();
           this.emitComplete();
           return;
         }
@@ -90,6 +91,7 @@ export class SimulationEngine {
 
       if (this.eventQueue.size === 0) {
         this.state = SimState.Complete;
+        this.handleMetricsSnapshot();
         this.emitComplete();
         return;
       }

@@ -162,7 +162,7 @@ export function TelemetryDashboard() {
                       value={String(metrics.systemWide.activeRequests)}
                     />
                     <MetricCard
-                      label="Sim Time"
+                      label="Elapsed (sim)"
                       value={formatSimTime(metrics.simulatedTimeMs)}
                     />
                   </div>
