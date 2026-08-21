@@ -105,8 +105,11 @@ export function EventLog({ entries }: EventLogProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-gray-500">
-        No events yet
+      <div className="flex h-full items-center justify-center px-4 text-center">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Events will appear here during simulation: timeouts, dropped requests, chaos effects, and
+          sampled completions. Click any event to see details.
+        </p>
       </div>
     );
   }

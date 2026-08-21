@@ -106,7 +106,10 @@ export function TelemetryDashboard() {
                   className="rounded border border-gray-800 bg-gray-900 p-1"
                   aria-label={`End-to-End Latency chart: p50=${metrics.systemWide.endToEndLatency.p50.toFixed(1)}ms, p90=${metrics.systemWide.endToEndLatency.p90.toFixed(1)}ms, p99=${metrics.systemWide.endToEndLatency.p99.toFixed(1)}ms`}
                 >
-                  <span className="mb-0.5 block text-[10px] font-medium text-gray-400">
+                  <span
+                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                    title="Time from request creation to completion (p50/p90/p99 percentiles in ms)"
+                  >
                     End-to-End Latency
                   </span>
                   <div className="h-[calc(100%-16px)]">
@@ -119,7 +122,10 @@ export function TelemetryDashboard() {
                   className="rounded border border-gray-800 bg-gray-900 p-1"
                   aria-label={`Throughput chart: ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
                 >
-                  <span className="mb-0.5 block text-[10px] font-medium text-gray-400">
+                  <span
+                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                    title="Requests processed per second (green=success, red=errors)"
+                  >
                     Throughput
                   </span>
                   <div className="h-[calc(100%-16px)]">
@@ -132,7 +138,10 @@ export function TelemetryDashboard() {
                   className="rounded border border-gray-800 bg-gray-900 p-1"
                   aria-label={`Queue and connection pools gauge: ${metrics.nodes.length} nodes reporting`}
                 >
-                  <span className="mb-0.5 block text-[10px] font-medium text-gray-400">
+                  <span
+                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                    title="Resource utilization per node. Green <70%, amber 70-90%, red >90%. Pulse = at capacity."
+                  >
                     Queue / Connection Pools
                   </span>
                   <div className="h-[calc(100%-16px)]">
@@ -183,10 +192,30 @@ export function TelemetryDashboard() {
 
 // ─── Internal Helpers ────────────────────────────────────────────
 
+const METRIC_TOOLTIPS: Record<string, string> = {
+  'Total Throughput': 'Successful requests completing per second in the simulated system.',
+  'Error Rate': 'Percentage of requests that failed (timed out or dropped) in the current window.',
+  'Active Requests':
+    'Peak number of requests simultaneously in-flight during the last measurement window. High values indicate backpressure.',
+  'Elapsed (sim)':
+    'Simulated time elapsed (not wall-clock time). The simulation can run faster or slower than real-time.',
+};
+
 function MetricCard({ label, value }: { label: string; value: string }) {
+  const tooltip = METRIC_TOOLTIPS[label];
   return (
     <div className="rounded bg-gray-800 px-2 py-1">
-      <span className="block text-[9px] text-gray-500">{label}</span>
+      <span className="flex items-center gap-1 text-[9px] text-gray-500">
+        {label}
+        {tooltip && (
+          <span className="group relative cursor-help" aria-label={tooltip}>
+            <span className="inline-flex items-center text-gray-500 hover:text-gray-300">ℹ️</span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-normal rounded bg-gray-700 px-2 py-1 text-[10px] leading-tight text-gray-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 w-48">
+              {tooltip}
+            </span>
+          </span>
+        )}
+      </span>
       <span className="text-xs font-medium text-gray-200">{value}</span>
     </div>
   );

@@ -55,6 +55,18 @@ function HelpIcon() {
 
 const SPEED_OPTIONS = [1, 2, 5, 10, 50] as const;
 
+// ─── Duration Options ────────────────────────────────────────────
+
+const DURATION_OPTIONS = [
+  { label: '30s', ms: 30_000 },
+  { label: '1min', ms: 60_000 },
+  { label: '2min', ms: 120_000 },
+  { label: '5min', ms: 300_000 },
+  { label: '10min', ms: 600_000 },
+] as const;
+
+const DEFAULT_DURATION_MS = 120_000; // 2 min
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function formatSimTime(ms: number): string {
@@ -106,6 +118,7 @@ export function SimulationToolbar() {
   const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
 
   const [showHelp, setShowHelp] = useState(false);
+  const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
 
   // ─── Button Handlers ─────────────────────────────────────────
 
@@ -118,14 +131,14 @@ export function SimulationToolbar() {
         topology,
         seed: Date.now(),
         speedMultiplier,
-        maxSimulatedTimeMs: 600_000, // 10 min default
+        maxSimulatedTimeMs: durationMs,
         metricsIntervalMs: 500,
         maxHopsPerRequest: 20,
       },
     });
     sendToWorker({ type: 'START', payload: { speedMultiplier } });
     setSimState(SimState.Running);
-  }, [getTopologySnapshot, initWorker, sendToWorker, speedMultiplier, setSimState]);
+  }, [getTopologySnapshot, initWorker, sendToWorker, speedMultiplier, setSimState, durationMs]);
 
   const handlePause = useCallback(() => {
     sendToWorker({ type: 'PAUSE' });
@@ -286,6 +299,27 @@ export function SimulationToolbar() {
           </option>
         ))}
       </select>
+
+      {/* Duration Selector */}
+      <div className="flex items-center gap-1">
+        <label htmlFor="sim-duration" className="text-[10px] text-gray-500">
+          Duration
+        </label>
+        <select
+          id="sim-duration"
+          value={durationMs}
+          onChange={(e) => setDurationMs(Number(e.target.value))}
+          disabled={simState === SimState.Running || simState === SimState.Paused}
+          className="h-7 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {DURATION_OPTIONS.map((opt) => (
+            <option key={opt.ms} value={opt.ms}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-[10px] text-gray-500">sim</span>
+      </div>
 
       {/* Simulation Time */}
       <span className="font-mono text-xs text-gray-300">

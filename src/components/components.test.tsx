@@ -46,9 +46,9 @@ describe('EventLog', () => {
     expect(screen.getByText('Request completed')).toBeDefined();
   });
 
-  it('renders "No events yet" when entries is empty', () => {
+  it('renders descriptive placeholder when entries is empty', () => {
     render(<EventLog entries={[]} />);
-    expect(screen.getByText('No events yet')).toBeDefined();
+    expect(screen.getByText(/Events will appear here during simulation/)).toBeDefined();
   });
 
   it('displays event count', () => {
