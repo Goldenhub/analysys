@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "name": "Database Connection Exhaustion",
+  "description": "Demonstrates database pool exhaustion under traffic spikes. 500 RPS through a load balancer to 3 app servers sharing a small connection pool.",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "Traffic Source",
+        "position": { "x": 50, "y": 250 },
+        "config": {
+          "rps": 500,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "lb-1",
+        "nodeType": "LOAD_BALANCER",
+        "label": "Load Balancer",
+        "position": { "x": 300, "y": 250 },
+        "config": {
+          "algorithm": "ROUND_ROBIN",
+          "healthCheckIntervalMs": 5000,
+          "evictionThreshold": 0.9
+        }
+      },
+      {
+        "id": "app-1",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 1",
+        "position": { "x": 550, "y": 100 },
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 15,
+          "processingTimeStdDevMs": 5
+        }
+      },
+      {
+        "id": "app-2",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 2",
+        "position": { "x": 550, "y": 250 },
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 15,
+          "processingTimeStdDevMs": 5
+        }
+      },
+      {
+        "id": "app-3",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 3",
+        "position": { "x": 550, "y": 400 },
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 15,
+          "processingTimeStdDevMs": 5
+        }
+      },
+      {
+        "id": "db-1",
+        "nodeType": "DATABASE",
+        "label": "PostgreSQL",
+        "position": { "x": 800, "y": 250 },
+        "config": {
+          "connectionPoolSize": 10,
+          "queryLatencyMeanMs": 20,
+          "queryLatencyStdDevMs": 8,
+          "lockTimeoutMs": 5000,
+          "dbType": "RELATIONAL"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-tg1-lb1", "source": "tg-1", "target": "lb-1", "protocol": "SYNC" },
+      { "id": "e-lb1-app1", "source": "lb-1", "target": "app-1", "protocol": "SYNC" },
+      { "id": "e-lb1-app2", "source": "lb-1", "target": "app-2", "protocol": "SYNC" },
+      { "id": "e-lb1-app3", "source": "lb-1", "target": "app-3", "protocol": "SYNC" },
+      { "id": "e-app1-db1", "source": "app-1", "target": "db-1", "protocol": "SYNC" },
+      { "id": "e-app2-db1", "source": "app-2", "target": "db-1", "protocol": "SYNC" },
+      { "id": "e-app3-db1", "source": "app-3", "target": "db-1", "protocol": "SYNC" }
+    ]
+  },
+  "chaosTimeline": [
+    {
+      "timeMs": 30000,
+      "event": {
+        "chaosType": "SPIKE_TRAFFIC",
+        "targetNodeId": "tg-1",
+        "durationMs": 30000,
+        "params": { "multiplier": 2 }
+      }
+    },
+    {
+      "timeMs": 60000,
+      "event": {
+        "chaosType": "SPIKE_TRAFFIC",
+        "targetNodeId": "tg-1",
+        "durationMs": 30000,
+        "params": { "multiplier": 3 }
+      }
+    }
+  ]
+}

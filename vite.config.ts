@@ -11,5 +11,18 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
+    plugins: () => [],
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
 });

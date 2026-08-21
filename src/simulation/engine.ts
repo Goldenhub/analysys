@@ -36,6 +36,16 @@ export class SimulationEngine {
   private onEventLog: ((entries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }>) => void) | null = null;
   private onComplete: ((summary: { totalEvents: number; totalRequests: number; successRate: number; avgEndToEndLatencyMs: number; simulatedDurationMs: number; wallClockDurationMs: number; eventsPerSecond: number }) => void) | null = null;
 
+  // In-flight request tracking (for active requests metric)
+  private inFlightCount = 0;
+  private peakInFlightSinceLastSnapshot = 0;
+  private countedAsComplete: Set<string> = new Set();
+
+  // Event log batching — accumulate entries and flush on metrics snapshot
+  private pendingLogEntries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }> = [];
+  private completionLogCounter = 0;
+  private readonly COMPLETION_LOG_SAMPLE_RATE = 50; // log every Nth completion
+
   // Batch control
   private readonly BATCH_SIZE = 200;
 
@@ -76,6 +86,7 @@ export class SimulationEngine {
 
         if (event.timestamp > this.config.maxSimulatedTimeMs) {
           this.state = SimState.Complete;
+          this.handleMetricsSnapshot();
           this.emitComplete();
           return;
         }
@@ -90,6 +101,7 @@ export class SimulationEngine {
 
       if (this.eventQueue.size === 0) {
         this.state = SimState.Complete;
+        this.handleMetricsSnapshot();
         this.emitComplete();
         return;
       }
@@ -113,6 +125,11 @@ export class SimulationEngine {
     this.requests.clear();
     this.eventCounter = 0;
     this.requestCounter = 0;
+    this.inFlightCount = 0;
+    this.peakInFlightSinceLastSnapshot = 0;
+    this.countedAsComplete.clear();
+    this.pendingLogEntries = [];
+    this.completionLogCounter = 0;
     this.metricsCollector.reset();
     this.initializeNodeStates(this.config.topology.nodes);
     this.scheduleInitialEvents(this.config.topology.nodes);
@@ -152,6 +169,20 @@ export class SimulationEngine {
           requestId: '',
           payload: { chaosType },
         });
+
+        // For SPIKE_TRAFFIC, immediately inject burst arrivals to make the spike feel instant
+        if (chaosType === 'SPIKE_TRAFFIC') {
+          const burstCount = 20;
+          for (let i = 0; i < burstCount; i++) {
+            this.scheduleEvent({
+              type: SimEventType.RequestArrival,
+              timestamp: this.virtualClockMs + i * 0.1,
+              nodeId,
+              requestId: '',
+              payload: {},
+            });
+          }
+        }
       }
     }
 
@@ -228,13 +259,24 @@ export class SimulationEngine {
       accumulatedLatencyMs: 0,
     };
     this.requests.set(requestId, request);
+    this.inFlightCount++;
+    this.peakInFlightSinceLastSnapshot = Math.max(this.peakInFlightSinceLastSnapshot, this.inFlightCount);
 
     // Route to first downstream node
     const outEdges = this.getOutgoingEdges(event.nodeId);
     if (outEdges.length === 0) {
       request.status = RequestStatus.NoRoute;
       request.completedAt = event.timestamp;
+      this.markRequestDone(requestId);
       this.metricsCollector.recordCompletion(request);
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_DROP',
+        nodeId: event.nodeId,
+        requestId,
+        message: `No downstream route available from ${node.label}`,
+      });
     } else {
       const target = outEdges[0]!.target;
       this.scheduleEvent({
@@ -264,6 +306,7 @@ export class SimulationEngine {
     if (request.hopCount > request.maxHops) {
       request.status = RequestStatus.LoopDetected;
       request.completedAt = event.timestamp;
+      this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
       return;
     }
@@ -272,6 +315,22 @@ export class SimulationEngine {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       state.processor.onRequestArrived(event, request, this.getProcessorContext());
+      // If the processor set a terminal status, mark this request as done
+      if (request.status !== RequestStatus.InFlight) {
+        this.markRequestDone(request.id);
+        // Log dropped requests (queue full / pool exhausted)
+        if (request.status === RequestStatus.Dropped) {
+          const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+          this.pendingLogEntries.push({
+            id: this.eventCounter,
+            timestamp: event.timestamp,
+            type: 'REQUEST_DROP',
+            nodeId: event.nodeId,
+            requestId: request.id,
+            message: `Request dropped at ${nodeLabel} (queue full)`,
+          });
+        }
+      }
     }
   }
 
@@ -294,6 +353,7 @@ export class SimulationEngine {
 
     // If request is now complete, record it
     if (request.status === RequestStatus.Success || request.status === RequestStatus.Timeout) {
+      this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
     }
   }
@@ -305,7 +365,23 @@ export class SimulationEngine {
       request.status = RequestStatus.Success;
       request.completedAt = event.timestamp;
     }
+    this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
+
+    // Log every Nth completion to show flow without flooding
+    this.completionLogCounter++;
+    if (this.completionLogCounter >= this.COMPLETION_LOG_SAMPLE_RATE) {
+      this.completionLogCounter = 0;
+      const latency = Math.round(request.accumulatedLatencyMs * 100) / 100;
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_COMPLETE',
+        nodeId: event.nodeId,
+        requestId: request.id,
+        message: `Request completed (latency: ${latency}ms)`,
+      });
+    }
   }
 
   private handleRequestTimeout(event: SimEvent): void {
@@ -321,14 +397,39 @@ export class SimulationEngine {
         const idx = state.queuedRequests.indexOf(request.id);
         if (idx >= 0) state.queuedRequests.splice(idx, 1);
       }
+      this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
       this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
+
+      // Always log timeouts — they indicate problems
+      const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'REQUEST_TIMEOUT',
+        nodeId: event.nodeId,
+        requestId: request.id,
+        message: `Request timed out at ${nodeLabel}`,
+      });
     }
   }
 
   private handleMetricsSnapshot(): void {
-    const batch = this.metricsCollector.generateBatch(this.virtualClockMs, this.nodeStates);
+    const batch = this.metricsCollector.generateBatch(
+      this.virtualClockMs,
+      this.nodeStates,
+      this.peakInFlightSinceLastSnapshot,
+    );
     this.onMetricsBatch?.(batch);
+
+    // Flush pending event log entries to main thread
+    if (this.pendingLogEntries.length > 0) {
+      this.onEventLog?.(this.pendingLogEntries);
+      this.pendingLogEntries = [];
+    }
+
+    // Reset peak to current level for next window
+    this.peakInFlightSinceLastSnapshot = this.inFlightCount;
 
     // Emit node statuses
     for (const nodeSnapshot of batch.nodes) {
@@ -357,6 +458,15 @@ export class SimulationEngine {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       state.processor.onChaosReverted();
+      const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+      const chaosType = (event.payload as { chaosType?: string })?.chaosType ?? 'unknown';
+      this.pendingLogEntries.push({
+        id: this.eventCounter,
+        timestamp: event.timestamp,
+        type: 'CHAOS_END',
+        nodeId: event.nodeId,
+        message: `Chaos "${chaosType}" reverted on ${nodeLabel}`,
+      });
     }
   }
 
@@ -437,6 +547,13 @@ export class SimulationEngine {
 
   // ─── Helpers ─────────────────────────────────────────────────
 
+  private markRequestDone(requestId: string): void {
+    if (!this.countedAsComplete.has(requestId)) {
+      this.countedAsComplete.add(requestId);
+      this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+    }
+  }
+
   private scheduleEvent(partial: Omit<SimEvent, 'id'>): void {
     this.eventQueue.insert({
       ...partial,
@@ -481,6 +598,9 @@ export class SimulationEngine {
   }
 
   private yieldToMacroTask(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
+    // At 1x speed, yield for ~50ms between batches to allow UI updates and user interaction
+    // At higher speeds, reduce the delay proportionally
+    const delayMs = Math.max(1, Math.floor(50 / this.config.speedMultiplier));
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }

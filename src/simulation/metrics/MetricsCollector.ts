@@ -32,6 +32,7 @@ export class MetricsCollector {
   generateBatch(
     currentTime: number,
     nodeStates: Map<string, NodeRuntimeState>,
+    activeRequestCount: number = 0,
   ): MetricsBatchPayload {
     const nodeSnapshots: NodeMetricsSnapshot[] = [];
 
@@ -63,7 +64,7 @@ export class MetricsCollector {
     return {
       simulatedTimeMs: currentTime,
       nodes: nodeSnapshots,
-      systemWide: this.computeSystemWideMetrics(currentTime),
+      systemWide: this.computeSystemWideMetrics(currentTime, activeRequestCount),
     };
   }
 
@@ -89,25 +90,24 @@ export class MetricsCollector {
     return 'green';
   }
 
-  private computeSystemWideMetrics(currentTime: number) {
-    const recentCompleted = this.completedRequests.filter(
+  private computeSystemWideMetrics(currentTime: number, activeRequestCount: number) {
+    // Prune completed requests outside the window to prevent unbounded memory growth
+    this.completedRequests = this.completedRequests.filter(
       (r) => r.completedAt !== undefined && r.completedAt >= currentTime - this.windowMs,
     );
-    const successful = recentCompleted.filter((r) => r.status === RequestStatus.Success);
+
+    const successful = this.completedRequests.filter((r) => r.status === RequestStatus.Success);
     const latencies = successful.map((r) => r.accumulatedLatencyMs);
 
     return {
       totalThroughput: successful.length / (this.windowMs / 1000),
       endToEndLatency: computePercentiles(latencies),
       totalErrorRate:
-        recentCompleted.length > 0
-          ? recentCompleted.filter((r) => r.status !== RequestStatus.Success).length /
-            recentCompleted.length
+        this.completedRequests.length > 0
+          ? this.completedRequests.filter((r) => r.status !== RequestStatus.Success).length /
+            this.completedRequests.length
           : 0,
-      activeRequests: [...this.accumulators.values()].reduce(
-        (sum, acc) => sum + acc.getCurrentOccupancy(),
-        0,
-      ),
+      activeRequests: activeRequestCount,
     };
   }
 }

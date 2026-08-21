@@ -2,6 +2,7 @@ import type { Node as RFNode } from '@xyflow/react';
 
 // ─── Enumerations ────────────────────────────────────────────────
 
+/** The 6 supported node types in the simulation topology. */
 export enum NodeType {
   TrafficGenerator = 'TRAFFIC_GENERATOR',
   LoadBalancer = 'LOAD_BALANCER',
@@ -11,27 +12,32 @@ export enum NodeType {
   MessageQueue = 'MESSAGE_QUEUE',
 }
 
+/** Statistical distribution for traffic generation inter-arrival times. */
 export enum Distribution {
   Poisson = 'POISSON',
   Uniform = 'UNIFORM',
 }
 
+/** Load balancing algorithm for distributing requests across backends. */
 export enum LBAlgorithm {
   RoundRobin = 'ROUND_ROBIN',
   LeastConnections = 'LEAST_CONNECTIONS',
 }
 
+/** Cache eviction policy. */
 export enum EvictionPolicy {
   LRU = 'LRU',
   LFU = 'LFU',
   TTL = 'TTL',
 }
 
+/** Database engine type. */
 export enum DatabaseType {
   Relational = 'RELATIONAL',
   NoSQL = 'NOSQL',
 }
 
+/** Strategy applied when a message queue reaches its buffer capacity. */
 export enum BackpressureStrategy {
   DropOldest = 'DROP_OLDEST',
   BlockProducer = 'BLOCK_PRODUCER',
@@ -40,6 +46,7 @@ export enum BackpressureStrategy {
 
 // ─── Base Node ───────────────────────────────────────────────────
 
+/** Common fields shared by all simulation node types. */
 export interface BaseNodeData {
   id: string;
   nodeType: NodeType;
@@ -122,6 +129,7 @@ export interface MessageQueueNode extends BaseNodeData {
   config: MessageQueueConfig;
 }
 
+/** Discriminated union of all node types used in the simulation engine. */
 export type SimulationNode =
   | TrafficGeneratorNode
   | LoadBalancerNode
@@ -132,4 +140,5 @@ export type SimulationNode =
 
 // ─── React Flow Integration ─────────────────────────────────────
 
+/** React Flow node wrapper for SimulationNode data. */
 export type AnalysysNode = RFNode<Record<string, unknown> & SimulationNode>;

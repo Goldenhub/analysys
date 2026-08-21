@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "name": "Cache Stampede",
+  "description": "Demonstrates cache stampede effect when cache is flushed under load. 300 RPS with 95% hit ratio suddenly drops to 0%, overwhelming the database.",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "Web Traffic",
+        "position": { "x": 50, "y": 200 },
+        "config": {
+          "rps": 300,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "lb-1",
+        "nodeType": "LOAD_BALANCER",
+        "label": "Load Balancer",
+        "position": { "x": 250, "y": 200 },
+        "config": {
+          "algorithm": "LEAST_CONNECTIONS",
+          "healthCheckIntervalMs": 3000,
+          "evictionThreshold": 0.85
+        }
+      },
+      {
+        "id": "app-1",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 1",
+        "position": { "x": 450, "y": 120 },
+        "config": {
+          "workerThreadPoolSize": 32,
+          "requestQueueDepth": 200,
+          "processingTimeMeanMs": 10,
+          "processingTimeStdDevMs": 3
+        }
+      },
+      {
+        "id": "app-2",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 2",
+        "position": { "x": 450, "y": 280 },
+        "config": {
+          "workerThreadPoolSize": 32,
+          "requestQueueDepth": 200,
+          "processingTimeMeanMs": 10,
+          "processingTimeStdDevMs": 3
+        }
+      },
+      {
+        "id": "cache-1",
+        "nodeType": "CACHE",
+        "label": "Redis Cache",
+        "position": { "x": 700, "y": 200 },
+        "config": {
+          "hitRatio": 0.95,
+          "evictionPolicy": "LRU",
+          "accessLatencyMs": 2
+        }
+      },
+      {
+        "id": "db-1",
+        "nodeType": "DATABASE",
+        "label": "PostgreSQL",
+        "position": { "x": 950, "y": 200 },
+        "config": {
+          "connectionPoolSize": 20,
+          "queryLatencyMeanMs": 25,
+          "queryLatencyStdDevMs": 10,
+          "lockTimeoutMs": 5000,
+          "dbType": "RELATIONAL"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-tg1-lb1", "source": "tg-1", "target": "lb-1", "protocol": "SYNC" },
+      { "id": "e-lb1-app1", "source": "lb-1", "target": "app-1", "protocol": "SYNC" },
+      { "id": "e-lb1-app2", "source": "lb-1", "target": "app-2", "protocol": "SYNC" },
+      { "id": "e-app1-cache1", "source": "app-1", "target": "cache-1", "protocol": "SYNC" },
+      { "id": "e-app2-cache1", "source": "app-2", "target": "cache-1", "protocol": "SYNC" },
+      { "id": "e-cache1-db1", "source": "cache-1", "target": "db-1", "protocol": "SYNC" }
+    ]
+  },
+  "chaosTimeline": [
+    {
+      "timeMs": 20000,
+      "event": {
+        "chaosType": "FLUSH_CACHE",
+        "targetNodeId": "cache-1",
+        "durationMs": 30000,
+        "params": {}
+      }
+    }
+  ]
+}

@@ -76,11 +76,13 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 
 #### Acceptance Criteria
 
-1. THE System SHALL provide a toolbar with Start, Pause, Resume, Reset, and Speed controls.
+1. THE System SHALL provide a toolbar with Start, Pause, Resume, Stop, Reset, and Speed controls with clear text labels.
 2. WHEN Start is clicked, THE Simulation_Engine SHALL initialize from t=0 using the current Canvas topology and node configurations.
 3. WHEN Pause is clicked, THE Simulation_Engine SHALL freeze the virtual clock and retain all metrics and visual state.
 4. WHEN Resume is clicked, THE Simulation_Engine SHALL continue from the paused state without losing pending events.
 5. WHEN Reset is clicked, THE Simulation_Engine SHALL clear all simulation state (metrics, queues, in-flight requests) and return to t=0.
+5a. WHEN Stop is clicked, THE System SHALL terminate the Worker and set state to Complete, preserving all metrics for review.
+5b. THE System SHALL show contextual buttons: Start/Resume when not running, Pause when running, Stop when running or paused, Reset when not idle.
 6. THE System SHALL support speed control at 1x, 2x, 5x, 10x, and 50x time acceleration.
 7. THE Simulation_Engine SHALL run inside a Web Worker so that the main UI thread remains responsive at 30 fps or above during execution.
 
@@ -253,6 +255,18 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 1. WHILE a Message_Queue consumer processing rate is less than the producer publish rate, THE Simulation_Engine SHALL fill the buffer at the differential rate.
 2. WHEN the Message_Queue buffer reaches capacity, THE Simulation_Engine SHALL activate the configured backpressure behavior (drop oldest, block producer, or reject new).
 3. THE Simulation_Engine SHALL bound the buffer by the configured capacity, preventing unbounded memory growth in the Web Worker.
+
+### Requirement 20: Onboarding and Usability
+
+**User Story:** As a first-time user, I want the app to guide me on how to get started, so that I can use it without reading documentation.
+
+#### Acceptance Criteria
+
+1. WHEN the canvas is empty, THE System SHALL display a welcome overlay explaining how to use the app and offering quick-load preset buttons.
+2. THE System SHALL provide a help tooltip (?) in the toolbar explaining the workflow: Build topology → Start → Watch metrics → Inject chaos.
+3. THE Chaos_Panel SHALL display always-visible descriptions under each chaos button explaining what it does in plain language.
+4. WHEN a chaos effect is active, THE Chaos_Panel SHALL display a clear sentence describing the current impact and remaining time.
+5. WHEN a chaos effect ends, THE System SHALL display an impact summary showing before/after metric deltas.
 
 ## Non-Functional Requirements
 
