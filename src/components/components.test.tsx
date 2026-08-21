@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { NodePalette } from './canvas/NodePalette';
+import { NodeConfigPanel } from './config/NodeConfigPanel';
 import { EventLog } from './telemetry/EventLog';
 import { QueueGauge } from './telemetry/QueueGauge';
 import { MetricsSummary } from './telemetry/MetricsSummary';
 import { useTopologyStore } from '@/store/topologyStore';
+import { useSimulationStore } from '@/store/simulationStore';
 import { NodeType } from '@/types/nodes';
 import type { AnalysysNode } from '@/types/nodes';
 import type { SimEventLogEntry } from '@/types/messages';
@@ -203,5 +205,133 @@ describe('MetricsSummary node identification', () => {
   it('falls back to a short identifier fragment for unknown nodes', () => {
     render(<MetricsSummary metrics={makeMetrics(NODE_ID)} />);
     expect(screen.getByText('a1b2c3d4…')).toBeDefined();
+  });
+});
+
+// ─── NodeConfigPanel activity tab: honest zeros ──────────────────
+
+describe('NodeConfigPanel activity tab', () => {
+  const NODE_ID = 'aabbccdd-1122-3344-5566-778899aabbcc';
+
+  function seedNode(nodeType: NodeType) {
+    const config =
+      nodeType === NodeType.TrafficGenerator
+        ? {
+            rps: 100,
+            distribution: 'poisson',
+            spikeMultiplier: 1,
+            spikeDurationSec: 0,
+          }
+        : {
+            workerThreadPoolSize: 10,
+            requestQueueDepth: 100,
+            processingTimeMeanMs: 50,
+            processingTimeStdDevMs: 10,
+          };
+
+    const node = {
+      id: NODE_ID,
+      type: 'default',
+      position: { x: 0, y: 0 },
+      data: {
+        id: NODE_ID,
+        nodeType,
+        label: 'Node Under Test',
+        position: { x: 0, y: 0 },
+        config,
+      },
+    } as unknown as AnalysysNode;
+
+    useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
+  }
+
+  function seedMetrics(overrides: Partial<NodeMetricsSnapshot>) {
+    const snapshot: NodeMetricsSnapshot = {
+      nodeId: NODE_ID,
+      timestamp: 5000,
+      throughput: 0,
+      errorRate: 0,
+      latencyPercentiles: { p50: 0, p90: 0, p99: 0 },
+      queueDepth: 0,
+      activeConnections: 0,
+      bufferOccupancy: 0,
+      utilization: 0,
+      littlesLaw: { nodeId: NODE_ID, L: 0, lambda: 0, W: 0, deviation: 0, isStable: true },
+      healthStatus: 'green',
+      ...overrides,
+    };
+
+    const metrics: MetricsBatchPayload = {
+      simulatedTimeMs: 5000,
+      nodes: [snapshot],
+      systemWide: {
+        totalThroughput: snapshot.throughput,
+        endToEndLatency: snapshot.latencyPercentiles,
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
+    };
+
+    useSimulationStore.setState({ metrics, eventLog: [] });
+  }
+
+  function renderActivityTab() {
+    render(<NodeConfigPanel selectedNodeId={NODE_ID} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Activity' }));
+  }
+
+  afterEach(() => {
+    cleanup();
+    useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
+    useSimulationStore.setState({ metrics: null, eventLog: [] });
+  });
+
+  it('marks traffic generator latency as not applicable instead of showing 0.0 ms', () => {
+    seedNode(NodeType.TrafficGenerator);
+    seedMetrics({ throughput: 100 });
+    renderActivityTab();
+
+    expect(screen.getByText(/originates requests rather than serving them/)).toBeDefined();
+    // No percentile rows, so no misleading "instantaneous" reading
+    expect(screen.queryByText('p50')).toBeNull();
+    // A generator reports no millisecond figure at all
+    expect(screen.queryByText('ms')).toBeNull();
+  });
+
+  it("marks Little's Law as not applicable for a traffic generator", () => {
+    seedNode(NodeType.TrafficGenerator);
+    seedMetrics({ throughput: 100 });
+    renderActivityTab();
+
+    expect(screen.getByText(/a source node holds none/)).toBeDefined();
+    expect(screen.queryByText('λ (arrivals)')).toBeNull();
+  });
+
+  it('reports no completions when the window recorded none', () => {
+    seedNode(NodeType.AppServer);
+    seedMetrics({ throughput: 0, latencyPercentiles: { p50: 0, p90: 0, p99: 0 } });
+    renderActivityTab();
+
+    expect(screen.getByText('No completions in this window')).toBeDefined();
+    expect(screen.queryByText('p50')).toBeNull();
+  });
+
+  it('shows real percentiles when work did complete', () => {
+    seedNode(NodeType.AppServer);
+    seedMetrics({ throughput: 42, latencyPercentiles: { p50: 12.5, p90: 30, p99: 80 } });
+    renderActivityTab();
+
+    expect(screen.getByText('p50')).toBeDefined();
+    expect(screen.getByText('12.5')).toBeDefined();
+    expect(screen.queryByText('No completions in this window')).toBeNull();
+  });
+
+  it('labels a zero queue depth and zero utilization as idle', () => {
+    seedNode(NodeType.AppServer);
+    seedMetrics({ throughput: 42, latencyPercentiles: { p50: 12.5, p90: 30, p99: 80 } });
+    renderActivityTab();
+
+    expect(screen.getByText('(idle)')).toBeDefined();
+    expect(screen.getByText('Worker threads busy — currently idle')).toBeDefined();
   });
 });

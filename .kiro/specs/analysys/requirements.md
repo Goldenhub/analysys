@@ -145,6 +145,10 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 11. WHILE a node is selected and metrics are available for it, THE per-node activity view SHALL display that node's Little's Law figures (L, lambda, W), a stability indicator, and the deviation from the ideal relationship.
 12. WHILE a node is selected, THE per-node activity view SHALL display the most recent events recorded for that node with their simulated timestamps.
 13. WHILE no metrics are available for the selected node, THE per-node activity view SHALL display a message directing the user to start a simulation.
+14. WHERE a metric does not apply to the selected node's type, THE per-node activity view SHALL display a plain-language explanation of why it does not apply instead of a numeric value, so that a not-applicable metric is never presented as a measured zero.
+15. WHILE a Traffic_Generator node is selected, THE per-node activity view SHALL present its latency percentiles and its Little's Law figures as not applicable, because a source node originates requests rather than serving or holding them.
+16. WHILE no requests completed at the selected node during the current metrics window, THE per-node activity view SHALL indicate that the window recorded no completions instead of displaying a zero latency.
+17. WHERE a resource measure or utilization figure for the selected node is zero, THE per-node activity view SHALL annotate it as an idle state, so that a healthy zero is distinguishable from missing data.
 
 ### Requirement 9: Connection Pool and Queue Depth Gauges
 

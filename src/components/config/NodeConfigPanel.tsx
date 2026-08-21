@@ -10,6 +10,7 @@ import {
   DatabaseType,
   BackpressureStrategy,
 } from '@/types/nodes';
+import type { NodeMetricsSnapshot } from '@/types/metrics';
 import type {
   SimulationNode,
   TrafficGeneratorConfig,
@@ -586,6 +587,16 @@ function utilizationTextColor(pct: number): string {
   return 'text-green-400';
 }
 
+/**
+ * computePercentiles([]) yields all zeros, which is indistinguishable from a
+ * genuine sub-millisecond measurement. If nothing completed in the window,
+ * there is no latency to report.
+ */
+function hasNoCompletions(snapshot: NodeMetricsSnapshot): boolean {
+  const { p50, p90, p99 } = snapshot.latencyPercentiles;
+  return snapshot.throughput === 0 && p50 === 0 && p90 === 0 && p99 === 0;
+}
+
 function formatSimTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
@@ -605,16 +616,32 @@ function ActivitySection({ title, children }: { title: string; children: ReactNo
   );
 }
 
-function StatRow({ label, value, unit }: { label: string; value: string; unit?: string }) {
+function StatRow({
+  label,
+  value,
+  unit,
+  suffix,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  suffix?: string;
+}) {
   return (
     <div className="flex items-baseline justify-between text-xs">
       <span className="text-gray-400">{label}</span>
       <span className="text-gray-200">
         {value}
         {unit && <span className="ml-1 text-gray-500">{unit}</span>}
+        {suffix && <span className="ml-1 text-gray-500">{suffix}</span>}
       </span>
     </div>
   );
+}
+
+/** Muted caption used to explain why a metric has no number to show. */
+function ActivityNote({ children }: { children: ReactNode }) {
+  return <p className="text-[10px] text-gray-500">{children}</p>;
 }
 
 const MAX_RECENT_EVENTS = 8;
@@ -647,6 +674,13 @@ function ActivityPanel({
 
   const utilPct = snapshot.utilization * 100;
   const { littlesLaw } = snapshot;
+  const isSource = nodeType === NodeType.TrafficGenerator;
+
+  // A zero utilization is a real reading; say so rather than leaving a bare 0%.
+  const utilizationNote =
+    snapshot.utilization === 0 && !isSource
+      ? `${UTILIZATION_NOTES[nodeType]} — currently idle`
+      : UTILIZATION_NOTES[nodeType];
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
@@ -671,15 +705,31 @@ function ActivityPanel({
 
       {/* Latency */}
       <ActivitySection title="Latency">
-        <StatRow label="p50" value={snapshot.latencyPercentiles.p50.toFixed(1)} unit="ms" />
-        <StatRow label="p90" value={snapshot.latencyPercentiles.p90.toFixed(1)} unit="ms" />
-        <StatRow label="p99" value={snapshot.latencyPercentiles.p99.toFixed(1)} unit="ms" />
+        {isSource ? (
+          <ActivityNote>
+            Not applicable — a traffic generator originates requests rather than serving
+            them.
+          </ActivityNote>
+        ) : hasNoCompletions(snapshot) ? (
+          <ActivityNote>No completions in this window</ActivityNote>
+        ) : (
+          <>
+            <StatRow label="p50" value={snapshot.latencyPercentiles.p50.toFixed(1)} unit="ms" />
+            <StatRow label="p90" value={snapshot.latencyPercentiles.p90.toFixed(1)} unit="ms" />
+            <StatRow label="p99" value={snapshot.latencyPercentiles.p99.toFixed(1)} unit="ms" />
+          </>
+        )}
       </ActivitySection>
 
       {/* Resources */}
       <ActivitySection title="Resources">
         {QUEUE_DEPTH_TYPES.includes(nodeType) && (
-          <StatRow label="Queue depth" value={String(snapshot.queueDepth)} unit="items" />
+          <StatRow
+            label="Queue depth"
+            value={String(snapshot.queueDepth)}
+            unit="items"
+            suffix={snapshot.queueDepth === 0 ? '(idle)' : undefined}
+          />
         )}
         {CONNECTION_TYPES.includes(nodeType) && (
           <StatRow
@@ -704,27 +754,36 @@ function ActivityPanel({
               style={{ width: `${Math.min(100, Math.max(0, utilPct))}%` }}
             />
           </div>
-          <p className="text-[10px] text-gray-500">{UTILIZATION_NOTES[nodeType]}</p>
+          <ActivityNote>{utilizationNote}</ActivityNote>
         </div>
       </ActivitySection>
 
       {/* Little's Law */}
       <ActivitySection title="Little's Law">
-        <StatRow label="L (avg items in system)" value={littlesLaw.L.toFixed(2)} />
-        <StatRow label="λ (arrivals)" value={littlesLaw.lambda.toFixed(2)} unit="/s" />
-        <StatRow label="W (avg time in system)" value={littlesLaw.W.toFixed(1)} unit="ms" />
-        <div className="flex items-baseline justify-between text-xs">
-          <span className="text-gray-400">Steady state</span>
-          <span className={littlesLaw.isStable ? 'text-green-400' : 'text-amber-400'}>
-            {littlesLaw.isStable ? 'Stable' : 'Unstable'}
-            <span className="ml-1 text-gray-500">
-              ({(littlesLaw.deviation * 100).toFixed(1)}%)
-            </span>
-          </span>
-        </div>
-        <p className="text-[10px] text-gray-500">
-          L = λ × W. A large deviation means the node is not in steady state.
-        </p>
+        {isSource ? (
+          <ActivityNote>
+            Not applicable — Little&apos;s Law describes requests dwelling in a system; a
+            source node holds none.
+          </ActivityNote>
+        ) : (
+          <>
+            <StatRow label="L (avg items in system)" value={littlesLaw.L.toFixed(2)} />
+            <StatRow label="λ (arrivals)" value={littlesLaw.lambda.toFixed(2)} unit="/s" />
+            <StatRow label="W (avg time in system)" value={littlesLaw.W.toFixed(1)} unit="ms" />
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="text-gray-400">Steady state</span>
+              <span className={littlesLaw.isStable ? 'text-green-400' : 'text-amber-400'}>
+                {littlesLaw.isStable ? 'Stable' : 'Unstable'}
+                <span className="ml-1 text-gray-500">
+                  ({(littlesLaw.deviation * 100).toFixed(1)}%)
+                </span>
+              </span>
+            </div>
+            <ActivityNote>
+              L = λ × W. A large deviation means the node is not in steady state.
+            </ActivityNote>
+          </>
+        )}
       </ActivitySection>
 
       {/* Recent Events */}
