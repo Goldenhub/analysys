@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { SimulationEngine } from './engine';
-import { NodeType, Distribution, DatabaseType, EvictionPolicy, LBAlgorithm } from '@/types/nodes';
+import {
+  NodeType,
+  Distribution,
+  DatabaseType,
+  EvictionPolicy,
+  LBAlgorithm,
+  BackpressureStrategy,
+} from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
@@ -457,4 +464,157 @@ describe('SimulationEngine', () => {
     // (3) Requests reach a terminal state rather than hanging in flight.
     expect(summary!.successRate).toBeGreaterThan(0.9);
   });
+
+  it('MQ consumer drain delivers messages to the downstream node', async () => {
+    // gen → mq → app over an ASYNC edge. The enqueue is not the end of the
+    // request's journey: the consumer poll must route each buffered message to
+    // the AppServer. Modest RPS and a generous buffer keep backpressure out of
+    // the picture so this isolates the drain path.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+      },
+      {
+        id: 'mq-1',
+        nodeType: NodeType.MessageQueue,
+        label: 'Queue',
+        position: { x: 200, y: 0 },
+        config: {
+          consumerBatchSize: 50,
+          bufferCapacity: 1000,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.DropOldest,
+        },
+      },
+      {
+        id: 'app-1',
+        nodeType: NodeType.AppServer,
+        label: 'Consumer App',
+        position: { x: 400, y: 0 },
+        config: {
+          workerThreadPoolSize: 20,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 10000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number; successRate: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => { summary = s; },
+    });
+
+    await engine.run();
+
+    expect(batches.length).toBeGreaterThanOrEqual(4);
+
+    // (1) Messages actually reached the consumer. If the enqueue marks the
+    // request Success, every drained message is rejected by the InFlight guard
+    // in handleRequestRoute and the AppServer never sees a single one.
+    const appThroughput = batches
+      .map((b) => b.nodes.find((n) => n.nodeId === 'app-1')!.throughput);
+    expect(Math.max(...appThroughput)).toBeGreaterThan(0);
+
+    // (2) No in-flight leak: the count must not creep toward totalRequests.
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(200);
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    expect(activeSeries[activeSeries.length - 1]!).toBeLessThan(total * 0.1);
+
+    // (3) The async leg completes end to end.
+    expect(summary!.successRate).toBeGreaterThan(0.5);
+  }, 30000);
+
+  it('MQ DropOldest eviction terminates the evicted request', async () => {
+    // Tiny buffer plus heavy load means near-constant eviction. Each evicted
+    // message must reach a terminal state; otherwise it stays InFlight forever
+    // and activeRequests grows without bound.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+      },
+      {
+        id: 'mq-1',
+        nodeType: NodeType.MessageQueue,
+        label: 'Tiny Queue',
+        position: { x: 200, y: 0 },
+        config: {
+          consumerBatchSize: 2,
+          bufferCapacity: 5,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.DropOldest,
+        },
+      },
+      {
+        id: 'app-1',
+        nodeType: NodeType.AppServer,
+        label: 'Consumer App',
+        position: { x: 400, y: 0 },
+        config: {
+          workerThreadPoolSize: 5,
+          requestQueueDepth: 20,
+          processingTimeMeanMs: 20,
+          processingTimeStdDevMs: 2,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 5000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => { summary = s; },
+    });
+
+    await engine.run();
+
+    // Eviction must have happened for this test to mean anything.
+    const mqBufferPeak = Math.max(
+      ...batches.map((b) => b.nodes.find((n) => n.nodeId === 'mq-1')!.bufferOccupancy),
+    );
+    expect(mqBufferPeak).toBeGreaterThanOrEqual(5);
+
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(1000);
+
+    // Active requests stays bounded by the actual work in the system (buffer +
+    // app pool + app queue), nowhere near the total request count.
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    expect(activeSeries[activeSeries.length - 1]!).toBeLessThan(total * 0.1);
+  }, 30000);
 });

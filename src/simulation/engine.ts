@@ -232,6 +232,9 @@ export class SimulationEngine {
       case SimEventType.RequestTimeout:
         this.handleRequestTimeout(event);
         break;
+      case SimEventType.RequestDrop:
+        this.handleRequestDrop(event);
+        break;
       case SimEventType.MetricsSnapshot:
         this.handleMetricsSnapshot();
         break;
@@ -495,6 +498,34 @@ export class SimulationEngine {
         message: `Request timed out at ${nodeLabel}`,
       });
     }
+  }
+
+  /**
+   * Terminates a request that a node explicitly dropped (e.g. an MQ buffer
+   * eviction). Without this the dropped request would stay InFlight forever and
+   * leak a slot in the in-flight counter.
+   */
+  private handleRequestDrop(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+    if (request.status !== RequestStatus.InFlight) return;
+
+    request.status = RequestStatus.Dropped;
+    request.completedAt = event.timestamp;
+    this.markRequestDone(request.id);
+    this.metricsCollector.recordCompletion(request);
+    this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
+
+    const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+    const reason = typeof event.payload.reason === 'string' ? event.payload.reason : 'DROPPED';
+    this.pendingLogEntries.push({
+      id: this.eventCounter,
+      timestamp: event.timestamp,
+      type: 'REQUEST_DROP',
+      nodeId: event.nodeId,
+      requestId: request.id,
+      message: `Request dropped at ${nodeLabel} (${reason})`,
+    });
   }
 
   private handleMetricsSnapshot(): void {

@@ -26,12 +26,27 @@ export class MessageQueueProcessor implements NodeProcessor {
     if (this.buffer.length >= this.config.bufferCapacity) {
       // Apply backpressure strategy
       switch (this.config.backpressureStrategy) {
-        case BackpressureStrategy.DropOldest:
-          this.buffer.shift(); // Remove oldest
+        case BackpressureStrategy.DropOldest: {
+          const evictedId = this.buffer.shift(); // Remove oldest
           this.buffer.push(request.id);
           state.bufferedMessages = this.buffer.length;
           state.queuedRequests = [...this.buffer];
+          // The evicted message must reach a terminal state. Otherwise it stays
+          // InFlight forever and permanently holds a slot in the engine's
+          // in-flight counter. The processor doesn't hold the evicted SimRequest,
+          // so signal the engine with a drop event.
+          if (evictedId) {
+            state.totalDropped++;
+            context.scheduleEvent({
+              type: SimEventType.RequestDrop,
+              timestamp: event.timestamp,
+              nodeId: event.nodeId,
+              requestId: evictedId,
+              payload: { reason: 'BUFFER_EVICTION' },
+            });
+          }
           break;
+        }
         case BackpressureStrategy.RejectNew:
           request.status = RequestStatus.Dropped;
           request.completedAt = event.timestamp;
@@ -58,19 +73,24 @@ export class MessageQueueProcessor implements NodeProcessor {
 
     state.totalProcessed++;
 
-    // The request is now "in the queue" — success from the producer's perspective.
-    // The consumer drains it asynchronously.
-    request.status = RequestStatus.Success;
+    // The request stays InFlight while buffered — it hasn't been handled yet.
+    // The consumer poll routes it downstream, and that path owns completion.
+    // If there's no downstream, the enqueue itself is terminal.
+    // recordDeparture is still correct here: the request is leaving this node's
+    // own arrival/departure accounting for Little's Law purposes.
     context.recordDeparture(event.nodeId, request.id, event.timestamp);
-    // Schedule a completion event so the MQ follows the same lifecycle as every
-    // other terminal path. The engine sets `completedAt` when the response completes.
-    context.scheduleEvent({
-      type: SimEventType.RequestComplete,
-      timestamp: event.timestamp,
-      nodeId: event.nodeId,
-      requestId: request.id,
-      payload: { enqueued: true },
-    });
+
+    const hasDownstream = context.getOutgoingEdges(event.nodeId).length > 0;
+    if (!hasDownstream) {
+      request.status = RequestStatus.Success;
+      context.scheduleEvent({
+        type: SimEventType.RequestComplete,
+        timestamp: event.timestamp,
+        nodeId: event.nodeId,
+        requestId: request.id,
+        payload: { enqueued: true, terminal: true },
+      });
+    }
 
     // Ensure consumer polling is scheduled
     if (!this.consumerScheduled) {
