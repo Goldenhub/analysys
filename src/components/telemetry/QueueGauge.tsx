@@ -70,6 +70,8 @@ const peakValues = new Map<string, NodePeaks>();
 
 export function QueueGauge({ metrics }: QueueGaugeProps) {
   if (!metrics || metrics.nodes.length === 0) {
+    // Simulation was reset — clear accumulated peaks so a new run starts fresh
+    peakValues.clear();
     return (
       <div className="flex h-full items-center justify-center text-xs text-gray-500">
         Awaiting queue data…
@@ -89,6 +91,14 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
       connMax: Math.max(prev.connMax, node.activeConnections, 50),
       queueMax: Math.max(prev.queueMax, node.queueDepth, 100),
     });
+  }
+
+  // Drop peaks for nodes no longer present in the topology
+  const currentNodeIds = new Set(metrics.nodes.map((n) => n.nodeId));
+  for (const nodeId of peakValues.keys()) {
+    if (!currentNodeIds.has(nodeId)) {
+      peakValues.delete(nodeId);
+    }
   }
 
   // Show all nodes that have ever had non-zero resource usage
@@ -139,8 +149,8 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
             {peaks.buffer > 0 && (
               <GaugeBar
                 label="Buffer"
-                current={Math.round(currentBuffer * 100)}
-                max={100}
+                current={Math.round(currentBuffer)}
+                max={Math.max(peaks.buffer, 10)}
               />
             )}
           </div>

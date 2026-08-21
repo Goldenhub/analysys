@@ -71,5 +71,11 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
       requestId: '', // Will be assigned by engine
       payload: {},
     });
+
+    // Count emitted requests so the generator reports non-zero throughput.
+    const state = context.getNodeState(nodeId);
+    if (state) {
+      state.totalProcessed++;
+    }
   }
 }

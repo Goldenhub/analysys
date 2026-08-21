@@ -6,6 +6,8 @@ export class CacheProcessor implements NodeProcessor {
   private config: CacheConfig;
   private originalHitRatio: number;
   private chaosActive = false;
+  private hitsInWindow = 0;
+  private missesInWindow = 0;
 
   constructor(config: CacheConfig) {
     this.config = { ...config };
@@ -31,6 +33,7 @@ export class CacheProcessor implements NodeProcessor {
 
     if (isHit) {
       // Cache hit — respond immediately after access latency
+      this.hitsInWindow++;
       state.totalProcessed++;
       state.latencySamples.push(accessTime);
 
@@ -56,6 +59,7 @@ export class CacheProcessor implements NodeProcessor {
       });
     } else {
       // Cache miss — forward to downstream (DB)
+      this.missesInWindow++;
       const edges = context.getOutgoingEdges(event.nodeId);
       if (edges.length > 0) {
         const target = edges[0]!.target;
@@ -75,6 +79,7 @@ export class CacheProcessor implements NodeProcessor {
         context.recordDeparture(event.nodeId, request.id, event.timestamp + accessTime);
       }
       state.totalProcessed++;
+      state.latencySamples.push(accessTime);
     }
   }
 
@@ -93,8 +98,15 @@ export class CacheProcessor implements NodeProcessor {
   }
 
   getUtilization(): number {
-    // Cache utilization isn't directly capacity-bound in this model
-    // Report inverse of hit ratio as a proxy (more misses = more stressed)
-    return 1 - this.config.hitRatio;
+    // Cache utilization isn't directly capacity-bound in this model.
+    // Report the observed miss rate as a proxy (more misses = more stressed).
+    const total = this.hitsInWindow + this.missesInWindow;
+    if (total === 0) return 0;
+    return this.missesInWindow / total;
+  }
+
+  resetWindowCounters(): void {
+    this.hitsInWindow = 0;
+    this.missesInWindow = 0;
   }
 }

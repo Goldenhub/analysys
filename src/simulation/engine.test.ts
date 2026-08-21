@@ -321,4 +321,66 @@ describe('SimulationEngine', () => {
     // After chaos reverts, normal hit ratio resumes
     expect(batches.length).toBeGreaterThan(0);
   });
+
+  it('cache miss rate is per-window and recovers after chaos reverts', async () => {
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
+      },
+      {
+        id: 'cache-1',
+        nodeType: NodeType.Cache,
+        label: 'Cache',
+        position: { x: 200, y: 0 },
+        config: { hitRatio: 0.95, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 8000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const cacheUtilization: number[] = [];
+    engine.setCallbacks({
+      onMetricsBatch: (b) => {
+        const cache = b.nodes.find((n) => n.nodeId === 'cache-1');
+        if (cache) cacheUtilization.push(cache.utilization);
+      },
+    });
+
+    // Flush the cache for the first 2 seconds only
+    engine.injectChaos({ chaosType: 'FLUSH_CACHE', durationMs: 2000, params: {} });
+
+    await engine.run();
+
+    expect(cacheUtilization.length).toBeGreaterThan(3);
+
+    // First window is entirely under chaos: every lookup is a miss
+    expect(cacheUtilization[0]).toBeGreaterThan(0.9);
+
+    // Final window is well after chaos reverted. With a cumulative counter the
+    // early misses would keep this high; per-window counters let it recover.
+    // (configured miss rate is 0.05; the cumulative rate would still be ~0.3)
+    const last = cacheUtilization[cacheUtilization.length - 1]!;
+    expect(last).toBeLessThan(0.15);
+  });
 });

@@ -30,6 +30,7 @@ export class MessageQueueProcessor implements NodeProcessor {
           this.buffer.shift(); // Remove oldest
           this.buffer.push(request.id);
           state.bufferedMessages = this.buffer.length;
+          state.queuedRequests = [...this.buffer];
           break;
         case BackpressureStrategy.RejectNew:
           request.status = RequestStatus.Dropped;
@@ -48,6 +49,11 @@ export class MessageQueueProcessor implements NodeProcessor {
     } else {
       this.buffer.push(request.id);
       state.bufferedMessages = this.buffer.length;
+      state.queuedRequests = [...this.buffer];
+
+      const enqueueLatency = 0.2;
+      request.accumulatedLatencyMs += enqueueLatency;
+      state.latencySamples.push(enqueueLatency);
     }
 
     state.totalProcessed++;
@@ -77,6 +83,7 @@ export class MessageQueueProcessor implements NodeProcessor {
     const batchSize = Math.min(this.config.consumerBatchSize, this.buffer.length);
     const batch = this.buffer.splice(0, batchSize);
     state.bufferedMessages = this.buffer.length;
+    state.queuedRequests = [...this.buffer];
 
     // Route each consumed message downstream
     const edges = context.getOutgoingEdges(event.nodeId);

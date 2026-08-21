@@ -87,6 +87,8 @@ export interface NodeProcessor {
   onChaosApplied(chaosType: string, params: Record<string, unknown>): void;
   onChaosReverted(): void;
   getUtilization(): number;
+  /** Optional: reset per-window internal counters after a metrics snapshot. */
+  resetWindowCounters?(): void;
 }
 
 /**

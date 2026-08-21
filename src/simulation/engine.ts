@@ -527,6 +527,7 @@ export class SimulationEngine {
       state.totalDropped = 0;
       state.totalTimedOut = 0;
       state.latencySamples = [];
+      state.processor.resetWindowCounters?.();
     }
 
     // Schedule next snapshot

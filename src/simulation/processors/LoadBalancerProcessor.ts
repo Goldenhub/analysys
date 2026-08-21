@@ -17,6 +17,8 @@ export class LoadBalancerProcessor implements NodeProcessor {
     request: SimRequest,
     context: ProcessorContext,
   ): void {
+    const state = context.getNodeState(event.nodeId);
+
     context.recordArrival(event.nodeId, request.id, event.timestamp);
 
     const edges = context.getOutgoingEdges(event.nodeId);
@@ -27,7 +29,6 @@ export class LoadBalancerProcessor implements NodeProcessor {
     if (healthyEdges.length === 0) {
       // No healthy targets — drop the request
       request.status = 'DROPPED' as never;
-      const state = context.getNodeState(event.nodeId);
       if (state) state.totalDropped++;
       context.recordDeparture(event.nodeId, request.id, event.timestamp);
       return;
@@ -35,17 +36,25 @@ export class LoadBalancerProcessor implements NodeProcessor {
 
     const target = this.selectTarget(healthyEdges.map((e) => e.target), context);
 
-    // Route to selected target with negligible LB latency (~0.1ms)
+    // Route to selected target with small LB forwarding latency
+    const lbLatency = 0.5;
     context.scheduleEvent({
       type: SimEventType.RequestRoute,
-      timestamp: event.timestamp + 0.1,
+      timestamp: event.timestamp + lbLatency,
       nodeId: target,
       requestId: request.id,
       payload: { fromNodeId: event.nodeId },
     });
 
-    request.accumulatedLatencyMs += 0.1;
-    context.recordDeparture(event.nodeId, request.id, event.timestamp + 0.1);
+    request.accumulatedLatencyMs += lbLatency;
+
+    if (state) {
+      state.totalProcessed++;
+      state.latencySamples.push(lbLatency);
+      state.activeConnections = healthyEdges.length;
+    }
+
+    context.recordDeparture(event.nodeId, request.id, event.timestamp + lbLatency);
   }
 
   private selectTarget(targets: string[], context: ProcessorContext): string {
@@ -82,6 +91,14 @@ export class LoadBalancerProcessor implements NodeProcessor {
   }
 
   getUtilization(): number {
-    return 0; // LB itself doesn't have capacity constraints in this model
+    // The LB has no capacity constraint of its own; report the fraction of
+    // known targets that are unhealthy as a stress proxy.
+    const total = this.targetHealthy.size;
+    if (total === 0) return 0;
+    let unhealthy = 0;
+    for (const healthy of this.targetHealthy.values()) {
+      if (!healthy) unhealthy++;
+    }
+    return unhealthy / total;
   }
 }
