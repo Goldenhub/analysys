@@ -6,6 +6,7 @@ import { ThroughputChart } from './ThroughputChart';
 import { QueueGauge } from './QueueGauge';
 import { EventLog } from './EventLog';
 import { DashboardSkeleton } from './DashboardSkeleton';
+import { MetricsSummary } from './MetricsSummary';
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ const COLLAPSED_HEIGHT = 36;
 export function TelemetryDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [panelHeight, setPanelHeight] = useState(DEFAULT_HEIGHT);
+  const [viewMode, setViewMode] = useState<'charts' | 'summary'>('charts');
   const isDragging = useRef(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
@@ -79,9 +81,34 @@ export function TelemetryDashboard() {
 
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-800 px-4 py-1.5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Telemetry Dashboard
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Telemetry Dashboard
+          </h2>
+          {/* View Toggle */}
+          <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+            <button
+              onClick={() => setViewMode('charts')}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                viewMode === 'charts'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Charts
+            </button>
+            <button
+              onClick={() => setViewMode('summary')}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                viewMode === 'summary'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Summary
+            </button>
+          </div>
+        </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="rounded p-0.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
@@ -93,10 +120,11 @@ export function TelemetryDashboard() {
 
       {/* Content */}
       {!collapsed && (
-        <div className="flex h-[calc(100%-2rem)] gap-2 p-2">
+        <div className="flex h-[calc(100%-2.5rem)] gap-2 p-2">
           {metrics === null ? (
-            /* Loading skeleton when no data (Task 239) */
             <DashboardSkeleton />
+          ) : viewMode === 'summary' ? (
+            <MetricsSummary metrics={metrics} />
           ) : (
             <>
               {/* 2×2 Chart Grid */}

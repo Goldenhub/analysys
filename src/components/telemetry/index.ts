@@ -5,3 +5,4 @@ export { ThroughputChart } from './ThroughputChart';
 export { QueueGauge } from './QueueGauge';
 export { EventLog } from './EventLog';
 export { DashboardSkeleton } from './DashboardSkeleton';
+export { MetricsSummary } from './MetricsSummary';

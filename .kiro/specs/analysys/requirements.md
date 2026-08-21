@@ -271,6 +271,17 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 4. WHEN a chaos effect is active, THE Chaos_Panel SHALL display a clear sentence describing the current impact and remaining time.
 5. WHEN a chaos effect ends, THE System SHALL display an impact summary showing before/after metric deltas.
 
+### Requirement 21: Numeric Summary View
+
+**User Story:** As a user who finds charts hard to interpret, I want to see all metrics as plain numbers with units and explanations, so that I can understand system performance without reading graphs.
+
+#### Acceptance Criteria
+
+1. THE Telemetry_Dashboard SHALL provide a "Charts / Summary" toggle in its header.
+2. WHEN Summary view is selected, THE System SHALL display all system-wide metrics as large numeric cards with values, units (req/s, ms, %, count), and one-line descriptions.
+3. THE Summary view SHALL include a per-node breakdown table showing: Node ID, Health status, Throughput (req/s), Error Rate (%), Latency p50 (ms), Queue depth (items), Active connections, and Utilization (%).
+4. ALL displayed values SHALL include their unit of measurement.
+
 ## Non-Functional Requirements
 
 ### Performance
