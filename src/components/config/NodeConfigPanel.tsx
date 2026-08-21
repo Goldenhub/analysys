@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -537,6 +537,217 @@ function NodeTypeIcon({ nodeType }: { nodeType: NodeType }) {
   }
 }
 
+// ─── Activity Tab ────────────────────────────────────────────────
+
+/** What "utilization" measures differs per node type — explain it inline. */
+const UTILIZATION_NOTES: Record<NodeType, string> = {
+  [NodeType.AppServer]: 'Worker threads busy',
+  [NodeType.Database]: 'Connection pool in use',
+  [NodeType.Cache]: 'Observed miss rate',
+  [NodeType.MessageQueue]: 'Buffer capacity used',
+  [NodeType.LoadBalancer]: 'Unhealthy targets',
+  [NodeType.TrafficGenerator]: 'Not capacity-bound',
+};
+
+const QUEUE_DEPTH_TYPES: NodeType[] = [
+  NodeType.AppServer,
+  NodeType.Database,
+  NodeType.MessageQueue,
+];
+
+const CONNECTION_TYPES: NodeType[] = [
+  NodeType.Database,
+  NodeType.AppServer,
+  NodeType.LoadBalancer,
+];
+
+const HEALTH_LABELS: Record<'green' | 'yellow' | 'red', string> = {
+  green: 'Healthy',
+  yellow: 'Degraded',
+  red: 'Critical',
+};
+
+const HEALTH_BADGE_CLASSES: Record<'green' | 'yellow' | 'red', string> = {
+  green: 'bg-green-500/15 text-green-400 border-green-500/40',
+  yellow: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+  red: 'bg-red-500/15 text-red-400 border-red-500/40',
+};
+
+/** Matches the gauge thresholds used in QueueGauge: green <70, amber 70–90, red >90. */
+function utilizationBarColor(pct: number): string {
+  if (pct >= 90) return 'bg-red-500';
+  if (pct >= 70) return 'bg-amber-500';
+  return 'bg-green-500';
+}
+
+function utilizationTextColor(pct: number): string {
+  if (pct >= 90) return 'text-red-400';
+  if (pct >= 70) return 'text-amber-400';
+  return 'text-green-400';
+}
+
+function formatSimTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const millis = Math.floor(ms % 1000);
+  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+function ActivitySection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function StatRow({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  return (
+    <div className="flex items-baseline justify-between text-xs">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-200">
+        {value}
+        {unit && <span className="ml-1 text-gray-500">{unit}</span>}
+      </span>
+    </div>
+  );
+}
+
+const MAX_RECENT_EVENTS = 8;
+
+function ActivityPanel({
+  selectedNodeId,
+  nodeType,
+}: {
+  selectedNodeId: string;
+  nodeType: NodeType;
+}) {
+  const metrics = useSimulationStore((s) => s.metrics);
+  const eventLog = useSimulationStore((s) => s.eventLog);
+  const snapshot = metrics?.nodes.find((n) => n.nodeId === selectedNodeId) ?? null;
+
+  const recentEvents = eventLog
+    .filter((entry) => entry.nodeId === selectedNodeId)
+    .slice(-MAX_RECENT_EVENTS)
+    .reverse();
+
+  if (!snapshot) {
+    return (
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <p className="text-xs leading-relaxed text-gray-500">
+          No activity yet — start a simulation to see this node&apos;s live behavior.
+        </p>
+      </div>
+    );
+  }
+
+  const utilPct = snapshot.utilization * 100;
+  const { littlesLaw } = snapshot;
+
+  return (
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
+      {/* Health */}
+      <ActivitySection title="Health">
+        <span
+          className={`self-start rounded-full border px-2 py-0.5 text-xs font-medium ${HEALTH_BADGE_CLASSES[snapshot.healthStatus]}`}
+        >
+          {HEALTH_LABELS[snapshot.healthStatus]}
+        </span>
+      </ActivitySection>
+
+      {/* Throughput & Errors */}
+      <ActivitySection title="Throughput &amp; Errors">
+        <StatRow label="Throughput" value={snapshot.throughput.toFixed(1)} unit="req/s" />
+        <StatRow
+          label="Error rate"
+          value={(snapshot.errorRate * 100).toFixed(1)}
+          unit="%"
+        />
+      </ActivitySection>
+
+      {/* Latency */}
+      <ActivitySection title="Latency">
+        <StatRow label="p50" value={snapshot.latencyPercentiles.p50.toFixed(1)} unit="ms" />
+        <StatRow label="p90" value={snapshot.latencyPercentiles.p90.toFixed(1)} unit="ms" />
+        <StatRow label="p99" value={snapshot.latencyPercentiles.p99.toFixed(1)} unit="ms" />
+      </ActivitySection>
+
+      {/* Resources */}
+      <ActivitySection title="Resources">
+        {QUEUE_DEPTH_TYPES.includes(nodeType) && (
+          <StatRow label="Queue depth" value={String(snapshot.queueDepth)} unit="items" />
+        )}
+        {CONNECTION_TYPES.includes(nodeType) && (
+          <StatRow
+            label="Active connections"
+            value={String(snapshot.activeConnections)}
+          />
+        )}
+        {nodeType === NodeType.MessageQueue && (
+          <StatRow
+            label="Buffered messages"
+            value={String(Math.round(snapshot.bufferOccupancy))}
+          />
+        )}
+        <div className="mt-1 flex flex-col gap-1">
+          <div className="flex items-baseline justify-between text-xs">
+            <span className="text-gray-400">Utilization</span>
+            <span className={utilizationTextColor(utilPct)}>{utilPct.toFixed(0)}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${utilizationBarColor(utilPct)}`}
+              style={{ width: `${Math.min(100, Math.max(0, utilPct))}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-500">{UTILIZATION_NOTES[nodeType]}</p>
+        </div>
+      </ActivitySection>
+
+      {/* Little's Law */}
+      <ActivitySection title="Little's Law">
+        <StatRow label="L (avg items in system)" value={littlesLaw.L.toFixed(2)} />
+        <StatRow label="λ (arrivals)" value={littlesLaw.lambda.toFixed(2)} unit="/s" />
+        <StatRow label="W (avg time in system)" value={littlesLaw.W.toFixed(1)} unit="ms" />
+        <div className="flex items-baseline justify-between text-xs">
+          <span className="text-gray-400">Steady state</span>
+          <span className={littlesLaw.isStable ? 'text-green-400' : 'text-amber-400'}>
+            {littlesLaw.isStable ? 'Stable' : 'Unstable'}
+            <span className="ml-1 text-gray-500">
+              ({(littlesLaw.deviation * 100).toFixed(1)}%)
+            </span>
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-500">
+          L = λ × W. A large deviation means the node is not in steady state.
+        </p>
+      </ActivitySection>
+
+      {/* Recent Events */}
+      <ActivitySection title="Recent Events">
+        {recentEvents.length === 0 ? (
+          <p className="text-[10px] text-gray-500">No events recorded for this node.</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {recentEvents.map((entry) => (
+              <li key={entry.id} className="flex gap-1.5 text-[10px] leading-snug">
+                <span className="shrink-0 font-mono text-gray-500">
+                  {formatSimTime(entry.timestamp)}
+                </span>
+                <span className="text-gray-300">{entry.message}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ActivitySection>
+    </div>
+  );
+}
+
 // ─── Main Panel Component ────────────────────────────────────────
 
 interface NodeConfigPanelProps {
@@ -553,6 +764,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<'config' | 'activity'>('config');
 
   // Task 232: Escape closes config panel
   useEffect(() => {
@@ -642,8 +854,42 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
         </button>
       </div>
 
+      {/* Tab Strip */}
+      <div className="border-b border-gray-800 px-4 py-2">
+        <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+          <button
+            type="button"
+            onClick={() => setTab('config')}
+            aria-pressed={tab === 'config'}
+            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              tab === 'config'
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Config
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('activity')}
+            aria-pressed={tab === 'activity'}
+            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              tab === 'activity'
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Activity
+          </button>
+        </div>
+      </div>
+
+      {tab === 'activity' && (
+        <ActivityPanel selectedNodeId={selectedNodeId} nodeType={nodeData.nodeType} />
+      )}
+
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className={tab === 'config' ? 'flex-1 overflow-y-auto px-4 py-3' : 'hidden'}>
         {nodeData.nodeType === NodeType.TrafficGenerator && (
           <TrafficGeneratorForm
             config={nodeData.config as unknown as Record<string, unknown>}
@@ -688,13 +934,15 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
         )}
       </div>
 
-      {/* Footer hint */}
-      <div className="border-t border-gray-800 px-4 py-2">
-        <p className="text-xs text-gray-500">
-          Changes apply immediately.
-          {simState === SimState.Paused && ' Config synced to paused simulation.'}
-        </p>
-      </div>
+      {/* Footer hint — only relevant while editing config */}
+      {tab === 'config' && (
+        <div className="border-t border-gray-800 px-4 py-2">
+          <p className="text-xs text-gray-500">
+            Changes apply immediately.
+            {simState === SimState.Paused && ' Config synced to paused simulation.'}
+          </p>
+        </div>
+      )}
     </aside>
   );
 }

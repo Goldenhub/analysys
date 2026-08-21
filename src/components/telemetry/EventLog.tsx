@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { SimEventLogEntry } from '@/types/messages';
+import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ function formatSimTime(ms: number): string {
 
 export function EventLog({ entries }: EventLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const labelFor = useNodeLabels();
   const [autoScroll, setAutoScroll] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [nodeFilter, setNodeFilter] = useState<string>('ALL');
@@ -140,7 +142,7 @@ export function EventLog({ entries }: EventLogProps) {
           <option value="ALL">All Nodes</option>
           {nodeIds.map((id) => (
             <option key={id} value={id}>
-              {id.slice(0, 8)}…
+              {labelFor(id)}
             </option>
           ))}
         </select>
@@ -187,8 +189,11 @@ export function EventLog({ entries }: EventLogProps) {
                 <span className="shrink-0 w-4 text-center">
                   {EVENT_ICONS[entry.type] ?? '•'}
                 </span>
-                <span className="shrink-0 font-mono text-blue-400">
-                  {entry.nodeId.slice(0, 6)}
+                <span
+                  className="shrink-0 max-w-[70px] truncate text-blue-400"
+                  title={entry.nodeId}
+                >
+                  {labelFor(entry.nodeId)}
                 </span>
                 <span className={isExpanded ? 'text-gray-300' : 'truncate text-gray-300'}>
                   {entry.message}
@@ -206,7 +211,7 @@ export function EventLog({ entries }: EventLogProps) {
                   </div>
                   <div>
                     <span className="text-gray-500">Node: </span>
-                    <span className="font-mono">{entry.nodeId}</span>
+                    <span title={entry.nodeId}>{labelFor(entry.nodeId)}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Message: </span>

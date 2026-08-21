@@ -138,6 +138,13 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 4. WHILE a node's utilization exceeds 90% OR its error rate is 5% or greater OR it has active drops, THE System SHALL display a red status indicator.
 5. WHEN a node's status transitions between colors, THE System SHALL animate the transition with a smooth color fade.
 6. THE System SHALL display a visible legend explaining the health indicator color coding.
+7. THE System SHALL identify every node in the Telemetry_Dashboard, the Queue/Connection gauges, and the event log by its user-assigned label rather than its internal node identifier, and SHALL expose the full identifier as hover text.
+8. WHEN a node's user-assigned label is unavailable because the node is no longer present in the topology, THE System SHALL fall back to a shortened form of that node's identifier.
+9. WHEN a user selects a node on the Canvas, THE System SHALL offer a per-node activity view alongside the node's configuration form.
+10. WHILE a node is selected and metrics are available for it, THE per-node activity view SHALL display that node's health status, throughput, error rate, p50/p90/p99 latency percentiles, the resource measures applicable to its node type (queue depth, active connections, buffered messages), and its utilization with a plain-language explanation of what utilization measures for that node type.
+11. WHILE a node is selected and metrics are available for it, THE per-node activity view SHALL display that node's Little's Law figures (L, lambda, W), a stability indicator, and the deviation from the ideal relationship.
+12. WHILE a node is selected, THE per-node activity view SHALL display the most recent events recorded for that node with their simulated timestamps.
+13. WHILE no metrics are available for the selected node, THE per-node activity view SHALL display a message directing the user to start a simulation.
 
 ### Requirement 9: Connection Pool and Queue Depth Gauges
 
@@ -279,7 +286,7 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 
 1. THE Telemetry_Dashboard SHALL provide a "Charts / Summary" toggle in its header.
 2. WHEN Summary view is selected, THE System SHALL display all system-wide metrics as large numeric cards with values, units (req/s, ms, %, count), and one-line descriptions.
-3. THE Summary view SHALL include a per-node breakdown table showing: Node ID, Health status, Throughput (req/s), Error Rate (%), Latency p50 (ms), Queue depth (items), Active connections, and Utilization (%).
+3. THE Summary view SHALL include a per-node breakdown table showing: Node label, Health status, Throughput (req/s), Error Rate (%), Latency p50 (ms), Queue depth (items), Active connections, and Utilization (%).
 4. ALL displayed values SHALL include their unit of measurement.
 
 ## Non-Functional Requirements

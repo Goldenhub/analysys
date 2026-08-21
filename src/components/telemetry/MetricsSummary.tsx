@@ -1,4 +1,5 @@
 import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
+import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ function SummaryCard({
 
 export function MetricsSummary({ metrics }: MetricsSummaryProps) {
   const { systemWide, nodes, simulatedTimeMs } = metrics;
+  const labelFor = useNodeLabels();
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto px-2 py-3">
@@ -137,8 +139,8 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
                   key={node.nodeId}
                   className="border-b border-gray-800 hover:bg-gray-800/40"
                 >
-                  <td className="px-3 py-1.5 font-mono text-gray-300">
-                    {node.nodeId.slice(0, 12)}…
+                  <td className="px-3 py-1.5 text-gray-300" title={node.nodeId}>
+                    {labelFor(node.nodeId)}
                   </td>
                   <td className="px-3 py-1.5">
                     {healthBadge(node.healthStatus)}

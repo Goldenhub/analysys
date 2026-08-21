@@ -1,4 +1,5 @@
 import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
+import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -69,6 +70,8 @@ const peakValues = new Map<string, NodePeaks>();
 // ─── Main Component ──────────────────────────────────────────────
 
 export function QueueGauge({ metrics }: QueueGaugeProps) {
+  const labelFor = useNodeLabels();
+
   if (!metrics || metrics.nodes.length === 0) {
     // Simulation was reset — clear accumulated peaks so a new run starts fresh
     peakValues.clear();
@@ -129,8 +132,8 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
 
         return (
           <div key={nodeId} className="space-y-1">
-            <span className="text-[10px] font-medium text-gray-300">
-              {nodeId.slice(0, 8)}…
+            <span className="text-[10px] font-medium text-gray-300" title={nodeId}>
+              {labelFor(nodeId)}
             </span>
             {peaks.queue > 0 && (
               <GaugeBar

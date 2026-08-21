@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { NodePalette } from './canvas/NodePalette';
 import { EventLog } from './telemetry/EventLog';
 import { QueueGauge } from './telemetry/QueueGauge';
+import { MetricsSummary } from './telemetry/MetricsSummary';
+import { useTopologyStore } from '@/store/topologyStore';
+import { NodeType } from '@/types/nodes';
+import type { AnalysysNode } from '@/types/nodes';
 import type { SimEventLogEntry } from '@/types/messages';
 import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
 
@@ -120,5 +124,84 @@ describe('QueueGauge', () => {
     // New run starts with an idle node: no stale peak should resurrect a gauge
     render(<QueueGauge metrics={makeBatch([makeNode('node-abc1', 0)])} />);
     expect(screen.getByText(/No active queues or pools/)).toBeDefined();
+  });
+});
+
+// ─── MetricsSummary resolves node labels ─────────────────────────
+
+describe('MetricsSummary node identification', () => {
+  const NODE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+  function seedTopology(label: string) {
+    const node = {
+      id: NODE_ID,
+      type: 'default',
+      position: { x: 0, y: 0 },
+      data: {
+        id: NODE_ID,
+        nodeType: NodeType.AppServer,
+        label,
+        position: { x: 0, y: 0 },
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        },
+      },
+    } as AnalysysNode;
+    useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
+  }
+
+  function makeMetrics(nodeId: string): MetricsBatchPayload {
+    return {
+      simulatedTimeMs: 5000,
+      nodes: [
+        {
+          nodeId,
+          timestamp: 5000,
+          throughput: 42,
+          errorRate: 0.01,
+          latencyPercentiles: { p50: 10, p90: 20, p99: 30 },
+          queueDepth: 3,
+          activeConnections: 5,
+          bufferOccupancy: 0,
+          utilization: 0.5,
+          littlesLaw: { nodeId, L: 2, lambda: 1, W: 2000, deviation: 0.01, isStable: true },
+          healthStatus: 'green',
+        },
+      ],
+      systemWide: {
+        totalThroughput: 42,
+        endToEndLatency: { p50: 10, p90: 20, p99: 30 },
+        totalErrorRate: 0.01,
+        activeRequests: 2,
+      },
+    };
+  }
+
+  afterEach(() => {
+    useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
+  });
+
+  it('renders the node label instead of its identifier', () => {
+    seedTopology('Checkout App Server');
+    render(<MetricsSummary metrics={makeMetrics(NODE_ID)} />);
+
+    expect(screen.getByText('Checkout App Server')).toBeDefined();
+    // The raw UUID (or a truncated form of it) must not be the visible node cell
+    expect(screen.queryByText(/a1b2c3d4/)).toBeNull();
+  });
+
+  it('keeps the full identifier discoverable as hover text', () => {
+    seedTopology('Checkout App Server');
+    render(<MetricsSummary metrics={makeMetrics(NODE_ID)} />);
+
+    expect(screen.getByText('Checkout App Server').getAttribute('title')).toBe(NODE_ID);
+  });
+
+  it('falls back to a short identifier fragment for unknown nodes', () => {
+    render(<MetricsSummary metrics={makeMetrics(NODE_ID)} />);
+    expect(screen.getByText('a1b2c3d4…')).toBeDefined();
   });
 });
