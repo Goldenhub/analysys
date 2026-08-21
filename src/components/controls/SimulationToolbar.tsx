@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSimulationStore } from '@/store';
 import { useTopologyStore } from '@/store';
 import { SimState } from '@/simulation/types';
@@ -37,6 +37,16 @@ function RefreshIcon() {
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
       <path d="M3 21v-5h5" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }
@@ -95,6 +105,8 @@ export function SimulationToolbar() {
   const terminateWorker = useSimulationStore((s) => s.terminateWorker);
   const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
 
+  const [showHelp, setShowHelp] = useState(false);
+
   // ─── Button Handlers ─────────────────────────────────────────
 
   const handleStart = useCallback(() => {
@@ -125,12 +137,16 @@ export function SimulationToolbar() {
     setSimState(SimState.Running);
   }, [sendToWorker, speedMultiplier, setSimState]);
 
+  const handleStop = useCallback(() => {
+    terminateWorker();
+    setSimState(SimState.Complete);
+  }, [terminateWorker, setSimState]);
+
   const handleReset = useCallback(() => {
-    sendToWorker({ type: 'RESET' });
     terminateWorker();
     resetMetrics();
     setSimState(SimState.Idle);
-  }, [sendToWorker, terminateWorker, resetMetrics, setSimState]);
+  }, [terminateWorker, resetMetrics, setSimState]);
 
   const handleSpeedChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -175,55 +191,87 @@ export function SimulationToolbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [simState, handleStart, handlePause, handleResume, handleReset]);
 
-  // ─── Disable Logic ───────────────────────────────────────────
+  // ─── Button Visibility Logic ─────────────────────────────────
 
-  const startDisabled = simState === SimState.Running;
-  const pauseDisabled = simState === SimState.Idle || simState === SimState.Complete || simState === SimState.Paused;
-  const resumeDisabled = simState !== SimState.Paused;
-  const resetDisabled = simState === SimState.Idle;
+  const showStartButton = simState === SimState.Idle || simState === SimState.Complete;
+  const showResumeButton = simState === SimState.Paused;
+  const showPauseButton = simState === SimState.Running;
+  const showStopButton = simState === SimState.Running || simState === SimState.Paused;
+  const showResetButton = simState !== SimState.Idle;
 
   // ─── Render ──────────────────────────────────────────────────
 
   return (
     <div className="flex items-center gap-3">
       {/* Action Buttons */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={startDisabled}
-          onClick={handleStart}
-          title="Start (Space)"
-        >
-          <PlayIcon />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={pauseDisabled}
-          onClick={handlePause}
-          title="Pause (Space)"
-        >
-          <PauseIcon />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={resumeDisabled}
-          onClick={handleResume}
-          title="Resume (Space)"
-        >
-          <StopIcon />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={resetDisabled}
-          onClick={handleReset}
-          title="Reset (R)"
-        >
-          <RefreshIcon />
-        </Button>
+      <div className="flex items-center gap-1.5">
+        {/* Start / Resume */}
+        {showStartButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStart}
+            title="Start simulation (Space)"
+            className="gap-1 text-green-400 hover:text-green-300"
+          >
+            <PlayIcon />
+            <span>Start</span>
+          </Button>
+        )}
+        {showResumeButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResume}
+            title="Resume simulation (Space)"
+            className="gap-1 text-green-400 hover:text-green-300"
+          >
+            <PlayIcon />
+            <span>Resume</span>
+          </Button>
+        )}
+
+        {/* Pause */}
+        {showPauseButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePause}
+            title="Pause simulation (Space)"
+            className="gap-1 text-amber-400 hover:text-amber-300"
+          >
+            <PauseIcon />
+            <span>Pause</span>
+          </Button>
+        )}
+
+        {/* Stop */}
+        {showStopButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStop}
+            title="Stop simulation (keeps metrics)"
+            className="gap-1 text-red-400 hover:text-red-300"
+          >
+            <StopIcon />
+            <span>Stop</span>
+          </Button>
+        )}
+
+        {/* Reset */}
+        {showResetButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            title="Reset everything (R)"
+            className="gap-1 text-gray-400 hover:text-gray-300"
+          >
+            <RefreshIcon />
+            <span>Reset</span>
+          </Button>
+        )}
       </div>
 
       {/* Speed Selector */}
@@ -250,6 +298,40 @@ export function SimulationToolbar() {
       >
         {getStateLabel(simState)}
       </span>
+
+      {/* Help Tooltip */}
+      <div className="relative">
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className="rounded-full p-1 text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
+          aria-label="How to use"
+          title="How to use"
+        >
+          <HelpIcon />
+        </button>
+        {showHelp && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowHelp(false)}
+              aria-hidden="true"
+            />
+            <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-700 bg-gray-800 p-3 shadow-xl">
+              <p className="text-xs text-gray-300 leading-relaxed">
+                <span className="font-semibold text-gray-100">How to use Analysys:</span>
+                <br />
+                1. Build a topology (drag nodes from palette)
+                <br />
+                2. Click <span className="text-green-400">Start</span> to run
+                <br />
+                3. Watch metrics in the dashboard below
+                <br />
+                4. Inject chaos to test resilience
+              </p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

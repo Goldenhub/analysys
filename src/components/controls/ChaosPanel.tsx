@@ -26,32 +26,32 @@ const CHAOS_TOOLTIPS = {
     'Multiplies incoming request rate by 5× for 15s. Simulates a sudden traffic surge like a marketing event or DDoS attack.',
 } as const;
 
-// ─── Icons ───────────────────────────────────────────────────────
+// ─── Active Effect Descriptions ──────────────────────────────────
 
-function FlameIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
-      <path d="M12 23c-3.866 0-7-2.686-7-6 0-1.665.68-3.17 1.8-4.27C8.1 11.44 9.5 10 10 8c.667 1.333 1 2.667 1 4 1.333-1.333 2-3.333 2-6 2 2.667 3.333 5 4 7 .667-1 1-2.333 1-4 .667 2 1 4 1 6 0 3.314-3.134 6-7 6z" />
-    </svg>
-  );
+function getActiveEffectMessage(effect: ActiveChaosEffect, remainingSec: number): string {
+  switch (effect.chaosType) {
+    case 'FLUSH_CACHE':
+      return `Cache is FLUSHED — all requests hitting database directly. ${remainingSec}s remaining.`;
+    case 'DROP_DB':
+      return `Database is DOWN — all queries timing out. ${remainingSec}s remaining.`;
+    case 'SPIKE_TRAFFIC':
+      return `Traffic at 5× normal rate. ${remainingSec}s remaining.`;
+    default:
+      return `${effect.label} active. ${remainingSec}s remaining.`;
+  }
 }
 
-function DatabaseOffIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
-      <ellipse cx="12" cy="5" rx="9" ry="3" />
-      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
-  );
-}
-
-function ZapIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-    </svg>
-  );
+function getActiveEffectIcon(chaosType: string): string {
+  switch (chaosType) {
+    case 'FLUSH_CACHE':
+      return '🔥';
+    case 'DROP_DB':
+      return '💀';
+    case 'SPIKE_TRAFFIC':
+      return '⚡';
+    default:
+      return '⚠️';
+  }
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -236,76 +236,96 @@ export function ChaosPanel() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        {/* Flush Cache */}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={chaosDisabled}
-          onClick={handleFlushCache}
-          title={CHAOS_TOOLTIPS.flushCache}
-          className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
-        >
-          <FlameIcon />
-          <span>Flush Cache</span>
-        </Button>
+      {/* Section Header */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs">🔬</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          Chaos Engineering
+        </span>
+        <span className="text-[10px] text-gray-500">— Inject failures to test resilience</span>
+      </div>
 
-        {/* Drop DB Node */}
-        <div className="flex items-center gap-1">
-          {dbNodes.length > 1 && (
-            <select
-              value={selectedDbNodeId}
-              onChange={(e) => setSelectedDbNodeId(e.target.value)}
-              disabled={chaosDisabled}
-              className="h-7 rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
-            >
-              <option value="">Select DB…</option>
-              {dbNodes.map((node) => (
-                <option key={node.id} value={node.id}>
-                  {(node.data as { label: string }).label || node.id.slice(0, 8)}
-                </option>
-              ))}
-            </select>
-          )}
+      {/* Chaos Buttons with Descriptions */}
+      <div className="flex items-start gap-3">
+        {/* Flush Cache */}
+        <div className="flex flex-col items-center gap-0.5">
           <Button
             variant="outline"
             size="sm"
-            disabled={chaosDisabled || (dbNodes.length > 1 && !selectedDbNodeId) || dbNodes.length === 0}
-            onClick={handleDropDb}
-            title={CHAOS_TOOLTIPS.dropDb}
-            className="border-red-700 text-red-400 hover:bg-red-900/30 hover:text-red-300 disabled:border-gray-700 disabled:text-gray-500"
+            disabled={chaosDisabled}
+            onClick={handleFlushCache}
+            title={CHAOS_TOOLTIPS.flushCache}
+            className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
           >
-            <DatabaseOffIcon />
-            <span>Drop DB</span>
+            <span>🔥</span>
+            <span>Flush Cache</span>
           </Button>
+          <span className="text-[9px] text-gray-500">Stampede: 0% hit rate for 30s</span>
+        </div>
+
+        {/* Drop DB Node */}
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="flex items-center gap-1">
+            {dbNodes.length > 1 && (
+              <select
+                value={selectedDbNodeId}
+                onChange={(e) => setSelectedDbNodeId(e.target.value)}
+                disabled={chaosDisabled}
+                className="h-7 rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
+              >
+                <option value="">Select DB…</option>
+                {dbNodes.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {(node.data as { label: string }).label || node.id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={chaosDisabled || (dbNodes.length > 1 && !selectedDbNodeId) || dbNodes.length === 0}
+              onClick={handleDropDb}
+              title={CHAOS_TOOLTIPS.dropDb}
+              className="border-red-700 text-red-400 hover:bg-red-900/30 hover:text-red-300 disabled:border-gray-700 disabled:text-gray-500"
+            >
+              <span>💀</span>
+              <span>Drop DB</span>
+            </Button>
+          </div>
+          <span className="text-[9px] text-gray-500">Partition: DB unreachable for 30s</span>
         </div>
 
         {/* Spike Traffic */}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={chaosDisabled}
-          onClick={handleSpikeTraffic}
-          title={CHAOS_TOOLTIPS.spikeTraffic}
-          className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
-        >
-          <ZapIcon />
-          <span>5× Traffic</span>
-        </Button>
+        <div className="flex flex-col items-center gap-0.5">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={chaosDisabled}
+            onClick={handleSpikeTraffic}
+            title={CHAOS_TOOLTIPS.spikeTraffic}
+            className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
+          >
+            <span>⚡</span>
+            <span>5× Traffic</span>
+          </Button>
+          <span className="text-[9px] text-gray-500">Surge: 5× request rate for 15s</span>
+        </div>
       </div>
 
-      {/* Active Chaos Effects */}
+      {/* Active Chaos Effects — Clear Sentences */}
       {visibleEffects.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-1.5 rounded-md border border-amber-800/50 bg-amber-950/30 p-2">
           {visibleEffects.map((effect) => (
-            <span
+            <div
               key={effect.id}
-              className="inline-flex items-center gap-1 rounded-md bg-amber-900/40 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+              className="flex items-start gap-1.5 text-xs text-amber-200"
             >
-              <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
-              {effect.label}
-              <span className="ml-1 font-mono text-amber-400">{effect.remainingSec}s</span>
-            </span>
+              <span className="shrink-0">{getActiveEffectIcon(effect.chaosType)}</span>
+              <span className="leading-tight">
+                {getActiveEffectMessage(effect, effect.remainingSec)}
+              </span>
+            </div>
           ))}
         </div>
       )}

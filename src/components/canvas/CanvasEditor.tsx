@@ -15,6 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useTopologyStore } from '@/store/topologyStore';
+import { WelcomeOverlay } from './WelcomeOverlay';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
 import {
   NodeType,
@@ -317,8 +318,10 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
   // ─── Render ────────────────────────────────────────────────────
 
+  const isCanvasEmpty = nodes.length === 0;
+
   return (
-    <div ref={reactFlowWrapper} className="h-full w-full">
+    <div ref={reactFlowWrapper} className="relative h-full w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -344,6 +347,7 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         />
         <HealthLegend />
       </ReactFlow>
+      {isCanvasEmpty && <WelcomeOverlay />}
     </div>
   );
 }
