@@ -120,13 +120,18 @@ export function TelemetryDashboard() {
 
       {/* Content */}
       {!collapsed && (
-        <div className="flex h-[calc(100%-2.5rem)] gap-2 p-2">
+        <div className="h-[calc(100%-2.5rem)] p-2">
           {metrics === null ? (
             <DashboardSkeleton />
-          ) : viewMode === 'summary' ? (
-            <MetricsSummary metrics={metrics} />
           ) : (
             <>
+              {/* Summary View */}
+              <div className={viewMode === 'summary' ? 'h-full' : 'hidden'}>
+                <MetricsSummary metrics={metrics} />
+              </div>
+
+              {/* Charts View — always mounted, hidden when not active */}
+              <div className={viewMode === 'charts' ? 'flex h-full gap-2' : 'hidden'}>
               {/* 2×2 Chart Grid */}
               <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-2">
                 {/* Latency Chart */}
@@ -209,6 +214,7 @@ export function TelemetryDashboard() {
               {/* Event Log Sidebar */}
               <div className="w-72 rounded border border-gray-800 bg-gray-900">
                 <EventLog entries={eventLog} />
+              </div>
               </div>
             </>
           )}

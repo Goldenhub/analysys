@@ -9,6 +9,7 @@ export class MetricsCollector {
   private accumulators: Map<string, NodeMetricsAccumulator> = new Map();
   private completedRequests: SimRequest[] = [];
   private windowMs: number;
+  private lastBatchTime = 0;
 
   constructor(nodes: SimulationNode[], windowMs = 5000) {
     this.windowMs = windowMs;
@@ -35,6 +36,8 @@ export class MetricsCollector {
     activeRequestCount: number = 0,
   ): MetricsBatchPayload {
     const nodeSnapshots: NodeMetricsSnapshot[] = [];
+    const elapsedSinceLastBatch = currentTime - this.lastBatchTime;
+    const throughputDivisor = elapsedSinceLastBatch > 0 ? elapsedSinceLastBatch / 1000 : 1;
 
     for (const [nodeId, accumulator] of this.accumulators) {
       const state = nodeStates.get(nodeId);
@@ -47,7 +50,7 @@ export class MetricsCollector {
       const snapshot: NodeMetricsSnapshot = {
         nodeId,
         timestamp: currentTime,
-        throughput: state.totalProcessed / (this.windowMs / 1000),
+        throughput: state.totalProcessed / throughputDivisor,
         errorRate,
         latencyPercentiles: computePercentiles(state.latencySamples),
         queueDepth: state.queuedRequests.length,
@@ -61,6 +64,8 @@ export class MetricsCollector {
       nodeSnapshots.push(snapshot);
     }
 
+    this.lastBatchTime = currentTime;
+
     return {
       simulatedTimeMs: currentTime,
       nodes: nodeSnapshots,
@@ -73,6 +78,7 @@ export class MetricsCollector {
       acc.reset();
     }
     this.completedRequests = [];
+    this.lastBatchTime = 0;
   }
 
   private computeErrorRate(state: NodeRuntimeState): number {
