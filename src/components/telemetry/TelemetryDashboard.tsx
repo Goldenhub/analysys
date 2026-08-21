@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useSimulationStore } from '@/store/simulationStore';
 import { LatencyChart } from './LatencyChart';
@@ -7,21 +7,76 @@ import { QueueGauge } from './QueueGauge';
 import { EventLog } from './EventLog';
 import { DashboardSkeleton } from './DashboardSkeleton';
 
+// ─── Constants ───────────────────────────────────────────────────
+
+const DEFAULT_HEIGHT = 320;
+const MIN_HEIGHT = 120;
+const MAX_HEIGHT = 600;
+const COLLAPSED_HEIGHT = 36;
+
 // ─── Component ───────────────────────────────────────────────────
 
 export function TelemetryDashboard() {
   const [collapsed, setCollapsed] = useState(false);
+  const [panelHeight, setPanelHeight] = useState(DEFAULT_HEIGHT);
+  const isDragging = useRef(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
   const metrics = useSimulationStore((s) => s.metrics);
   const eventLog = useSimulationStore((s) => s.eventLog);
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (collapsed) return;
+      isDragging.current = true;
+      startY.current = e.clientY;
+      startHeight.current = panelHeight;
+      e.preventDefault();
+    },
+    [collapsed, panelHeight],
+  );
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      // Dragging upward (negative delta) increases height since the handle is at the top
+      const delta = startY.current - e.clientY;
+      const newHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, startHeight.current + delta));
+      setPanelHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   return (
     <section
-      className={`border-t border-gray-800 bg-gray-900/50 transition-all duration-300 ${
-        collapsed ? 'h-9' : 'h-64'
-      }`}
+      className="border-t border-gray-800 bg-gray-900/50 transition-[height] duration-150"
+      style={{ height: collapsed ? COLLAPSED_HEIGHT : panelHeight }}
       tabIndex={6}
       aria-label="Telemetry dashboard"
     >
+      {/* Drag Handle */}
+      {!collapsed && (
+        <div
+          onMouseDown={handleMouseDown}
+          className="group flex h-[6px] cursor-ns-resize items-center justify-center"
+          aria-label="Resize telemetry panel"
+          role="separator"
+          aria-orientation="horizontal"
+        >
+          <span className="h-[2px] w-8 rounded-full bg-gray-700 transition-colors group-hover:bg-gray-500" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-800 px-4 py-1.5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -93,7 +148,7 @@ export function TelemetryDashboard() {
                   <span className="mb-1 block text-[10px] font-medium text-gray-400">
                     System Overview
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 overflow-auto">
                     <MetricCard
                       label="Total Throughput"
                       value={`${metrics.systemWide.totalThroughput.toFixed(1)} req/s`}
