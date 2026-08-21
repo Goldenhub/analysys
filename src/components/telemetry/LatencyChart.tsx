@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -42,30 +42,28 @@ function formatTime(ms: number): string {
 // ─── Component ───────────────────────────────────────────────────
 
 export function LatencyChart({ metrics }: LatencyChartProps) {
-  const bufferRef = useRef<LatencyDataPoint[]>([]);
+  const [data, setData] = useState<LatencyDataPoint[]>([]);
 
-  // Update buffer with new metrics
-  const getData = useCallback((): LatencyDataPoint[] => {
-    if (!metrics) return bufferRef.current;
+  useEffect(() => {
+    if (!metrics) return;
 
-    const lastPoint = bufferRef.current[bufferRef.current.length - 1];
-    if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
-      return bufferRef.current;
-    }
+    setData((prev) => {
+      const lastPoint = prev[prev.length - 1];
+      if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
+        return prev;
+      }
 
-    const newPoint: LatencyDataPoint = {
-      time: metrics.simulatedTimeMs,
-      timeLabel: formatTime(metrics.simulatedTimeMs),
-      p50: metrics.systemWide.endToEndLatency.p50,
-      p90: metrics.systemWide.endToEndLatency.p90,
-      p99: metrics.systemWide.endToEndLatency.p99,
-    };
+      const newPoint: LatencyDataPoint = {
+        time: metrics.simulatedTimeMs,
+        timeLabel: formatTime(metrics.simulatedTimeMs),
+        p50: metrics.systemWide.endToEndLatency.p50,
+        p90: metrics.systemWide.endToEndLatency.p90,
+        p99: metrics.systemWide.endToEndLatency.p99,
+      };
 
-    bufferRef.current = [...bufferRef.current, newPoint].slice(-MAX_BUFFER_SIZE);
-    return bufferRef.current;
+      return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
+    });
   }, [metrics]);
-
-  const data = getData();
 
   if (data.length === 0) {
     return (

@@ -90,19 +90,21 @@ export class MetricsCollector {
   }
 
   private computeSystemWideMetrics(currentTime: number) {
-    const recentCompleted = this.completedRequests.filter(
+    // Prune completed requests outside the window to prevent unbounded memory growth
+    this.completedRequests = this.completedRequests.filter(
       (r) => r.completedAt !== undefined && r.completedAt >= currentTime - this.windowMs,
     );
-    const successful = recentCompleted.filter((r) => r.status === RequestStatus.Success);
+
+    const successful = this.completedRequests.filter((r) => r.status === RequestStatus.Success);
     const latencies = successful.map((r) => r.accumulatedLatencyMs);
 
     return {
       totalThroughput: successful.length / (this.windowMs / 1000),
       endToEndLatency: computePercentiles(latencies),
       totalErrorRate:
-        recentCompleted.length > 0
-          ? recentCompleted.filter((r) => r.status !== RequestStatus.Success).length /
-            recentCompleted.length
+        this.completedRequests.length > 0
+          ? this.completedRequests.filter((r) => r.status !== RequestStatus.Success).length /
+            this.completedRequests.length
           : 0,
       activeRequests: [...this.accumulators.values()].reduce(
         (sum, acc) => sum + acc.getCurrentOccupancy(),

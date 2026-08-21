@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AreaChart,
   Area,
@@ -40,33 +40,32 @@ function formatTime(ms: number): string {
 // ─── Component ───────────────────────────────────────────────────
 
 export function ThroughputChart({ metrics }: ThroughputChartProps) {
-  const bufferRef = useRef<ThroughputDataPoint[]>([]);
+  const [data, setData] = useState<ThroughputDataPoint[]>([]);
 
-  const getData = useCallback((): ThroughputDataPoint[] => {
-    if (!metrics) return bufferRef.current;
+  useEffect(() => {
+    if (!metrics) return;
 
-    const lastPoint = bufferRef.current[bufferRef.current.length - 1];
-    if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
-      return bufferRef.current;
-    }
+    setData((prev) => {
+      const lastPoint = prev[prev.length - 1];
+      if (lastPoint && lastPoint.time === metrics.simulatedTimeMs) {
+        return prev;
+      }
 
-    const totalThroughput = metrics.systemWide.totalThroughput;
-    const errorRate = metrics.systemWide.totalErrorRate;
-    const errorThroughput = totalThroughput * errorRate;
-    const successThroughput = totalThroughput - errorThroughput;
+      const totalThroughput = metrics.systemWide.totalThroughput;
+      const errorRate = metrics.systemWide.totalErrorRate;
+      const errorThroughput = totalThroughput * errorRate;
+      const successThroughput = totalThroughput - errorThroughput;
 
-    const newPoint: ThroughputDataPoint = {
-      time: metrics.simulatedTimeMs,
-      timeLabel: formatTime(metrics.simulatedTimeMs),
-      success: Math.round(successThroughput * 100) / 100,
-      errors: Math.round(errorThroughput * 100) / 100,
-    };
+      const newPoint: ThroughputDataPoint = {
+        time: metrics.simulatedTimeMs,
+        timeLabel: formatTime(metrics.simulatedTimeMs),
+        success: Math.round(successThroughput * 100) / 100,
+        errors: Math.round(errorThroughput * 100) / 100,
+      };
 
-    bufferRef.current = [...bufferRef.current, newPoint].slice(-MAX_BUFFER_SIZE);
-    return bufferRef.current;
+      return [...prev, newPoint].slice(-MAX_BUFFER_SIZE);
+    });
   }, [metrics]);
-
-  const data = getData();
 
   if (data.length === 0) {
     return (
