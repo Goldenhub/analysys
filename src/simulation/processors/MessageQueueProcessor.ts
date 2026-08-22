@@ -130,11 +130,15 @@ export class MessageQueueProcessor implements NodeProcessor {
 
     // Schedule next poll if buffer still has messages
     if (this.buffer.length > 0) {
-      this.scheduleConsumerPoll(event.nodeId, event.timestamp + 100, context); // 100ms poll interval
+      // scheduleConsumerPoll already adds the poll interval to the base timestamp
+      this.scheduleConsumerPoll(event.nodeId, event.timestamp, context);
     } else {
       this.consumerScheduled = false;
     }
   }
+
+  /** Consumer poll interval in simulated milliseconds. */
+  private static readonly POLL_INTERVAL_MS = 100;
 
   private scheduleConsumerPoll(
     nodeId: string,
@@ -144,7 +148,7 @@ export class MessageQueueProcessor implements NodeProcessor {
     this.consumerScheduled = true;
     context.scheduleEvent({
       type: SimEventType.ConsumerPoll,
-      timestamp: timestamp + 100, // 100ms poll interval
+      timestamp: timestamp + MessageQueueProcessor.POLL_INTERVAL_MS,
       nodeId,
       requestId: '',
       payload: {},
