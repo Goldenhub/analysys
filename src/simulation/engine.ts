@@ -8,7 +8,10 @@ import { SeededRNG } from './prng';
 import type { SimEvent, SimRequest, NodeRuntimeState, ProcessorContext, NodeProcessor } from './types';
 import { SimEventType, SimState, RequestStatus } from './types';
 import { TrafficGeneratorProcessor } from './processors/TrafficGeneratorProcessor';
+import { ApiGatewayProcessor } from './processors/ApiGatewayProcessor';
+import { RateLimiterProcessor } from './processors/RateLimiterProcessor';
 import { LoadBalancerProcessor } from './processors/LoadBalancerProcessor';
+import { CircuitBreakerProcessor } from './processors/CircuitBreakerProcessor';
 import { AppServerProcessor } from './processors/AppServerProcessor';
 import { CacheProcessor } from './processors/CacheProcessor';
 import { DatabaseProcessor } from './processors/DatabaseProcessor';
@@ -637,8 +640,14 @@ export class SimulationEngine {
     switch (node.nodeType) {
       case NodeType.TrafficGenerator:
         return new TrafficGeneratorProcessor(node.config);
+      case NodeType.ApiGateway:
+        return new ApiGatewayProcessor(node.config);
+      case NodeType.RateLimiter:
+        return new RateLimiterProcessor(node.config);
       case NodeType.LoadBalancer:
         return new LoadBalancerProcessor(node.config);
+      case NodeType.CircuitBreaker:
+        return new CircuitBreakerProcessor(node.config);
       case NodeType.AppServer:
         return new AppServerProcessor(node.config);
       case NodeType.Cache:

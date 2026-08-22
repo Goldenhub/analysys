@@ -3,7 +3,10 @@ import {
   Distribution,
   type SimulationNode,
   type TrafficGeneratorConfig,
+  type ApiGatewayConfig,
+  type RateLimiterConfig,
   type LoadBalancerConfig,
+  type CircuitBreakerConfig,
   type AppServerConfig,
   type CacheConfig,
   type DatabaseConfig,
@@ -85,6 +88,29 @@ export function validateTrafficGeneratorConfig(
   return { valid: errors.length === 0, errors };
 }
 
+export function validateApiGatewayConfig(
+  config: ApiGatewayConfig,
+): ConfigValidationResult {
+  const errors: { field: string; message: string }[] = [];
+
+  checkRange(errors, 'authLatencyMeanMs', config.authLatencyMeanMs, 0, 60_000);
+  checkRange(errors, 'authLatencyStdDevMs', config.authLatencyStdDevMs, 0, 30_000);
+  checkRange(errors, 'rejectionRate', config.rejectionRate, 0, 1);
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateRateLimiterConfig(
+  config: RateLimiterConfig,
+): ConfigValidationResult {
+  const errors: { field: string; message: string }[] = [];
+
+  checkRange(errors, 'bucketCapacity', config.bucketCapacity, 1, 1_000_000);
+  checkRange(errors, 'refillRatePerSec', config.refillRatePerSec, 1, 1_000_000);
+
+  return { valid: errors.length === 0, errors };
+}
+
 export function validateLoadBalancerConfig(
   config: LoadBalancerConfig,
 ): ConfigValidationResult {
@@ -92,6 +118,18 @@ export function validateLoadBalancerConfig(
 
   checkPositive(errors, 'healthCheckIntervalMs', config.healthCheckIntervalMs);
   checkPositive(errors, 'evictionThreshold', config.evictionThreshold);
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateCircuitBreakerConfig(
+  config: CircuitBreakerConfig,
+): ConfigValidationResult {
+  const errors: { field: string; message: string }[] = [];
+
+  checkRange(errors, 'errorThreshold', config.errorThreshold, 0, 1);
+  checkRange(errors, 'openDurationMs', config.openDurationMs, 100, 300_000);
+  checkRange(errors, 'probeCount', config.probeCount, 1, 1_000);
 
   return { valid: errors.length === 0, errors };
 }
@@ -151,8 +189,14 @@ export function validateNodeConfig(node: SimulationNode): ConfigValidationResult
   switch (node.nodeType) {
     case NodeType.TrafficGenerator:
       return validateTrafficGeneratorConfig(node.config);
+    case NodeType.ApiGateway:
+      return validateApiGatewayConfig(node.config);
+    case NodeType.RateLimiter:
+      return validateRateLimiterConfig(node.config);
     case NodeType.LoadBalancer:
       return validateLoadBalancerConfig(node.config);
+    case NodeType.CircuitBreaker:
+      return validateCircuitBreakerConfig(node.config);
     case NodeType.AppServer:
       return validateAppServerConfig(node.config);
     case NodeType.Cache:
@@ -189,6 +233,23 @@ export function normalizeConfig(node: SimulationNode): SimulationNode {
           spikeDurationSec: clamp(node.config.spikeDurationSec, 0, Number.MAX_SAFE_INTEGER),
         },
       };
+    case NodeType.ApiGateway:
+      return {
+        ...node,
+        config: {
+          authLatencyMeanMs: clamp(node.config.authLatencyMeanMs, 0, 60_000),
+          authLatencyStdDevMs: clamp(node.config.authLatencyStdDevMs, 0, 30_000),
+          rejectionRate: clamp(node.config.rejectionRate, 0, 1),
+        },
+      };
+    case NodeType.RateLimiter:
+      return {
+        ...node,
+        config: {
+          bucketCapacity: clamp(node.config.bucketCapacity, 1, 1_000_000),
+          refillRatePerSec: clamp(node.config.refillRatePerSec, 1, 1_000_000),
+        },
+      };
     case NodeType.LoadBalancer:
       return {
         ...node,
@@ -196,6 +257,15 @@ export function normalizeConfig(node: SimulationNode): SimulationNode {
           algorithm: node.config.algorithm,
           healthCheckIntervalMs: clamp(node.config.healthCheckIntervalMs, 1, Number.MAX_SAFE_INTEGER),
           evictionThreshold: clamp(node.config.evictionThreshold, 1, Number.MAX_SAFE_INTEGER),
+        },
+      };
+    case NodeType.CircuitBreaker:
+      return {
+        ...node,
+        config: {
+          errorThreshold: clamp(node.config.errorThreshold, 0, 1),
+          openDurationMs: clamp(node.config.openDurationMs, 100, 300_000),
+          probeCount: clamp(node.config.probeCount, 1, 1_000),
         },
       };
     case NodeType.AppServer:

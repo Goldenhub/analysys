@@ -16,14 +16,8 @@ import '@xyflow/react/dist/style.css';
 
 import { useTopologyStore } from '@/store/topologyStore';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
-import {
-  NodeType,
-  Distribution,
-  LBAlgorithm,
-  EvictionPolicy,
-  DatabaseType,
-  BackpressureStrategy,
-} from '@/types/nodes';
+import { NodeType } from '@/types/nodes';
+import { createDefaultNodeData } from '@/types/nodeDefaults';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import { validateEdgeConnection } from '@/validation';
@@ -56,90 +50,6 @@ const edgeTypes: EdgeTypes = {
   [EdgeProtocol.Sync]: SyncEdge,
   [EdgeProtocol.Async]: AsyncEdge,
 };
-
-// ─── Default Configurations Per Node Type ────────────────────────
-
-function createDefaultNodeData(
-  nodeType: NodeType,
-  position: { x: number; y: number },
-): SimulationNode {
-  const id = crypto.randomUUID();
-  const base = { id, position };
-
-  switch (nodeType) {
-    case NodeType.TrafficGenerator:
-      return {
-        ...base,
-        nodeType: NodeType.TrafficGenerator,
-        label: 'Traffic Generator',
-        config: {
-          rps: 100,
-          distribution: Distribution.Poisson,
-          spikeMultiplier: 1,
-          spikeDurationSec: 10,
-        },
-      };
-    case NodeType.LoadBalancer:
-      return {
-        ...base,
-        nodeType: NodeType.LoadBalancer,
-        label: 'Load Balancer',
-        config: {
-          algorithm: LBAlgorithm.RoundRobin,
-          healthCheckIntervalMs: 5000,
-          evictionThreshold: 3,
-        },
-      };
-    case NodeType.AppServer:
-      return {
-        ...base,
-        nodeType: NodeType.AppServer,
-        label: 'App Server',
-        config: {
-          workerThreadPoolSize: 16,
-          requestQueueDepth: 100,
-          processingTimeMeanMs: 50,
-          processingTimeStdDevMs: 15,
-        },
-      };
-    case NodeType.Cache:
-      return {
-        ...base,
-        nodeType: NodeType.Cache,
-        label: 'Cache',
-        config: {
-          hitRatio: 0.85,
-          evictionPolicy: EvictionPolicy.LRU,
-          accessLatencyMs: 2,
-        },
-      };
-    case NodeType.Database:
-      return {
-        ...base,
-        nodeType: NodeType.Database,
-        label: 'Database',
-        config: {
-          connectionPoolSize: 20,
-          queryLatencyMeanMs: 25,
-          queryLatencyStdDevMs: 10,
-          lockTimeoutMs: 5000,
-          dbType: DatabaseType.Relational,
-        },
-      };
-    case NodeType.MessageQueue:
-      return {
-        ...base,
-        nodeType: NodeType.MessageQueue,
-        label: 'Message Queue',
-        config: {
-          consumerBatchSize: 10,
-          bufferCapacity: 10000,
-          backpressureThresholdPct: 80,
-          backpressureStrategy: BackpressureStrategy.RejectNew,
-        },
-      };
-  }
-}
 
 // ─── Default Edge Markers ────────────────────────────────────────
 

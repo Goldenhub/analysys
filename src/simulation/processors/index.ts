@@ -1,5 +1,8 @@
 export { TrafficGeneratorProcessor } from './TrafficGeneratorProcessor';
+export { ApiGatewayProcessor } from './ApiGatewayProcessor';
+export { RateLimiterProcessor } from './RateLimiterProcessor';
 export { LoadBalancerProcessor } from './LoadBalancerProcessor';
+export { CircuitBreakerProcessor } from './CircuitBreakerProcessor';
 export { AppServerProcessor } from './AppServerProcessor';
 export { CacheProcessor } from './CacheProcessor';
 export { DatabaseProcessor } from './DatabaseProcessor';

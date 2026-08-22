@@ -617,4 +617,71 @@ describe('SimulationEngine', () => {
     const activeSeries = batches.map((b) => b.systemWide.activeRequests);
     expect(activeSeries[activeSeries.length - 1]!).toBeLessThan(total * 0.1);
   }, 30000);
+
+  it('circuit breaker trips on downstream failure and recovers after chaos reverts', async () => {
+    // gen → breaker → db. DROP_DB makes every query time out, so the breaker
+    // should observe the failure rate itself and fast-fail, then close again
+    // once the database is healthy and the open window has elapsed.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+      },
+      {
+        id: 'cb-1',
+        nodeType: NodeType.CircuitBreaker,
+        label: 'Breaker',
+        position: { x: 200, y: 0 },
+        config: { errorThreshold: 0.5, openDurationMs: 2000, probeCount: 3 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cb-1', protocol: EdgeProtocol.Sync },
+      { id: 'e2', source: 'cb-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+    ];
+
+    const chaosDurationMs = 4000;
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 20000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const breakerUtilization: Array<{ t: number; utilization: number }> = [];
+    engine.setCallbacks({
+      onMetricsBatch: (b) => {
+        const cb = b.nodes.find((n) => n.nodeId === 'cb-1');
+        if (cb) breakerUtilization.push({ t: b.simulatedTimeMs, utilization: cb.utilization });
+      },
+    });
+
+    engine.injectChaos({ chaosType: 'DROP_DB', durationMs: chaosDurationMs, params: {} });
+
+    await engine.run();
+
+    expect(breakerUtilization.length).toBeGreaterThan(5);
+
+    // While the DB is down the breaker must trip fully open at some point.
+    // (Chaos starts at t=0, so this is already true by the first snapshot.)
+    const duringChaos = breakerUtilization.filter((s) => s.t <= chaosDurationMs);
+    expect(Math.max(...duringChaos.map((s) => s.utilization))).toBe(1);
+
+    // Once the DB is healthy again and the open window has elapsed, the breaker
+    // closes. Anything still pinned at 1 means it never recovered.
+    const last = breakerUtilization[breakerUtilization.length - 1]!;
+    expect(last.t).toBeGreaterThan(chaosDurationMs + 2000);
+    expect(last.utilization).toBeLessThan(1);
+  }, 30000);
 });

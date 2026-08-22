@@ -13,6 +13,12 @@ function makeNode(id: string, nodeType: NodeType): SimulationNode {
   switch (nodeType) {
     case NodeType.TrafficGenerator:
       return { ...base, nodeType, config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 } };
+    case NodeType.ApiGateway:
+      return { ...base, nodeType, config: { authLatencyMeanMs: 5, authLatencyStdDevMs: 2, rejectionRate: 0.02 } };
+    case NodeType.RateLimiter:
+      return { ...base, nodeType, config: { bucketCapacity: 100, refillRatePerSec: 50 } };
+    case NodeType.CircuitBreaker:
+      return { ...base, nodeType, config: { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 } };
     case NodeType.LoadBalancer:
       return { ...base, nodeType, config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 } };
     case NodeType.AppServer:

@@ -2,10 +2,13 @@ import type { Node as RFNode } from '@xyflow/react';
 
 // ─── Enumerations ────────────────────────────────────────────────
 
-/** The 6 supported node types in the simulation topology. */
+/** The 9 supported node types in the simulation topology, in request-flow order. */
 export enum NodeType {
   TrafficGenerator = 'TRAFFIC_GENERATOR',
+  ApiGateway = 'API_GATEWAY',
+  RateLimiter = 'RATE_LIMITER',
   LoadBalancer = 'LOAD_BALANCER',
+  CircuitBreaker = 'CIRCUIT_BREAKER',
   AppServer = 'APP_SERVER',
   Cache = 'CACHE',
   Database = 'DATABASE',
@@ -37,6 +40,13 @@ export enum DatabaseType {
   NoSQL = 'NOSQL',
 }
 
+/** Circuit breaker state machine positions. */
+export enum CircuitState {
+  Closed = 'CLOSED',
+  Open = 'OPEN',
+  HalfOpen = 'HALF_OPEN',
+}
+
 /** Strategy applied when a message queue reaches its buffer capacity. */
 export enum BackpressureStrategy {
   DropOldest = 'DROP_OLDEST',
@@ -63,10 +73,33 @@ export interface TrafficGeneratorConfig {
   spikeDurationSec: number;
 }
 
+export interface ApiGatewayConfig {
+  authLatencyMeanMs: number;
+  authLatencyStdDevMs: number;
+  /** Fraction of requests rejected as unauthorized (0.0–1.0). */
+  rejectionRate: number;
+}
+
+export interface RateLimiterConfig {
+  /** Token bucket capacity — the maximum burst admitted. */
+  bucketCapacity: number;
+  /** Tokens replenished per second — the sustained rate allowed. */
+  refillRatePerSec: number;
+}
+
 export interface LoadBalancerConfig {
   algorithm: LBAlgorithm;
   healthCheckIntervalMs: number;
   evictionThreshold: number;
+}
+
+export interface CircuitBreakerConfig {
+  /** Downstream error rate above which the breaker trips (0.0–1.0). */
+  errorThreshold: number;
+  /** How long the breaker stays open before probing, in ms. */
+  openDurationMs: number;
+  /** Requests allowed through while half-open to test recovery. */
+  probeCount: number;
 }
 
 export interface AppServerConfig {
@@ -104,9 +137,24 @@ export interface TrafficGeneratorNode extends BaseNodeData {
   config: TrafficGeneratorConfig;
 }
 
+export interface ApiGatewayNode extends BaseNodeData {
+  nodeType: NodeType.ApiGateway;
+  config: ApiGatewayConfig;
+}
+
+export interface RateLimiterNode extends BaseNodeData {
+  nodeType: NodeType.RateLimiter;
+  config: RateLimiterConfig;
+}
+
 export interface LoadBalancerNode extends BaseNodeData {
   nodeType: NodeType.LoadBalancer;
   config: LoadBalancerConfig;
+}
+
+export interface CircuitBreakerNode extends BaseNodeData {
+  nodeType: NodeType.CircuitBreaker;
+  config: CircuitBreakerConfig;
 }
 
 export interface AppServerNode extends BaseNodeData {
@@ -132,7 +180,10 @@ export interface MessageQueueNode extends BaseNodeData {
 /** Discriminated union of all node types used in the simulation engine. */
 export type SimulationNode =
   | TrafficGeneratorNode
+  | ApiGatewayNode
+  | RateLimiterNode
   | LoadBalancerNode
+  | CircuitBreakerNode
   | AppServerNode
   | CacheNode
   | DatabaseNode

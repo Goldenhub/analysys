@@ -489,6 +489,9 @@ function MessageQueueForm({ config, onFieldChange, errors }: FormProps) {
 
 const NODE_TYPE_LABELS: Record<NodeType, string> = {
   [NodeType.TrafficGenerator]: 'Traffic Generator',
+  [NodeType.ApiGateway]: 'API Gateway',
+  [NodeType.RateLimiter]: 'Rate Limiter',
+  [NodeType.CircuitBreaker]: 'Circuit Breaker',
   [NodeType.LoadBalancer]: 'Load Balancer',
   [NodeType.AppServer]: 'App Server',
   [NodeType.Cache]: 'Cache',
@@ -547,6 +550,9 @@ const UTILIZATION_NOTES: Record<NodeType, string> = {
   [NodeType.Cache]: 'Observed miss rate',
   [NodeType.MessageQueue]: 'Buffer capacity used',
   [NodeType.LoadBalancer]: 'Unhealthy targets',
+  [NodeType.ApiGateway]: 'Observed rejection rate',
+  [NodeType.RateLimiter]: 'Token bucket drained',
+  [NodeType.CircuitBreaker]: 'Breaker tripped',
   [NodeType.TrafficGenerator]: 'Not capacity-bound',
 };
 

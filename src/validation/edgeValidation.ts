@@ -15,15 +15,49 @@ export const CONNECTION_RULES: Record<
   { allowedTargets: NodeType[]; allowedProtocols: EdgeProtocol[] }
 > = {
   [NodeType.TrafficGenerator]: {
-    allowedTargets: [NodeType.LoadBalancer, NodeType.AppServer, NodeType.MessageQueue],
+    allowedTargets: [
+      NodeType.ApiGateway,
+      NodeType.RateLimiter,
+      NodeType.LoadBalancer,
+      NodeType.AppServer,
+      NodeType.MessageQueue,
+    ],
     allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
   },
-  [NodeType.LoadBalancer]: {
-    allowedTargets: [NodeType.AppServer],
+  [NodeType.ApiGateway]: {
+    allowedTargets: [
+      NodeType.RateLimiter,
+      NodeType.CircuitBreaker,
+      NodeType.LoadBalancer,
+      NodeType.AppServer,
+    ],
     allowedProtocols: [EdgeProtocol.Sync],
   },
+  [NodeType.RateLimiter]: {
+    allowedTargets: [NodeType.CircuitBreaker, NodeType.LoadBalancer, NodeType.AppServer],
+    allowedProtocols: [EdgeProtocol.Sync],
+  },
+  [NodeType.LoadBalancer]: {
+    allowedTargets: [NodeType.AppServer, NodeType.CircuitBreaker],
+    allowedProtocols: [EdgeProtocol.Sync],
+  },
+  [NodeType.CircuitBreaker]: {
+    allowedTargets: [
+      NodeType.AppServer,
+      NodeType.Database,
+      NodeType.Cache,
+      NodeType.MessageQueue,
+    ],
+    allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
+  },
   [NodeType.AppServer]: {
-    allowedTargets: [NodeType.Cache, NodeType.Database, NodeType.MessageQueue, NodeType.AppServer],
+    allowedTargets: [
+      NodeType.Cache,
+      NodeType.Database,
+      NodeType.MessageQueue,
+      NodeType.AppServer,
+      NodeType.CircuitBreaker,
+    ],
     allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
   },
   [NodeType.Cache]: {
