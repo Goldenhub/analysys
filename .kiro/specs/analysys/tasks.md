@@ -568,34 +568,34 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 15.2 Sub-Requests and Fan-Out (`src/simulation/subRequests.ts`)
 
-- [~] 326. Define `SubRequestPolicy` with the three values `FanOut`, `AuthIntrospection`, and `AuthzLookup`, and implement one shared dispatch-and-settle mechanism used by all three rather than a bespoke path per node type.
-- [~] 327. Implement branch dispatch: one branch per resolved edge at a single simulated timestamp, each branch a full `SimRequest` with `path = [dispatchNodeId]`, `hopCount` copied from the parent, and `fanOutDepth` set to the parent's depth plus 1.
-- [~] 328. Count every node a branch subsequently visits as one hop against the shared `maxHops` budget, so a fan-out inside a cycle still terminates `LOOP_DETECTED`.
-- [~] 329. Implement the branch response path: a successful branch runs the existing reverse walk over its own `path`, and on reaching index 0 it emits `SubRequestSettled` at the dispatch node instead of `ResponseComplete`, which structurally prevents a branch from traversing upstream of the dispatch node.
-- [~] 330. Implement `settleOnAccept` for branches dispatched along an Asynchronous edge, settling inside `MessageQueueProcessor.onRequestArrived` at the instant the message is buffered or rejected so the parent does not wait for a consumer to drain the queue.
-- [~] 331. Implement the `SubRequestSettled` handler: accumulate `maxBranchSettleMs`, remove the branch from `pendingBranchIds`, and on the last settle add that maximum — and nothing else — to the parent's accumulated latency before resuming it.
-- [~] 332. Implement the failure mapping per `branchPolicy` (Fan_Out propagates the branch's status with the branch target's identifier, AuthIntrospection maps to `Unauthenticated`, AuthzLookup propagates the status plus the lookup target's identifier), mark every unsettled sibling `isDiscarded` under no terminal status, and break same-timestamp ties toward the branch on the lowest stored edge index.
-- [~] 333. Implement the depth cap: a request arriving at a Fan_Out node already at `fanOutDepth` 4 is forwarded along the lowest stored index alone, dispatches no branch, and produces a `fan-out-depth-limit` event log entry naming the node and the request.
+- [x] 326. Define `SubRequestPolicy` with the three values `FanOut`, `AuthIntrospection`, and `AuthzLookup`, and implement one shared dispatch-and-settle mechanism used by all three rather than a bespoke path per node type.
+- [x] 327. Implement branch dispatch: one branch per resolved edge at a single simulated timestamp, each branch a full `SimRequest` with `path = [dispatchNodeId]`, `hopCount` copied from the parent, and `fanOutDepth` set to the parent's depth plus 1.
+- [x] 328. Count every node a branch subsequently visits as one hop against the shared `maxHops` budget, so a fan-out inside a cycle still terminates `LOOP_DETECTED`.
+- [x] 329. Implement the branch response path: a successful branch runs the existing reverse walk over its own `path`, and on reaching index 0 it emits `SubRequestSettled` at the dispatch node instead of `ResponseComplete`, which structurally prevents a branch from traversing upstream of the dispatch node.
+- [x] 330. Implement `settleOnAccept` for branches dispatched along an Asynchronous edge, settling inside `MessageQueueProcessor.onRequestArrived` at the instant the message is buffered or rejected so the parent does not wait for a consumer to drain the queue.
+- [x] 331. Implement the `SubRequestSettled` handler: accumulate `maxBranchSettleMs`, remove the branch from `pendingBranchIds`, and on the last settle add that maximum — and nothing else — to the parent's accumulated latency before resuming it.
+- [x] 332. Implement the failure mapping per `branchPolicy` (Fan_Out propagates the branch's status with the branch target's identifier, AuthIntrospection maps to `Unauthenticated`, AuthzLookup propagates the status plus the lookup target's identifier), mark every unsettled sibling `isDiscarded` under no terminal status, and break same-timestamp ties toward the branch on the lowest stored edge index.
+- [x] 333. Implement the depth cap: a request arriving at a Fan_Out node already at `fanOutDepth` 4 is forwarded along the lowest stored index alone, dispatches no branch, and produces a `fan-out-depth-limit` event log entry naming the node and the request.
 
 ### 15.3 Branch Accounting Guards (`src/simulation/engine.ts`)
 
-- [~] 334. Guard one: branch creation never increments `inFlightCount`, and the parent stays counted exactly once for the whole interval its branches are unsettled.
-- [~] 335. Guard two: in `handleRequestRoute`'s failure path, call `markRequestDone` only for a request with no `parentRequestId`, and schedule `SubRequestSettled` for a branch instead of decrementing.
-- [~] 336. Guard three: route a branch's termination through `metricsCollector.recordBranchTermination` for per-node aggregates only, and a parent's through the existing `recordCompletion` for system-wide plus per-node.
-- [~] 337. Write a test asserting a Fan_Out parent and all its branches contribute exactly one system-wide termination and that the time-weighted active-request figure counts each end-to-end request once.
+- [x] 334. Guard one: branch creation never increments `inFlightCount`, and the parent stays counted exactly once for the whole interval its branches are unsettled.
+- [x] 335. Guard two: in `handleRequestRoute`'s failure path, call `markRequestDone` only for a request with no `parentRequestId`, and schedule `SubRequestSettled` for a branch instead of decrementing.
+- [x] 336. Guard three: route a branch's termination through `metricsCollector.recordBranchTermination` for per-node aggregates only, and a parent's through the existing `recordCompletion` for system-wide plus per-node.
+- [x] 337. Write a test asserting a Fan_Out parent and all its branches contribute exactly one system-wide termination and that the time-weighted active-request figure counts each end-to-end request once.
 
 ### 15.4 Terminal Status Partition (`src/simulation/engine.ts`)
 
-- [~] 338. Route every terminal assignment through one engine helper that records the status and the node identifier together and asserts the request was `In_Flight`, replacing the scattered direct `request.status = …` writes.
-- [~] 339. Implement `unmarkRequestDone(requestId)` as the inverse of `markRequestDone`, deleting from `countedAsComplete`, updating the in-flight weighted sum, and incrementing `inFlightCount`, for use by Dead_Letter_Queue Redrive.
-- [~] 340. Maintain `terminalCounts` per window and `cumulativeTerminalCounts` across the run, resetting only the former at each window boundary alongside the existing counters.
-- [~] 341. Report the count of requests and Jobs still `In_Flight` on entering `Complete` as the run's unfinished count, excluded from every cumulative terminal count and from the completion-percentage denominators.
-- [~] 342. Implement the three `FailureClass` rates in terminations per second and the total error rate as the window's non-Success terminations over all nine statuses in that same window.
-- [~] 343. Create `src/components/telemetry/TerminalStatusTable.tsx` reporting each of the nine statuses with its cumulative count, its rate in terminations per second, and its percentage of terminated requests, each with a unit.
-- [~] 344. Report each such percentage as not applicable with a plain-language explanation while the sum of the nine cumulative counts is zero, rather than as `0%`.
-- [~] 345. Extend the `METRICS_BATCH` per-node payload with `terminalCounts` and `cumulativeTerminalCounts` and update `simulationStore`'s message handler.
-- [~] 346. Write a test that the nine cumulative counts sum to the number of requests and Jobs that have left the system at every metrics snapshot of a small run, not only at the end.
-- [~] 347. Write a determinism test asserting two runs at the same topology, configuration, and seed produce byte-identical `SimulationSummary` and identical per-node terminal counts with routing policies and fan-out in play.
+- [x] 338. Route every terminal assignment through one engine helper that records the status and the node identifier together and asserts the request was `In_Flight`, replacing the scattered direct `request.status = …` writes.
+- [x] 339. Implement `unmarkRequestDone(requestId)` as the inverse of `markRequestDone`, deleting from `countedAsComplete`, updating the in-flight weighted sum, and incrementing `inFlightCount`, for use by Dead_Letter_Queue Redrive.
+- [x] 340. Maintain `terminalCounts` per window and `cumulativeTerminalCounts` across the run, resetting only the former at each window boundary alongside the existing counters.
+- [x] 341. Report the count of requests and Jobs still `In_Flight` on entering `Complete` as the run's unfinished count, excluded from every cumulative terminal count and from the completion-percentage denominators.
+- [x] 342. Implement the three `FailureClass` rates in terminations per second and the total error rate as the window's non-Success terminations over all nine statuses in that same window.
+- [x] 343. Create `src/components/telemetry/TerminalStatusTable.tsx` reporting each of the nine statuses with its cumulative count, its rate in terminations per second, and its percentage of terminated requests, each with a unit.
+- [x] 344. Report each such percentage as not applicable with a plain-language explanation while the sum of the nine cumulative counts is zero, rather than as `0%`.
+- [x] 345. Extend the `METRICS_BATCH` per-node payload with `terminalCounts` and `cumulativeTerminalCounts` and update `simulationStore`'s message handler.
+- [x] 346. Write a test that the nine cumulative counts sum to the number of requests and Jobs that have left the system at every metrics snapshot of a small run, not only at the end.
+- [x] 347. Write a determinism test asserting two runs at the same topology, configuration, and seed produce byte-identical `SimulationSummary` and identical per-node terminal counts with routing policies and fan-out in play.
 
 ---
 
