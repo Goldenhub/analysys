@@ -6,25 +6,27 @@ import { formatStorageSize } from '@/utils/localStorage';
 
 interface ToastMessage {
   id: number;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'warning';
   message: string;
 }
 
 let toastId = 0;
 
+const TOAST_CLASSES: Record<ToastMessage['type'], string> = {
+  success: 'bg-green-800/90 text-green-100 border border-green-600',
+  error: 'bg-red-800/90 text-red-100 border border-red-600',
+  warning: 'bg-amber-800/90 text-amber-100 border border-amber-600',
+};
+
 function Toast({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDismiss, 4000);
+    const timer = setTimeout(onDismiss, toast.type === 'warning' ? 6000 : 4000);
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, [onDismiss, toast.type]);
 
   return (
     <div
-      className={`rounded-lg px-4 py-2 text-sm shadow-lg transition-all ${
-        toast.type === 'success'
-          ? 'bg-green-800/90 text-green-100 border border-green-600'
-          : 'bg-red-800/90 text-red-100 border border-red-600'
-      }`}
+      className={`rounded-lg px-4 py-2 text-sm shadow-lg transition-all ${TOAST_CLASSES[toast.type]}`}
       role="alert"
     >
       {toast.message}
@@ -49,7 +51,7 @@ export function PersistenceToolbar() {
   const importJSON = usePersistenceStore((s) => s.importJSON);
   const getStorageUsage = usePersistenceStore((s) => s.getStorageUsage);
 
-  const addToast = useCallback((type: 'success' | 'error', message: string) => {
+  const addToast = useCallback((type: 'success' | 'error' | 'warning', message: string) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, type, message }]);
   }, []);
@@ -77,8 +79,16 @@ export function PersistenceToolbar() {
       if (!file) return;
 
       try {
-        await importJSON(file);
+        const warnings = await importJSON(file);
         addToast('success', 'Topology imported successfully.');
+        // Surface migration warnings (R34.4, R34.8)
+        if (warnings && warnings.length > 0) {
+          const count = warnings.length;
+          const summary = count <= 3
+            ? warnings.map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`).join('; ')
+            : `${warnings.slice(0, 3).map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`).join('; ')} (+${count - 3} more)`;
+          addToast('warning', `Migration applied ${count} default(s): ${summary}`);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown import error.';
         addToast('error', msg);
@@ -94,8 +104,14 @@ export function PersistenceToolbar() {
 
   const handleSave = useCallback(() => {
     if (!saveName.trim()) return;
-    saveTopology(saveName.trim());
+    const { warnings } = saveTopology(saveName.trim());
     addToast('success', `Saved "${saveName.trim()}".`);
+    // R34.7 — surface storage size warning
+    if (warnings.length > 0) {
+      for (const w of warnings) {
+        addToast('warning', w);
+      }
+    }
     setSaveName('');
     setShowSaveDialog(false);
   }, [saveName, saveTopology, addToast]);
@@ -108,8 +124,13 @@ export function PersistenceToolbar() {
         `Load "${name}"? This will replace your current topology.`,
       );
       if (!confirmed) return;
-      loadSavedTopology(name);
+      const warnings = loadSavedTopology(name);
       addToast('success', `Loaded "${name}".`);
+      // Surface migration warnings on load (R34.4, R34.8)
+      if (warnings && warnings.length > 0) {
+        const count = warnings.length;
+        addToast('warning', `Migration applied ${count} default(s) to "${name}".`);
+      }
       setShowLoadMenu(false);
     },
     [loadSavedTopology, addToast],

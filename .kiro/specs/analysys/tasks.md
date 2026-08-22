@@ -709,24 +709,24 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 18.1 Persistence Store (`src/store/persistenceStore.ts`)
 
-- [~] 413. Set `CURRENT_SCHEMA_VERSION = 2` and define `SerializedTopologyV2` carrying nodes with `routingPolicy` and every Requirement 23–28 parameter, edges with `weight` in stored order, and `subsystemGroups`.
-- [~] 414. Write a record at version 2 whenever it holds a node of one of the six new types, a routing policy other than `First`, an edge weight, or a Subsystem_Group.
-- [~] 415. Define `MigrationWarning` and implement `migrateV1ToV2` as a pure function returning the new record plus the warnings to surface, replacing the current no-op `migrateIfNeeded`.
-- [~] 416. In `migrateV1ToV2`, set every node's `routingPolicy` to `First`, every edge `weight` to 1.0, `subsystemGroups` to empty, and every absent Requirement 23–28 parameter — including `transferQueueDepth` and `maxDeferredTriggers` — to its `createDefaultNodeData` value, with one warning per applied default naming the label, field, and value, and complete the import with no error.
-- [~] 417. Apply the same absent-field defaulting to a version 2 record missing a routing policy, an edge weight, the group set, or a Requirement 23–28 parameter, so an absent field of this set is defaulted rather than treated as a validation failure.
-- [~] 418. Reject an import whose `schemaVersion` is above 2, naming the record's version and the required version, and one whose `schemaVersion` is absent, non-integer, or below 1, naming that field and the value found, leaving the Canvas and every stored topology unmodified in both cases.
-- [~] 419. Load a version 1 record from localStorage by migrating the **in-memory** topology only, leaving the stored record at version 1 with its original field values and writing version 2 on the next save invoked for it, so opening a v2 build is not destructive to a v1 record.
-- [~] 420. Include every Subsystem_Group name, member node identifier list, and collapsed state in save, load, export, and import.
-- [~] 421. Write a round-trip test asserting exporting a loaded version 2 record produces a record equal to the imported one across positions, configs, routing policies, protocols, weights, and groups.
+- [x] 413. Set `CURRENT_SCHEMA_VERSION = 2` and define `SerializedTopologyV2` carrying nodes with `routingPolicy` and every Requirement 23–28 parameter, edges with `weight` in stored order, and `subsystemGroups`.
+- [x] 414. Write a record at version 2 whenever it holds a node of one of the six new types, a routing policy other than `First`, an edge weight, or a Subsystem_Group.
+- [x] 415. Define `MigrationWarning` and implement `migrateV1ToV2` as a pure function returning the new record plus the warnings to surface, replacing the current no-op `migrateIfNeeded`.
+- [x] 416. In `migrateV1ToV2`, set every node's `routingPolicy` to `First`, every edge `weight` to 1.0, `subsystemGroups` to empty, and every absent Requirement 23–28 parameter — including `transferQueueDepth` and `maxDeferredTriggers` — to its `createDefaultNodeData` value, with one warning per applied default naming the label, field, and value, and complete the import with no error.
+- [x] 417. Apply the same absent-field defaulting to a version 2 record missing a routing policy, an edge weight, the group set, or a Requirement 23–28 parameter, so an absent field of this set is defaulted rather than treated as a validation failure.
+- [x] 418. Reject an import whose `schemaVersion` is above 2, naming the record's version and the required version, and one whose `schemaVersion` is absent, non-integer, or below 1, naming that field and the value found, leaving the Canvas and every stored topology unmodified in both cases.
+- [x] 419. Load a version 1 record from localStorage by migrating the **in-memory** topology only, leaving the stored record at version 1 with its original field values and writing version 2 on the next save invoked for it, so opening a v2 build is not destructive to a v1 record.
+- [x] 420. Include every Subsystem_Group name, member node identifier list, and collapsed state in save, load, export, and import.
+- [x] 421. Write a round-trip test asserting exporting a loaded version 2 record produces a record equal to the imported one across positions, configs, routing policies, protocols, weights, and groups.
 
 ### 18.2 File Schema Validator (`src/utils/localStorage.ts`)
 
-- [~] 422. Replace the hard-coded `VALID_NODE_TYPES` array — which currently lists only six of the nine shipped types and would reject every new type — with `Object.values(NodeType)`.
-- [~] 423. Raise `CURRENT_SCHEMA_VERSION` to 2 in the `.analysys.json` validator and extend `AnalysysFileSchema` with `subsystemGroups` and the version 2 node and edge shapes.
-- [~] 424. Wire `migrateSchema` to `migrateV1ToV2` and surface its warnings through the existing import toast rather than discarding them.
-- [~] 425. Replace `getStorageUsage`'s `key.length + value.length` UTF-16 measurement with `new TextEncoder().encode(serialized).length`, which the current form under-reports for multi-byte content.
-- [~] 426. Complete a save above 4,194,304 bytes and retain a loadable record while displaying a warning naming the serialized size in bytes and that threshold — this is a warning, not a failure.
-- [~] 427. Extend `localStorage.test.ts` with version 2 serialize/deserialize, the v1 to v2 migration and its warning set, the above-2 and malformed version rejections, and the UTF-8 byte-length measurement.
+- [x] 422. Replace the hard-coded `VALID_NODE_TYPES` array — which currently lists only six of the nine shipped types and would reject every new type — with `Object.values(NodeType)`.
+- [x] 423. Raise `CURRENT_SCHEMA_VERSION` to 2 in the `.analysys.json` validator and extend `AnalysysFileSchema` with `subsystemGroups` and the version 2 node and edge shapes.
+- [x] 424. Wire `migrateSchema` to `migrateV1ToV2` and surface its warnings through the existing import toast rather than discarding them.
+- [x] 425. Replace `getStorageUsage`'s `key.length + value.length` UTF-16 measurement with `new TextEncoder().encode(serialized).length`, which the current form under-reports for multi-byte content.
+- [x] 426. Complete a save above 4,194,304 bytes and retain a loadable record while displaying a warning naming the serialized size in bytes and that threshold — this is a warning, not a failure.
+- [x] 427. Extend `localStorage.test.ts` with version 2 serialize/deserialize, the v1 to v2 migration and its warning set, the above-2 and malformed version rejections, and the UTF-8 byte-length measurement.
 
 ---
 
