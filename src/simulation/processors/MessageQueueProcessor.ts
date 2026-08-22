@@ -23,6 +23,10 @@ export class MessageQueueProcessor implements NodeProcessor {
 
     context.recordArrival(event.nodeId, request.id, event.timestamp);
 
+    // Task 330: settleOnAccept — branches dispatched along async edges settle
+    // when the target accepts or rejects. Check before buffer capacity logic.
+    const isBranchSettleOnAccept = request.settleOnAccept && request.parentRequestId;
+
     // Check buffer capacity
     if (this.buffer.length >= this.config.bufferCapacity) {
       // Apply backpressure strategy
@@ -46,6 +50,19 @@ export class MessageQueueProcessor implements NodeProcessor {
               payload: { reason: 'BUFFER_EVICTION' },
             });
           }
+          // Settle the branch immediately on accept (even if via eviction of another)
+          if (isBranchSettleOnAccept) {
+            context.scheduleEvent({
+              type: SimEventType.SubRequestSettled,
+              timestamp: event.timestamp,
+              nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+              requestId: request.id,
+              payload: {},
+            });
+            // Mark as success for settle purposes — the branch accepted the message
+            request.status = RequestStatus.Success;
+            request.completedAt = event.timestamp;
+          }
           break;
         }
         case BackpressureStrategy.RejectNew:
@@ -53,6 +70,16 @@ export class MessageQueueProcessor implements NodeProcessor {
           request.completedAt = event.timestamp;
           state.totalDropped++;
           context.recordDeparture(event.nodeId, request.id, event.timestamp);
+          // Settle on reject for async branches
+          if (isBranchSettleOnAccept) {
+            context.scheduleEvent({
+              type: SimEventType.SubRequestSettled,
+              timestamp: event.timestamp,
+              nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+              requestId: request.id,
+              payload: {},
+            });
+          }
           return;
         case BackpressureStrategy.BlockProducer:
           // In simulation, blocking = timeout after a delay
@@ -60,6 +87,16 @@ export class MessageQueueProcessor implements NodeProcessor {
           request.completedAt = event.timestamp;
           state.totalTimedOut++;
           context.recordDeparture(event.nodeId, request.id, event.timestamp);
+          // Settle on reject for async branches
+          if (isBranchSettleOnAccept) {
+            context.scheduleEvent({
+              type: SimEventType.SubRequestSettled,
+              timestamp: event.timestamp,
+              nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+              requestId: request.id,
+              payload: {},
+            });
+          }
           return;
       }
     } else {
@@ -70,6 +107,19 @@ export class MessageQueueProcessor implements NodeProcessor {
       const enqueueLatency = 0.2;
       request.accumulatedLatencyMs += enqueueLatency;
       state.latencySamples.push(enqueueLatency);
+
+      // Task 330: settle the branch immediately on buffering
+      if (isBranchSettleOnAccept) {
+        request.status = RequestStatus.Success;
+        request.completedAt = event.timestamp;
+        context.scheduleEvent({
+          type: SimEventType.SubRequestSettled,
+          timestamp: event.timestamp,
+          nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+          requestId: request.id,
+          payload: {},
+        });
+      }
     }
 
     state.totalProcessed++;
@@ -82,7 +132,7 @@ export class MessageQueueProcessor implements NodeProcessor {
     context.recordDeparture(event.nodeId, request.id, event.timestamp);
 
     const hasDownstream = context.getOutgoingEdges(event.nodeId).length > 0;
-    if (!hasDownstream) {
+    if (!hasDownstream && !isBranchSettleOnAccept) {
       request.status = RequestStatus.Success;
       context.scheduleEvent({
         type: SimEventType.RequestComplete,

@@ -6,7 +6,8 @@ import type { MetricsBatchPayload } from '@/types/metrics';
 import { MinHeap } from './eventQueue';
 import { SeededRNG } from './prng';
 import type { SimEvent, SimRequest, NodeRuntimeState, ProcessorContext, NodeProcessor } from './types';
-import { SimEventType, SimState, RequestStatus, emptyTerminalCounts } from './types';
+import { SimEventType, SimState, RequestStatus, SubRequestPolicy, emptyTerminalCounts } from './types';
+import type { TerminalStatus } from './types';
 import { TrafficGeneratorProcessor } from './processors/TrafficGeneratorProcessor';
 import { ApiGatewayProcessor } from './processors/ApiGatewayProcessor';
 import { RateLimiterProcessor } from './processors/RateLimiterProcessor';
@@ -23,6 +24,7 @@ import { WorkerPoolSkeletonProcessor } from './processors/WorkerPoolSkeletonProc
 import { DeadLetterQueueSkeletonProcessor } from './processors/DeadLetterQueueSkeletonProcessor';
 import { ObjectStoreSkeletonProcessor } from './processors/ObjectStoreSkeletonProcessor';
 import { SchedulerSkeletonProcessor } from './processors/SchedulerSkeletonProcessor';
+import { dispatchBranches, settleBranch, mapBranchFailureToParent } from './subRequests';
 
 export class SimulationEngine {
   private eventQueue: MinHeap<SimEvent>;
@@ -265,6 +267,9 @@ export class SimulationEngine {
       case SimEventType.ResponseComplete:
         this.handleResponseComplete(event);
         break;
+      case SimEventType.SubRequestSettled:
+        this.handleSubRequestSettled(event);
+        break;
       default:
         break;
     }
@@ -296,10 +301,7 @@ export class SimulationEngine {
     // Route to first downstream node
     const outEdges = this.getOutgoingEdges(event.nodeId);
     if (outEdges.length === 0) {
-      request.status = RequestStatus.NoRoute;
-      request.completedAt = event.timestamp;
-      this.markRequestDone(requestId);
-      this.metricsCollector.recordCompletion(request);
+      this.terminateRequest(request, RequestStatus.NoRoute, event.nodeId, event.timestamp);
       this.pendingLogEntries.push({
         id: this.eventCounter,
         timestamp: event.timestamp,
@@ -333,26 +335,66 @@ export class SimulationEngine {
     request.hopCount++;
     request.path.push(event.nodeId);
 
-    // Cycle guard
+    // Cycle guard (task 328 — branches share the maxHops budget)
     if (request.hopCount > request.maxHops) {
-      request.status = RequestStatus.LoopDetected;
-      request.completedAt = event.timestamp;
-      this.markRequestDone(request.id);
-      this.metricsCollector.recordCompletion(request);
+      this.terminateRequest(request, RequestStatus.LoopDetected, event.nodeId, event.timestamp);
+      // Guard 2 (task 335): branches schedule SubRequestSettled instead of decrementing
+      if (request.parentRequestId) {
+        this.scheduleSubRequestSettled(request, event.timestamp);
+      }
       return;
+    }
+
+    // Fan_Out dispatch (tasks 327, 333): if this node has a FanOut policy,
+    // dispatch branches here instead of delegating to the processor
+    const nodeConfig = this.nodeConfigs.get(event.nodeId);
+    const policy = nodeConfig?.routingPolicy ?? RoutingPolicy.First;
+    if (policy === RoutingPolicy.FanOut) {
+      const edges = this.getOutgoingEdges(event.nodeId);
+      if (edges.length > 1) {
+        if (request.fanOutDepth >= 4) {
+          // Task 333: depth cap — forward on lowest stored index, no branching
+          this.pendingLogEntries.push({
+            id: this.eventCounter,
+            timestamp: event.timestamp,
+            type: 'FAN_OUT_CAP',
+            nodeId: event.nodeId,
+            requestId: request.id,
+            message: `fan-out-depth-limit at ${nodeConfig?.label ?? event.nodeId} for request ${request.id}`,
+          });
+          // Fall through to normal processor handling with single target
+        } else {
+          // Dispatch branches — one per edge
+          dispatchBranches({
+            parent: request,
+            dispatchNodeId: event.nodeId,
+            edges,
+            policy: SubRequestPolicy.FanOut,
+            timestamp: event.timestamp,
+            context: this.getProcessorContext(),
+            requestMap: this.requests,
+            getNextRequestId: () => `req-${this.requestCounter++}`,
+          });
+          // Parent is now suspended — don't delegate to processor
+          return;
+        }
+      }
     }
 
     // Delegate to node processor
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       state.processor.onRequestArrived(event, request, this.getProcessorContext());
-      // If the processor set a terminal status, mark this request as done
+      // If the processor set a terminal status, handle accounting
       if (request.status !== RequestStatus.InFlight) {
-        // A Success status kicks off a response traversal (the processor schedules
-        // RequestComplete), and ResponseComplete owns the in-flight decrement.
-        // Only failure statuses terminate the request here.
         if (request.status !== RequestStatus.Success) {
-          this.markRequestDone(request.id);
+          // Guard 2 (task 335): markRequestDone only for non-branches
+          if (!request.parentRequestId) {
+            this.markRequestDone(request.id);
+          } else {
+            // Branch: schedule SubRequestSettled
+            this.scheduleSubRequestSettled(request, event.timestamp);
+          }
         }
         // Log dropped requests (queue full / pool exhausted)
         if (request.status === RequestStatus.Dropped) {
@@ -365,6 +407,16 @@ export class SimulationEngine {
             requestId: request.id,
             message: `Request dropped at ${nodeLabel} (queue full)`,
           });
+        }
+
+        // Record terminal status for non-success (processor already set it)
+        if (request.status !== RequestStatus.Success) {
+          this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus);
+          if (request.parentRequestId) {
+            this.metricsCollector.recordBranchTermination(request);
+          } else {
+            this.metricsCollector.recordCompletion(request);
+          }
         }
       }
     }
@@ -389,9 +441,15 @@ export class SimulationEngine {
 
     // If request is now complete, start response traversal
     if (request.status === RequestStatus.Success) {
+      this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
       this.startResponseTraversal(event, request);
     } else if (request.status === RequestStatus.Timeout) {
-      this.markRequestDone(request.id);
+      this.recordTerminalStatus(event.nodeId, RequestStatus.Timeout);
+      if (!request.parentRequestId) {
+        this.markRequestDone(request.id);
+      } else {
+        this.scheduleSubRequestSettled(request, event.timestamp);
+      }
       this.metricsCollector.recordCompletion(request);
     }
   }
@@ -404,6 +462,7 @@ export class SimulationEngine {
     }
     if (request.status !== RequestStatus.Success) return;
 
+    this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
     // Start response traversal
     this.startResponseTraversal(event, request);
   }
@@ -445,14 +504,26 @@ export class SimulationEngine {
     const responseHopIndex = event.payload.responseHopIndex as number;
 
     if (responseHopIndex <= 0) {
-      // Reached origin — complete
-      this.scheduleEvent({
-        type: SimEventType.ResponseComplete,
-        timestamp: event.timestamp + hopLatency,
-        nodeId: request.path[0]!,
-        requestId: request.id,
-        payload: {},
-      });
+      // Task 329: branch response terminates at dispatch node (path[0])
+      if (request.parentRequestId) {
+        // Branch reached its dispatch node — emit SubRequestSettled
+        this.scheduleEvent({
+          type: SimEventType.SubRequestSettled,
+          timestamp: event.timestamp + hopLatency,
+          nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+          requestId: request.id,
+          payload: {},
+        });
+      } else {
+        // Parent/top-level — reached origin, complete
+        this.scheduleEvent({
+          type: SimEventType.ResponseComplete,
+          timestamp: event.timestamp + hopLatency,
+          nodeId: request.path[0]!,
+          requestId: request.id,
+          payload: {},
+        });
+      }
     } else {
       // Continue backwards
       this.scheduleEvent({
@@ -468,7 +539,11 @@ export class SimulationEngine {
   private handleResponseComplete(event: SimEvent): void {
     const request = this.requests.get(event.requestId);
     if (!request) return;
+    // Branches never reach ResponseComplete — they emit SubRequestSettled
+    if (request.parentRequestId) return;
+
     request.completedAt = event.timestamp;
+    this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
     this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
 
@@ -488,12 +563,68 @@ export class SimulationEngine {
     }
   }
 
+  /**
+   * Task 331/332 — SubRequestSettled handler.
+   * Accumulates maxBranchSettleMs, removes from pendingBranchIds.
+   * On last settle: adds max settle time to parent latency, resumes parent.
+   * On failure: applies branchPolicy failure mapping to terminate parent.
+   */
+  private handleSubRequestSettled(event: SimEvent): void {
+    const branch = this.requests.get(event.requestId);
+    if (!branch) return;
+
+    const parent = branch.parentRequestId
+      ? this.requests.get(branch.parentRequestId)
+      : undefined;
+    if (!parent) return;
+
+    // If branch was discarded (sibling failed first), ignore
+    if (branch.isDiscarded) return;
+
+    const result = settleBranch(branch, parent, this.requests, event.timestamp);
+
+    if (result.parentTerminated) {
+      // Apply failure mapping per branchPolicy (task 332)
+      const mappedStatus = mapBranchFailureToParent(
+        branch,
+        parent.branchPolicy ?? SubRequestPolicy.FanOut,
+      );
+      // Terminate the parent with the mapped status at the dispatch node
+      const dispatchNodeId = parent.path[parent.path.length - 1] ?? event.nodeId;
+      this.terminateRequest(parent, mappedStatus as TerminalStatus, dispatchNodeId, event.timestamp);
+    } else if (result.parentResumes) {
+      // All branches settled successfully — resume parent
+      // The parent is at a fan-out node. Start its response traversal.
+      if (parent.status === RequestStatus.InFlight) {
+        parent.status = RequestStatus.Success;
+        parent.completedAt = event.timestamp;
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.startResponseTraversal(
+          { ...event, nodeId: parent.path[parent.path.length - 1]! },
+          parent,
+        );
+      }
+    }
+  }
+
+  /**
+   * Schedule a SubRequestSettled event for a branch that has reached a terminal status.
+   */
+  private scheduleSubRequestSettled(request: SimRequest, timestamp: number): void {
+    this.scheduleEvent({
+      type: SimEventType.SubRequestSettled,
+      timestamp,
+      nodeId: request.dispatchedAtNodeId ?? request.path[0]!,
+      requestId: request.id,
+      payload: {},
+    });
+  }
+
   private handleRequestTimeout(event: SimEvent): void {
     const request = this.requests.get(event.requestId);
     if (!request) return;
     if (request.status === RequestStatus.InFlight) {
-      request.status = RequestStatus.Timeout;
-      request.completedAt = event.timestamp;
+      this.terminateRequest(request, RequestStatus.Timeout, event.nodeId, event.timestamp);
       const state = this.nodeStates.get(event.nodeId);
       if (state) {
         state.totalTimedOut++;
@@ -501,8 +632,10 @@ export class SimulationEngine {
         const idx = state.queuedRequests.indexOf(request.id);
         if (idx >= 0) state.queuedRequests.splice(idx, 1);
       }
-      this.markRequestDone(request.id);
-      this.metricsCollector.recordCompletion(request);
+      // If branch, schedule settle
+      if (request.parentRequestId) {
+        this.scheduleSubRequestSettled(request, event.timestamp);
+      }
       this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
 
       // Always log timeouts — they indicate problems
@@ -528,11 +661,13 @@ export class SimulationEngine {
     if (!request) return;
     if (request.status !== RequestStatus.InFlight) return;
 
-    request.status = RequestStatus.Dropped;
-    request.completedAt = event.timestamp;
-    this.markRequestDone(request.id);
-    this.metricsCollector.recordCompletion(request);
+    this.terminateRequest(request, RequestStatus.Dropped, event.nodeId, event.timestamp);
     this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
+
+    // If branch, schedule settle
+    if (request.parentRequestId) {
+      this.scheduleSubRequestSettled(request, event.timestamp);
+    }
 
     const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
     const reason = typeof event.payload.reason === 'string' ? event.payload.reason : 'DROPPED';
@@ -722,6 +857,56 @@ export class SimulationEngine {
     }
   }
 
+  /**
+   * Task 339 — inverse of markRequestDone for DLQ Redrive.
+   * Returns a dead-lettered Job to InFlight.
+   */
+  private unmarkRequestDone(requestId: string): void {
+    if (!this.countedAsComplete.delete(requestId)) return;
+    this.updateInFlightWeightedSum();
+    this.inFlightCount++;
+  }
+
+  /**
+   * Task 338 — single terminal-assignment helper replacing all direct status writes.
+   * Asserts the request was InFlight before assigning.
+   * Records the terminal status against the node's per-window and cumulative counts.
+   * For branches, records only per-node (via recordBranchTermination).
+   * For parents/top-level, records system-wide + per-node (via recordCompletion).
+   */
+  private terminateRequest(
+    request: SimRequest,
+    status: TerminalStatus,
+    nodeId: string,
+    timestamp: number,
+  ): void {
+    if (request.status !== RequestStatus.InFlight) return;
+    request.status = status;
+    request.completedAt = timestamp;
+
+    // Record terminal status counts on the node
+    this.recordTerminalStatus(nodeId, status);
+
+    if (request.parentRequestId) {
+      // Branch — per-node aggregates only, no system-wide counting
+      this.metricsCollector.recordBranchTermination(request);
+    } else {
+      // Parent or top-level request
+      this.markRequestDone(request.id);
+      this.metricsCollector.recordCompletion(request);
+    }
+  }
+
+  /**
+   * Task 340 — record a terminal status against a node's per-window and cumulative counts.
+   */
+  private recordTerminalStatus(nodeId: string, status: TerminalStatus): void {
+    const state = this.nodeStates.get(nodeId);
+    if (!state) return;
+    state.terminalCounts[status]++;
+    state.cumulativeTerminalCounts[status]++;
+  }
+
   private updateInFlightWeightedSum(): void {
     const now = this.virtualClockMs;
     const dt = now - this.lastInFlightChangeTime;
@@ -845,19 +1030,26 @@ export class SimulationEngine {
         this.metricsCollector.recordArrival(nodeId, requestId, timestamp),
       recordDeparture: (nodeId, requestId, timestamp) =>
         this.metricsCollector.recordDeparture(nodeId, requestId, timestamp),
+      unmarkRequestDone: (requestId) => this.unmarkRequestDone(requestId),
     };
   }
 
   private emitComplete(): void {
     const wallClockMs = Date.now() - this.startWallTime;
     const allRequests = [...this.requests.values()];
-    const successful = allRequests.filter((r) => r.status === RequestStatus.Success);
+    // Only count non-branch requests for system-wide summary
+    const topLevelRequests = allRequests.filter((r) => !r.parentRequestId);
+    const successful = topLevelRequests.filter((r) => r.status === RequestStatus.Success);
     const totalLatency = successful.reduce((sum, r) => sum + r.accumulatedLatencyMs, 0);
+    // Task 341: report unfinished In_Flight count
+    const unfinishedCount = topLevelRequests.filter((r) => r.status === RequestStatus.InFlight).length;
 
     this.onComplete?.({
       totalEvents: this.eventCounter,
-      totalRequests: allRequests.length,
-      successRate: allRequests.length > 0 ? successful.length / allRequests.length : 0,
+      totalRequests: topLevelRequests.length,
+      successRate: topLevelRequests.length > 0
+        ? successful.length / (topLevelRequests.length - unfinishedCount || 1)
+        : 0,
       avgEndToEndLatencyMs: successful.length > 0 ? totalLatency / successful.length : 0,
       simulatedDurationMs: this.virtualClockMs,
       wallClockDurationMs: wallClockMs,

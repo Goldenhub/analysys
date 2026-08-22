@@ -280,4 +280,6 @@ export interface ProcessorContext {
   currentTime(): number;
   recordArrival(nodeId: string, requestId: string, timestamp: number): void;
   recordDeparture(nodeId: string, requestId: string, timestamp: number): void;
+  /** R26.11, Task 339 — returns a dead-lettered Job to InFlight after a Redrive. */
+  unmarkRequestDone(requestId: string): void;
 }

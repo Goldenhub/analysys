@@ -4,8 +4,8 @@ import type {
   NodeMetricsSnapshot,
   UtilizationReading,
 } from '@/types/metrics';
-import type { NodeRuntimeState, SimRequest } from '../types';
-import { RequestStatus } from '../types';
+import type { NodeRuntimeState, SimRequest, TerminalStatus } from '../types';
+import { RequestStatus, FAILURE_CLASS_OF, FailureClass } from '../types';
 import { NodeMetricsAccumulator } from './NodeMetricsAccumulator';
 import { computePercentiles } from './percentiles';
 
@@ -32,6 +32,15 @@ export class MetricsCollector {
 
   recordCompletion(request: SimRequest): void {
     this.completedRequests.push(request);
+  }
+
+  /**
+   * Task 336 — record a branch's termination for per-node aggregates only.
+   * Does NOT add to completedRequests (system-wide counts).
+   */
+  recordBranchTermination(_request: SimRequest): void {
+    // Branch terminations affect per-node terminalCounts which are maintained
+    // by the engine's recordTerminalStatus. System-wide completion is NOT recorded.
   }
 
   generateBatch(
@@ -63,6 +72,8 @@ export class MetricsCollector {
         utilization,
         littlesLaw,
         healthStatus: this.deriveHealthStatus(utilization, errorRate),
+        terminalCounts: { ...state.terminalCounts },
+        cumulativeTerminalCounts: { ...state.cumulativeTerminalCounts },
       };
 
       nodeSnapshots.push(snapshot);
@@ -119,15 +130,37 @@ export class MetricsCollector {
     const successful = this.completedRequests.filter((r) => r.status === RequestStatus.Success);
     const latencies = successful.map((r) => r.accumulatedLatencyMs);
 
+    // Task 342: compute failure class rates
+    const windowDurationSec = this.windowMs / 1000;
+    const terminalInWindow = this.completedRequests.length;
+
+    // Count non-Success in window for total error rate
+    const nonSuccessCount = this.completedRequests.filter(
+      (r) => r.status !== RequestStatus.Success,
+    ).length;
+    const totalErrorRate = terminalInWindow > 0 ? nonSuccessCount / terminalInWindow : 0;
+
+    // Failure class counts
+    let admissionCount = 0;
+    let capacityReliabilityCount = 0;
+    let topologyConfigCount = 0;
+    for (const req of this.completedRequests) {
+      const failureClass = FAILURE_CLASS_OF[req.status as TerminalStatus];
+      if (failureClass === FailureClass.Admission) admissionCount++;
+      else if (failureClass === FailureClass.CapacityReliability) capacityReliabilityCount++;
+      else if (failureClass === FailureClass.TopologyConfiguration) topologyConfigCount++;
+    }
+
     return {
       totalThroughput: successful.length / (this.windowMs / 1000),
       endToEndLatency: computePercentiles(latencies),
-      totalErrorRate:
-        this.completedRequests.length > 0
-          ? this.completedRequests.filter((r) => r.status !== RequestStatus.Success).length /
-            this.completedRequests.length
-          : 0,
+      totalErrorRate,
       activeRequests: activeRequestCount,
+      failureClassRates: {
+        admission: admissionCount / windowDurationSec,
+        capacityReliability: capacityReliabilityCount / windowDurationSec,
+        topologyConfiguration: topologyConfigCount / windowDurationSec,
+      },
     };
   }
 }

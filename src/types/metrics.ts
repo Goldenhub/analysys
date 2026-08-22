@@ -47,6 +47,10 @@ export interface NodeMetricsSnapshot {
   utilization: UtilizationReading;
   littlesLaw: LittlesLawMetrics;
   healthStatus: 'green' | 'yellow' | 'red';
+  /** R31.4 — per-window terminal counts, reset at each window boundary. */
+  terminalCounts: Record<string, number>;
+  /** R31.3 — cumulative terminal counts across the run, never reset. */
+  cumulativeTerminalCounts: Record<string, number>;
 }
 
 /** Batch of metrics emitted periodically by the simulation worker. */
@@ -58,5 +62,11 @@ export interface MetricsBatchPayload {
     endToEndLatency: PercentileStats;
     totalErrorRate: number;
     activeRequests: number;
+    /** R31.5 — failure class rates in terminations per second. */
+    failureClassRates?: {
+      admission: number;
+      capacityReliability: number;
+      topologyConfiguration: number;
+    };
   };
 }
