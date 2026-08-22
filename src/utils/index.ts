@@ -8,3 +8,4 @@ export {
   type AnalysysFileSchema,
   type ValidationResult,
 } from './localStorage';
+export { round6, AnalysisError } from './round6';

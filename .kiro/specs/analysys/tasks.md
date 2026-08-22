@@ -752,44 +752,44 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 20.1 Finding Model (`src/types/findings.ts`, `src/analysis/FindingBuilder.ts`)
 
-- [~] 439. Define `FindingCategory` with the eight values in the declaration order the design pins as both the Requirement 35.8 tie-break order and the Requirement 43.2 group order, plus `Severity` and `Confidence`.
-- [~] 440. Define `EvidenceEntry`, `RecommendedAction`, `StructuralAction`, and `Finding` with the field bounds the design states, and enforce exactly one `primary` evidence entry per Finding.
-- [~] 441. Create `src/utils/round6.ts` implementing half-up rounding at 6 decimal places with explicit handling of negatives and an assertion that the result is finite.
-- [~] 442. Implement `FindingBuilder` passing every numeric value through `round6` at construction — not at display — so two independently computed Finding sets compare equal under exact numeric comparison.
-- [~] 443. Derive the stable identifier as `${ruleId}:${category}:${sortedSubjectNodeIds.join(',')}` so it survives a label edit, recomputation within a run, and repeated runs of the same inputs.
-- [~] 444. Key the result map on that identifier so "exactly one Finding" is enforced structurally rather than by each rule remembering to check.
-- [~] 445. Enforce units in `FindingBuilder`: 1 to 20 characters, `fraction` for a dimensionless 0.0–1.0 ratio and `percent` for a value scaled to 100, and derive confidence from the lowest completed-request count among subject nodes with the High/Medium/Low boundaries and the Steady_State condition the design states.
+- [x] 439. Define `FindingCategory` with the eight values in the declaration order the design pins as both the Requirement 35.8 tie-break order and the Requirement 43.2 group order, plus `Severity` and `Confidence`.
+- [x] 440. Define `EvidenceEntry`, `RecommendedAction`, `StructuralAction`, and `Finding` with the field bounds the design states, and enforce exactly one `primary` evidence entry per Finding.
+- [x] 441. Create `src/utils/round6.ts` implementing half-up rounding at 6 decimal places with explicit handling of negatives and an assertion that the result is finite.
+- [x] 442. Implement `FindingBuilder` passing every numeric value through `round6` at construction — not at display — so two independently computed Finding sets compare equal under exact numeric comparison.
+- [x] 443. Derive the stable identifier as `${ruleId}:${category}:${sortedSubjectNodeIds.join(',')}` so it survives a label edit, recomputation within a run, and repeated runs of the same inputs.
+- [x] 444. Key the result map on that identifier so "exactly one Finding" is enforced structurally rather than by each rule remembering to check.
+- [x] 445. Enforce units in `FindingBuilder`: 1 to 20 characters, `fraction` for a dimensionless 0.0–1.0 ratio and `percent` for a value scaled to 100, and derive confidence from the lowest completed-request count among subject nodes with the High/Medium/Low boundaries and the Steady_State condition the design states.
 
 ### 20.2 Window Store (`src/analysis/AnalysisWindowStore.ts`)
 
-- [~] 446. Implement a ring buffer retaining the 16 most recent metrics windows plus cumulative run totals, fed from `METRICS_BATCH`.
-- [~] 447. Exclude zero-duration windows from the completed-window count so the "3 completed windows" gate is not satisfied by a degenerate final snapshot.
-- [~] 448. Implement `Steady_State` detection per node: arrival rate varying under 10% between adjacent windows across at least 3 consecutive windows with queue-depth net change within ±5% of the mean depth.
-- [~] 449. Implement `AnalysisContext` exposing `windows`, `cumulative`, `topology`, `labelOf` with the shortened-identifier fallback, `eventLog`, and the optional `serviceObjective`.
+- [x] 446. Implement a ring buffer retaining the 16 most recent metrics windows plus cumulative run totals, fed from `METRICS_BATCH`.
+- [x] 447. Exclude zero-duration windows from the completed-window count so the "3 completed windows" gate is not satisfied by a degenerate final snapshot.
+- [x] 448. Implement `Steady_State` detection per node: arrival rate varying under 10% between adjacent windows across at least 3 consecutive windows with queue-depth net change within ±5% of the mean depth.
+- [x] 449. Implement `AnalysisContext` exposing `windows`, `cumulative`, `topology`, `labelOf` with the shortened-identifier fallback, `eventLog`, and the optional `serviceObjective`.
 
 ### 20.3 Slicing Scheduler (`src/analysis/AnalysisScheduler.ts`)
 
-- [~] 450. Implement the `AnalysisRule` interface with `id`, `category`, `requiredMetrics`, and an `evaluate(ctx): Generator<void, Finding[], void>` — a generator rather than `async`/`await` so a rule yields at a point of its own choosing instead of at every `await`.
-- [~] 451. Implement `recompute` iterating `RULE_REGISTRY`, with `SLICE_BUDGET_MS = 33` and `TOTAL_BUDGET_MS = 500`.
-- [~] 452. Implement `yieldToFrame` as a `MessageChannel` port hop rather than `setTimeout(0)`, which browsers clamp to roughly 4 ms after nested timeouts and would consume about 12% of the 500 ms budget across a full pass's yields.
-- [~] 453. On reaching 500 ms, stop at the end of the slice in progress, retain and keep displaying the previously completed Finding set, never show a partial set, and report the count and identifiers of the rules that did not complete plus the window boundary at which it stopped.
-- [~] 454. Record suppression as a first-class outcome `{ ruleId, metricName, affectedNodeLabels[] }` when a required metric is `not-applicable` or absent, emitting no Finding for the affected nodes while every other rule runs unchanged.
-- [~] 455. Drive exactly one recomputation per completed metrics window boundary while Running, none between boundaries, and exactly one more on entering `Complete` over the final analysis window.
-- [~] 456. Display no Finding below 3 completed windows and state the completed count against the 3 required, keeping that state distinguishable from a completed analysis that produced no Finding.
+- [x] 450. Implement the `AnalysisRule` interface with `id`, `category`, `requiredMetrics`, and an `evaluate(ctx): Generator<void, Finding[], void>` — a generator rather than `async`/`await` so a rule yields at a point of its own choosing instead of at every `await`.
+- [x] 451. Implement `recompute` iterating `RULE_REGISTRY`, with `SLICE_BUDGET_MS = 33` and `TOTAL_BUDGET_MS = 500`.
+- [x] 452. Implement `yieldToFrame` as a `MessageChannel` port hop rather than `setTimeout(0)`, which browsers clamp to roughly 4 ms after nested timeouts and would consume about 12% of the 500 ms budget across a full pass's yields.
+- [x] 453. On reaching 500 ms, stop at the end of the slice in progress, retain and keep displaying the previously completed Finding set, never show a partial set, and report the count and identifiers of the rules that did not complete plus the window boundary at which it stopped.
+- [x] 454. Record suppression as a first-class outcome `{ ruleId, metricName, affectedNodeLabels[] }` when a required metric is `not-applicable` or absent, emitting no Finding for the affected nodes while every other rule runs unchanged.
+- [x] 455. Drive exactly one recomputation per completed metrics window boundary while Running, none between boundaries, and exactly one more on entering `Complete` over the final analysis window.
+- [x] 456. Display no Finding below 3 completed windows and state the completed count against the 3 required, keeping that state distinguishable from a completed analysis that produced no Finding.
 
 ### 20.4 Analysis Store (`src/store/analysisStore.ts`)
 
-- [~] 457. Create `analysisStore` holding the current Finding set, the suppression list, sweep results, and comparison results, and subscribe the scheduler to `METRICS_BATCH` window boundaries.
-- [~] 458. Retain an imported Finding set until a subsequent run produces a recomputed set, performing no recomputation of any imported Finding.
-- [~] 459. Label a displayed imported set with the PRNG seed, simulated duration, and offered load recorded in its report.
+- [x] 457. Create `analysisStore` holding the current Finding set, the suppression list, sweep results, and comparison results, and subscribe the scheduler to `METRICS_BATCH` window boundaries.
+- [x] 458. Retain an imported Finding set until a subsequent run produces a recomputed set, performing no recomputation of any imported Finding.
+- [x] 459. Label a displayed imported set with the PRNG seed, simulated duration, and offered load recorded in its report.
 
 ### 20.5 Analysis Report (`src/analysis/report.ts`)
 
-- [~] 460. Implement JSON export carrying a report schema version, every displayed Finding with every field, the topology, every node configuration, the seed, the simulated duration, and the offered load.
-- [~] 461. Implement a Markdown export intended for reading, and accept only the JSON format for import.
-- [~] 462. Implement JSON import displaying every carried Finding with field values equal to the exported values, in the Requirement 35.8 display order.
-- [~] 463. Reject an import carrying an unsupported report schema version, omitting a required Finding field, or carrying an out-of-set category, severity, or confidence, naming the required version and each omitted field or unrecognised value, and leave the currently displayed Findings unchanged.
-- [~] 464. Write a round-trip test asserting export then import yields a Finding set equal to the original.
+- [x] 460. Implement JSON export carrying a report schema version, every displayed Finding with every field, the topology, every node configuration, the seed, the simulated duration, and the offered load.
+- [x] 461. Implement a Markdown export intended for reading, and accept only the JSON format for import.
+- [x] 462. Implement JSON import displaying every carried Finding with field values equal to the exported values, in the Requirement 35.8 display order.
+- [x] 463. Reject an import carrying an unsupported report schema version, omitting a required Finding field, or carrying an out-of-set category, severity, or confidence, naming the required version and each omitted field or unrecognised value, and leave the currently displayed Findings unchanged.
+- [x] 464. Write a round-trip test asserting export then import yields a Finding set equal to the original.
 
 ---
 
