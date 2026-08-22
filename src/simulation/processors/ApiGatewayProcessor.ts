@@ -48,7 +48,7 @@ export class ApiGatewayProcessor implements NodeProcessor {
       return;
     }
 
-    const edges = context.getOutgoingEdges(event.nodeId);
+    const edges = context.resolveTargets(event.nodeId, request);
     if (edges.length === 0) {
       request.status = RequestStatus.Dropped;
       request.completedAt = event.timestamp + authLatency;

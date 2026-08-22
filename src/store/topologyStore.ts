@@ -6,6 +6,7 @@ import {
   type EdgeChange,
 } from '@xyflow/react';
 import type { AnalysysNode, SimulationNode } from '../types/nodes';
+import type { RoutingPolicy } from '../types/nodes';
 import type { AnalysysEdge, EdgeData, EdgeProtocol } from '../types/edges';
 
 // ─── History Snapshot ────────────────────────────────────────────
@@ -39,6 +40,8 @@ interface TopologyActions {
   addEdge: (edge: AnalysysEdge) => void;
   removeEdge: (edgeId: string) => void;
   updateEdgeProtocol: (edgeId: string, protocol: EdgeProtocol) => void;
+  updateEdgeWeight: (edgeId: string, weight: number) => void;
+  updateNodeRoutingPolicy: (nodeId: string, policy: RoutingPolicy) => void;
 
   // React Flow compatibility handlers
   onNodesChange: (changes: NodeChange<AnalysysNode>[]) => void;
@@ -146,6 +149,27 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
           ? { ...e, data: { ...e.data!, protocol } }
           : e,
       ),
+    })),
+
+  updateEdgeWeight: (edgeId, weight) =>
+    set((state) => ({
+      ...pushHistory(state),
+      edges: state.edges.map((e) =>
+        e.id === edgeId
+          ? { ...e, data: { ...e.data!, weight } }
+          : e,
+      ),
+    })),
+
+  updateNodeRoutingPolicy: (nodeId, policy) =>
+    set((state) => ({
+      ...pushHistory(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const currentData = n.data as SimulationNode;
+        const updatedData = { ...currentData, routingPolicy: policy };
+        return { ...n, data: updatedData as AnalysysNode['data'] };
+      }),
     })),
 
   // ─── React Flow Handlers ─────────────────────────────────────

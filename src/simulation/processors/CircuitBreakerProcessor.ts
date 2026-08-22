@@ -126,7 +126,7 @@ export class CircuitBreakerProcessor implements NodeProcessor {
     state: { totalProcessed: number; totalDropped: number; latencySamples: number[] },
   ): void {
     const latency = CircuitBreakerProcessor.FORWARD_LATENCY_MS;
-    const edges = context.getOutgoingEdges(event.nodeId);
+    const edges = context.resolveTargets(event.nodeId, request);
 
     if (edges.length === 0) {
       request.status = RequestStatus.Dropped;

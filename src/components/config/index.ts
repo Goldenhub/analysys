@@ -1,2 +1,2 @@
 // Node configuration panel components barrel file
-export {};
+export { RoutingPolicyField } from './RoutingPolicyField';

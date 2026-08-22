@@ -1,4 +1,4 @@
-import { NodeType } from '@/types/nodes';
+import { NodeType, RoutingPolicy } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import type { SimulationEngineConfig, ChaosEventPayload } from '@/types/messages';
@@ -38,6 +38,11 @@ export class SimulationEngine {
   private config: SimulationEngineConfig;
   private metricsCollector: MetricsCollector;
   private startWallTime = 0;
+
+  // R32.3 — engine-owned round-robin cursors, one per node. Initialised to 0,
+  // advanced by 1 per forwarding decision, wrapping after the highest index.
+  // Deliberately untouched by pause() and resume().
+  private roundRobinCursors: Map<string, number> = new Map();
 
   // Callback for sending messages back to main thread
   private onMetricsBatch: ((payload: MetricsBatchPayload) => void) | null = null;
@@ -143,6 +148,7 @@ export class SimulationEngine {
     this.countedAsComplete.clear();
     this.pendingLogEntries = [];
     this.completionLogCounter = 0;
+    this.roundRobinCursors.clear();
     this.metricsCollector.reset();
     this.initializeNodeStates(this.config.topology.nodes);
     this.scheduleInitialEvents(this.config.topology.nodes);
@@ -630,9 +636,11 @@ export class SimulationEngine {
   private initializeNodeStates(nodes: SimulationNode[]): void {
     this.nodeStates.clear();
     this.nodeConfigs.clear();
+    this.roundRobinCursors.clear();
 
     for (const node of nodes) {
       this.nodeConfigs.set(node.id, node);
+      this.roundRobinCursors.set(node.id, 0);
       const processor = this.createProcessor(node);
       this.nodeStates.set(node.id, {
         nodeId: node.id,
@@ -735,25 +743,100 @@ export class SimulationEngine {
   }
 
   /**
-   * Provisional: returns the First-policy result for every node, so behaviour is
-   * unchanged from the hard-coded `edges[0]` forwarding the nine processors do today.
-   *
-   * TODO(task 318): implement the full Requirement 32 policy resolution — Round_Robin
-   * cursors, one weighted PRNG draw against cumulative normalised weights, and every
-   * outgoing edge for Fan_Out below the depth cap — and read `request` to do it. Task 323
-   * then migrates the nine processors off `edges[0]!.target` onto this.
+   * R32.2–R32.8 — resolve which outgoing edges to dispatch a request along, per the
+   * node's routing policy:
+   *   First: the outgoing edge of lowest stored index (index 0).
+   *   Round_Robin: the edge at the engine-owned cursor, advanced by 1 after each decision.
+   *   Weighted: one PRNG draw compared against cumulative normalised weights in ascending
+   *     stored index order — configured weights stay unchanged.
+   *   Fan_Out: every outgoing edge, unless `request.fanOutDepth >= 4`, in which case fall
+   *     back to the lowest stored index alone (no branching).
    */
-  private resolveTargets(nodeId: string): EdgeData[] {
-    // `buildAdjacency` preserves serialized edge order, so index 0 is the outgoing edge
-    // of lowest stored index (R32.2).
-    return this.getOutgoingEdges(nodeId).slice(0, 1);
+  private resolveTargets(nodeId: string, request: SimRequest): EdgeData[] {
+    const edges = this.getOutgoingEdges(nodeId);
+    if (edges.length === 0) return [];
+
+    const node = this.nodeConfigs.get(nodeId);
+    const policy = node?.routingPolicy ?? RoutingPolicy.First;
+
+    switch (policy) {
+      case RoutingPolicy.First:
+        return [edges[0]!];
+
+      case RoutingPolicy.RoundRobin: {
+        const cursor = this.roundRobinCursors.get(nodeId) ?? 0;
+        const selected = edges[cursor % edges.length]!;
+        this.roundRobinCursors.set(nodeId, (cursor + 1) % edges.length);
+        return [selected];
+      }
+
+      case RoutingPolicy.Weighted: {
+        const selected = this.weightedSelect(nodeId, edges);
+        return [selected];
+      }
+
+      case RoutingPolicy.FanOut: {
+        if (request.fanOutDepth >= 4) {
+          // Depth cap reached — forward along lowest stored index alone, no branching.
+          this.pendingLogEntries.push({
+            id: this.eventCounter,
+            timestamp: this.virtualClockMs,
+            type: 'FAN_OUT_CAP',
+            nodeId,
+            message: `Fan-out depth cap (4) reached at ${node?.label ?? nodeId}; forwarding on single edge`,
+          });
+          return [edges[0]!];
+        }
+        return [...edges];
+      }
+    }
+  }
+
+  /**
+   * R32.4–R32.5 — one PRNG draw compared against cumulative normalised weights in ascending
+   * stored index order. Configured weights are left unchanged (normalisation is idempotent:
+   * we normalise on the fly without mutating edge.weight).
+   *
+   * R32.6 — if the sum of weights is zero or non-finite, fall back to uniform 1/outDegree
+   * and emit a normalisation warning naming the node's user-assigned label.
+   */
+  private weightedSelect(nodeId: string, edges: EdgeData[]): EdgeData {
+    const node = this.nodeConfigs.get(nodeId);
+    let weightSum = 0;
+    for (const edge of edges) {
+      weightSum += edge.weight;
+    }
+
+    // Zero or non-finite weight-sum fallback to uniform 1/outDegree
+    if (weightSum <= 0 || !isFinite(weightSum)) {
+      const label = node?.label ?? nodeId;
+      console.warn(
+        `[routing] Normalisation warning: node "${label}" has a zero or non-finite weight sum (${weightSum}). Falling back to uniform 1/${edges.length}.`,
+      );
+      // Uniform selection via a single PRNG draw
+      const draw = this.rng.next();
+      const index = Math.min(Math.floor(draw * edges.length), edges.length - 1);
+      return edges[index]!;
+    }
+
+    // Weighted selection with cumulative normalised weights
+    const draw = this.rng.next();
+    let cumulative = 0;
+    for (const edge of edges) {
+      cumulative += edge.weight / weightSum;
+      if (draw < cumulative) {
+        return edge;
+      }
+    }
+    // Floating-point rounding — fall back to last edge
+    return edges[edges.length - 1]!;
   }
 
   private getProcessorContext(): ProcessorContext {
     return {
       scheduleEvent: (partial) => this.scheduleEvent(partial),
       getOutgoingEdges: (nodeId) => this.getOutgoingEdges(nodeId),
-      resolveTargets: (nodeId, _request) => this.resolveTargets(nodeId),
+      resolveTargets: (nodeId, request) => this.resolveTargets(nodeId, request),
       getNodeConfig: (nodeId) => this.nodeConfigs.get(nodeId),
       getNodeState: (nodeId) => this.nodeStates.get(nodeId),
       getRNG: () => this.rng,

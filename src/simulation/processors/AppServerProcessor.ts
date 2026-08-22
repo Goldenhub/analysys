@@ -87,9 +87,9 @@ export class AppServerProcessor implements NodeProcessor {
     state.latencySamples.push(request.accumulatedLatencyMs);
 
     // Route downstream
-    const edges = context.getOutgoingEdges(event.nodeId);
+    const edges = context.resolveTargets(event.nodeId, request);
     if (edges.length > 0) {
-      const target = edges[0]!.target; // Simple: route to first downstream
+      const target = edges[0]!.target;
       context.scheduleEvent({
         type: SimEventType.RequestRoute,
         timestamp: event.timestamp,

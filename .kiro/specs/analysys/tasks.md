@@ -557,14 +557,14 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 15.1 Routing Policies (`src/simulation/routing.ts`)
 
-- [~] 318. Implement `resolveTargets(nodeId, request)` returning every edge to dispatch along — one edge for First, Round_Robin, and Weighted, and every outgoing edge for Fan_Out below the depth cap — and expose it on `ProcessorContext`.
-- [~] 319. Implement the First policy as the outgoing edge of lowest stored index, relying on `buildAdjacency` already preserving serialized edge order, and add a test that a save/load round trip does not change which edge a node forwards along.
-- [~] 320. Implement Round_Robin with an engine-owned `roundRobinCursors: Map<string, number>` initialised to index 0 in the constructor and in `reset()`, advanced by exactly one per forwarding decision, wrapping after the highest index, and deliberately untouched by `pause()` and `resume()`.
-- [~] 321. Implement Weighted selection with exactly one PRNG draw per forwarding decision compared against cumulative normalised weights accumulated in ascending stored index order, leaving every configured weight stored unchanged so normalisation is idempotent.
-- [~] 322. Implement the zero-or-non-finite weight-sum fallback to uniform `1/outDegree` plus a normalisation warning naming the node's user-assigned label, so no decision divides by zero and no request is terminated for want of a weight.
-- [~] 323. Replace every hard-coded `edges[0]!.target` forwarding decision in the nine shipped processors with `context.resolveTargets`, so routing state cannot diverge per processor.
-- [~] 324. Create `src/components/config/RoutingPolicyField.tsx` offering the policy select on every node type permitting two or more outgoing edges plus a per-edge weight input, showing each normalised weight to 2 decimal places alongside its configured value.
-- [~] 325. Write unit tests for routing: First stability across persistence, the Round_Robin cycle and its reset-and-pause behaviour, weighted selection at a fixed seed, weight-sum-zero fallback, and normalisation idempotence.
+- [x] 318. Implement `resolveTargets(nodeId, request)` returning every edge to dispatch along — one edge for First, Round_Robin, and Weighted, and every outgoing edge for Fan_Out below the depth cap — and expose it on `ProcessorContext`.
+- [x] 319. Implement the First policy as the outgoing edge of lowest stored index, relying on `buildAdjacency` already preserving serialized edge order, and add a test that a save/load round trip does not change which edge a node forwards along.
+- [x] 320. Implement Round_Robin with an engine-owned `roundRobinCursors: Map<string, number>` initialised to index 0 in the constructor and in `reset()`, advanced by exactly one per forwarding decision, wrapping after the highest index, and deliberately untouched by `pause()` and `resume()`.
+- [x] 321. Implement Weighted selection with exactly one PRNG draw per forwarding decision compared against cumulative normalised weights accumulated in ascending stored index order, leaving every configured weight stored unchanged so normalisation is idempotent.
+- [x] 322. Implement the zero-or-non-finite weight-sum fallback to uniform `1/outDegree` plus a normalisation warning naming the node's user-assigned label, so no decision divides by zero and no request is terminated for want of a weight.
+- [x] 323. Replace every hard-coded `edges[0]!.target` forwarding decision in the nine shipped processors with `context.resolveTargets`, so routing state cannot diverge per processor.
+- [x] 324. Create `src/components/config/RoutingPolicyField.tsx` offering the policy select on every node type permitting two or more outgoing edges plus a per-edge weight input, showing each normalised weight to 2 decimal places alongside its configured value.
+- [x] 325. Write unit tests for routing: First stability across persistence, the Round_Robin cycle and its reset-and-pause behaviour, weighted selection at a fixed seed, weight-sum-zero fallback, and normalisation idempotence.
 
 ### 15.2 Sub-Requests and Fan-Out (`src/simulation/subRequests.ts`)
 

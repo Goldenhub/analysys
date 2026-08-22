@@ -3695,6 +3695,16 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413317047
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418719316
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421280922
       }
     ],
     "319. Implement the First policy as the outgoing edge of lowest stored index, relying on `buildAdjacency` already preserving serialized edge order, and add a test that a save/load round trip does not change which edge a node forwards along.": [
@@ -3702,6 +3712,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413317863
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421282479
       }
     ],
     "320. Implement Round_Robin with an engine-owned `roundRobinCursors: Map<string, number>` initialised to index 0 in the constructor and in `reset()`, advanced by exactly one per forwarding decision, wrapping after the highest index, and deliberately untouched by `pause()` and `resume()`.": [
@@ -3709,6 +3724,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413318374
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421283997
       }
     ],
     "321. Implement Weighted selection with exactly one PRNG draw per forwarding decision compared against cumulative normalised weights accumulated in ascending stored index order, leaving every configured weight stored unchanged so normalisation is idempotent.": [
@@ -3716,6 +3736,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413318763
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421285713
       }
     ],
     "322. Implement the zero-or-non-finite weight-sum fallback to uniform `1/outDegree` plus a normalisation warning naming the node's user-assigned label, so no decision divides by zero and no request is terminated for want of a weight.": [
@@ -3723,6 +3748,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413319400
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421287394
       }
     ],
     "323. Replace every hard-coded `edges[0]!.target` forwarding decision in the nine shipped processors with `context.resolveTargets`, so routing state cannot diverge per processor.": [
@@ -3730,6 +3760,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413319859
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421289439
       }
     ],
     "324. Create `src/components/config/RoutingPolicyField.tsx` offering the policy select on every node type permitting two or more outgoing edges plus a per-edge weight input, showing each normalised weight to 2 decimal places alongside its configured value.": [
@@ -3737,6 +3772,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413320190
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421290973
       }
     ],
     "325. Write unit tests for routing: First stability across persistence, the Round_Robin cycle and its reset-and-pause behaviour, weighted selection at a fixed seed, weight-sum-zero fallback, and normalisation idempotence.": [
@@ -3744,6 +3784,11 @@
         "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787413320611
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787421292637
       }
     ],
     "326. Define `SubRequestPolicy` with the three values `FanOut`, `AuthIntrospection`, and `AuthzLookup`, and implement one shared dispatch-and-settle mechanism used by all three rather than a bespoke path per node type.": [

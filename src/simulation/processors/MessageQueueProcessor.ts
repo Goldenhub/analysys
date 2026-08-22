@@ -114,24 +114,28 @@ export class MessageQueueProcessor implements NodeProcessor {
     state.bufferedMessages = this.buffer.length;
     state.queuedRequests = [...this.buffer];
 
-    // Route each consumed message downstream
+    // Route each consumed message downstream via resolveTargets
     const edges = context.getOutgoingEdges(event.nodeId);
     if (edges.length > 0) {
-      const target = edges[0]!.target;
       for (let i = 0; i < batch.length; i++) {
-        context.scheduleEvent({
-          type: SimEventType.RequestRoute,
-          timestamp: event.timestamp + i * 0.01, // slight stagger
-          nodeId: target,
-          requestId: batch[i]!,
-          payload: { fromNodeId: event.nodeId, batchIndex: i },
-        });
+        // Use resolveTargets for each message — requires a dummy request for the
+        // interface, but the consumer poll target selection must follow the node's
+        // routing policy. We use a minimal request stub to satisfy the interface.
+        const resolved = context.resolveTargets(event.nodeId, { fanOutDepth: 0 } as SimRequest);
+        if (resolved.length > 0) {
+          context.scheduleEvent({
+            type: SimEventType.RequestRoute,
+            timestamp: event.timestamp + i * 0.01, // slight stagger
+            nodeId: resolved[0]!.target,
+            requestId: batch[i]!,
+            payload: { fromNodeId: event.nodeId, batchIndex: i },
+          });
+        }
       }
     }
 
     // Schedule next poll if buffer still has messages
     if (this.buffer.length > 0) {
-      // scheduleConsumerPoll already adds the poll interval to the base timestamp
       this.scheduleConsumerPoll(event.nodeId, event.timestamp, context);
     } else {
       this.consumerScheduled = false;

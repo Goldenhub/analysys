@@ -61,7 +61,7 @@ export class CacheProcessor implements NodeProcessor {
     } else {
       // Cache miss — forward to downstream (DB)
       this.missesInWindow++;
-      const edges = context.getOutgoingEdges(event.nodeId);
+      const edges = context.resolveTargets(event.nodeId, request);
       if (edges.length > 0) {
         const target = edges[0]!.target;
         context.scheduleEvent({

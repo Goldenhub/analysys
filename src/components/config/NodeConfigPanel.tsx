@@ -29,6 +29,7 @@ import { WorkerPoolForm } from './forms/WorkerPoolForm';
 import { DeadLetterQueueForm } from './forms/DeadLetterQueueForm';
 import { ObjectStoreForm } from './forms/ObjectStoreForm';
 import { SchedulerForm } from './forms/SchedulerForm';
+import { RoutingPolicyField } from './RoutingPolicyField';
 
 // ─── Validation Types ────────────────────────────────────────────
 
@@ -1321,6 +1322,14 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             errors={errors}
           />
         )}
+
+        {/* R32 — routing policy field, shown for any node with 2+ outgoing edges */}
+        <div className="mt-3 border-t border-gray-800 pt-3">
+          <RoutingPolicyField
+            nodeId={selectedNodeId}
+            routingPolicy={nodeData.routingPolicy}
+          />
+        </div>
       </div>
 
       {/* Footer hint — only relevant while editing config */}
