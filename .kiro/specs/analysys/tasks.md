@@ -678,30 +678,30 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 17.1 Store and Validation (`src/store/topologyStore.ts`, `src/validation/groupValidation.ts`)
 
-- [~] 395. Add `subsystemGroups: SubsystemGroup[]` to `topologyStore` with the actions `createGroup`, `renameGroup`, `setGroupCollapsed`, `addNodesToGroup`, `removeNodesFromGroup`, `deleteGroup`, and `dragGroup`.
-- [~] 396. Create `src/validation/groupValidation.ts` enforcing the partition invariants — at most 20 groups, 2 to 50 members each, membership disjoint across groups, one level deep — re-checked on every mutation with the whole operation rejected on violation.
-- [~] 397. Reject a group creation naming the violated limit together with the labels of any selected nodes already in a group, leaving every existing group and every node position unchanged.
-- [~] 398. Validate group names as 1 to 40 characters after trimming and case-insensitively unique, with an inline error naming the violated constraint and the stored name left at its previous value on rejection.
-- [~] 399. Add a membership sweep to the existing `removeNode` so deleting a node drops it from its group, and delete a group left with fewer than 2 members while every remaining node and edge stays on the Canvas at its stored position.
-- [~] 400. Implement `deleteGroup` and `removeNodesFromGroup` so every affected node and edge is retained at its stored position whether the group was collapsed or expanded.
-- [~] 401. Implement group import normalisation rather than rejection: truncate a name past 40 characters, suffix a duplicate name, drop absent and duplicated member identifiers, keep the first 50 in stored order, drop a group left with fewer than 2, and record a normalisation warning naming the group, the violation, and the applied change.
+- [x] 395. Add `subsystemGroups: SubsystemGroup[]` to `topologyStore` with the actions `createGroup`, `renameGroup`, `setGroupCollapsed`, `addNodesToGroup`, `removeNodesFromGroup`, `deleteGroup`, and `dragGroup`.
+- [x] 396. Create `src/validation/groupValidation.ts` enforcing the partition invariants — at most 20 groups, 2 to 50 members each, membership disjoint across groups, one level deep — re-checked on every mutation with the whole operation rejected on violation.
+- [x] 397. Reject a group creation naming the violated limit together with the labels of any selected nodes already in a group, leaving every existing group and every node position unchanged.
+- [x] 398. Validate group names as 1 to 40 characters after trimming and case-insensitively unique, with an inline error naming the violated constraint and the stored name left at its previous value on rejection.
+- [x] 399. Add a membership sweep to the existing `removeNode` so deleting a node drops it from its group, and delete a group left with fewer than 2 members while every remaining node and edge stays on the Canvas at its stored position.
+- [x] 400. Implement `deleteGroup` and `removeNodesFromGroup` so every affected node and edge is retained at its stored position whether the group was collapsed or expanded.
+- [x] 401. Implement group import normalisation rather than rejection: truncate a name past 40 characters, suffix a duplicate name, drop absent and duplicated member identifiers, keep the first 50 in stored order, drop a group left with fewer than 2, and record a normalisation warning naming the group, the violation, and the applied change.
 
 ### 17.2 Derived Rendering View (`src/components/canvas/groups/`)
 
-- [~] 402. Implement `useCollapsedTopologyView.ts` mapping the canonical topology plus groups onto the node and edge arrays React Flow renders, deliberately not using React Flow `parentId`/`extent: 'parent'` so member positions stay absolute and collapse/expand and group deletion remain position-preserving no-ops.
-- [~] 403. For each collapsed group emit one `SUBSYSTEM_GROUP` node at the members' bounding-box centre, omit every member node, and omit every edge whose source and target are both members.
-- [~] 404. Rewrite each boundary edge's contained endpoint to the group node and merge boundary edges sharing group, external node, and direction into one edge keyed `grp:{groupId}:{in|out}:{externalNodeId}` carrying `underlyingEdgeIds`, `underlyingCount`, and `memberLabels`.
-- [~] 405. Create `SubsystemGroupNode.tsx` as the collapsed group element and register it in the `nodeTypes` map, and `MergedBoundaryEdge.tsx` displaying the underlying-edge count and listing each merged member's label and protocol on hover or activation.
-- [~] 406. Implement `dragGroup` so a drag on a collapsed group applies the displacement to every member's stored position, leaving relative positions unchanged.
-- [~] 407. Create `GroupToolbar.tsx` offering create, rename, collapse, expand, add-to-group, remove-from-group, and delete, all operable by keyboard alone and permitted in the Idle, Running, Paused, and Complete simulation states.
-- [~] 408. Confirm `getTopologySnapshot()` is unchanged and sends no group information on `INIT`, and write a test that two runs of the same topology and seed produce identical metrics across differing group sets and collapsed states.
+- [x] 402. Implement `useCollapsedTopologyView.ts` mapping the canonical topology plus groups onto the node and edge arrays React Flow renders, deliberately not using React Flow `parentId`/`extent: 'parent'` so member positions stay absolute and collapse/expand and group deletion remain position-preserving no-ops.
+- [x] 403. For each collapsed group emit one `SUBSYSTEM_GROUP` node at the members' bounding-box centre, omit every member node, and omit every edge whose source and target are both members.
+- [x] 404. Rewrite each boundary edge's contained endpoint to the group node and merge boundary edges sharing group, external node, and direction into one edge keyed `grp:{groupId}:{in|out}:{externalNodeId}` carrying `underlyingEdgeIds`, `underlyingCount`, and `memberLabels`.
+- [x] 405. Create `SubsystemGroupNode.tsx` as the collapsed group element and register it in the `nodeTypes` map, and `MergedBoundaryEdge.tsx` displaying the underlying-edge count and listing each merged member's label and protocol on hover or activation.
+- [x] 406. Implement `dragGroup` so a drag on a collapsed group applies the displacement to every member's stored position, leaving relative positions unchanged.
+- [x] 407. Create `GroupToolbar.tsx` offering create, rename, collapse, expand, add-to-group, remove-from-group, and delete, all operable by keyboard alone and permitted in the Idle, Running, Paused, and Complete simulation states.
+- [x] 408. Confirm `getTopologySnapshot()` is unchanged and sends no group information on `INIT`, and write a test that two runs of the same topology and seed produce identical metrics across differing group sets and collapsed states.
 
 ### 17.3 Group Telemetry Rollup
 
-- [~] 409. Display on each collapsed group the summed member throughput, the summed member error count, and the least healthy member status under the order red, then yellow, then green, each with its unit, excluding members with no available status.
-- [~] 410. Report a collapsed group's health as not applicable with a plain-language explanation while no member has an available status.
-- [~] 411. Create `src/components/telemetry/SubsystemBreakdown.tsx` reporting per group the summed throughput, the summed error count by terminal status, the highest member Utilization among numeric readings, and the label of the member holding it — computed on the main thread from the latest `METRICS_BATCH`.
-- [~] 412. Report a group's highest Utilization as not applicable with no number and no label while every member reads `not-applicable`.
+- [x] 409. Display on each collapsed group the summed member throughput, the summed member error count, and the least healthy member status under the order red, then yellow, then green, each with its unit, excluding members with no available status.
+- [x] 410. Report a collapsed group's health as not applicable with a plain-language explanation while no member has an available status.
+- [x] 411. Create `src/components/telemetry/SubsystemBreakdown.tsx` reporting per group the summed throughput, the summed error count by terminal status, the highest member Utilization among numeric readings, and the label of the member holding it — computed on the main thread from the latest `METRICS_BATCH`.
+- [x] 412. Report a group's highest Utilization as not applicable with no number and no label while every member reads `not-applicable`.
 
 ---
 

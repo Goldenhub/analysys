@@ -41,6 +41,12 @@ import {
 } from './nodes';
 import { SyncEdge, AsyncEdge } from './edges';
 import { HealthLegend } from './HealthLegend';
+import {
+  SubsystemGroupNode,
+  MergedBoundaryEdge,
+  SUBSYSTEM_GROUP_NODE_TYPE,
+  MERGED_BOUNDARY_EDGE_TYPE,
+} from './groups';
 
 // ─── Custom Node Type Registry ───────────────────────────────────
 
@@ -60,6 +66,7 @@ const nodeTypes: NodeTypes = {
   [NodeType.DeadLetterQueue]: DeadLetterQueueNode,
   [NodeType.ObjectStore]: ObjectStoreNode,
   [NodeType.Scheduler]: SchedulerNode,
+  [SUBSYSTEM_GROUP_NODE_TYPE]: SubsystemGroupNode,
 };
 
 // ─── Custom Edge Type Registry ───────────────────────────────────
@@ -67,6 +74,7 @@ const nodeTypes: NodeTypes = {
 const edgeTypes: EdgeTypes = {
   [EdgeProtocol.Sync]: SyncEdge,
   [EdgeProtocol.Async]: AsyncEdge,
+  [MERGED_BOUNDARY_EDGE_TYPE]: MergedBoundaryEdge,
 };
 
 // ─── Default Edge Markers ────────────────────────────────────────
