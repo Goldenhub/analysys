@@ -282,4 +282,8 @@ export interface ProcessorContext {
   recordDeparture(nodeId: string, requestId: string, timestamp: number): void;
   /** R26.11, Task 339 — returns a dead-lettered Job to InFlight after a Redrive. */
   unmarkRequestDone(requestId: string): void;
+  /** Engine-level request map — used by processors that need sub-request dispatch. */
+  getRequestMap(): Map<string, SimRequest>;
+  /** Engine-level request counter — generates unique request IDs for sub-requests. */
+  getNextRequestId: () => string;
 }

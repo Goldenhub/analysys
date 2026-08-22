@@ -3,6 +3,7 @@ import { BackpressureStrategy } from '@/types/nodes';
 import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
+import { isBackpressureAware } from './WorkerPoolProcessor';
 
 export class MessageQueueProcessor implements NodeProcessor {
   private config: MessageQueueConfig;
@@ -151,6 +152,8 @@ export class MessageQueueProcessor implements NodeProcessor {
 
   /**
    * Consumer poll: drain batch of messages and route to downstream.
+   * Clamped by downstream consumer's admissionCapacity() where available (R25.4),
+   * and by Number.POSITIVE_INFINITY otherwise.
    */
   onConsumerPoll(
     event: SimEvent,
@@ -159,13 +162,22 @@ export class MessageQueueProcessor implements NodeProcessor {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
-    const batchSize = Math.min(this.config.consumerBatchSize, this.buffer.length);
+    // Check downstream consumer capacity
+    const edges = context.getOutgoingEdges(event.nodeId);
+    let downstreamRoom = Number.POSITIVE_INFINITY;
+    if (edges.length > 0) {
+      const consumerState = context.getNodeState(edges[0]!.target);
+      if (consumerState && isBackpressureAware(consumerState.processor)) {
+        downstreamRoom = consumerState.processor.admissionCapacity();
+      }
+    }
+
+    const batchSize = Math.min(this.config.consumerBatchSize, this.buffer.length, downstreamRoom);
     const batch = this.buffer.splice(0, batchSize);
     state.bufferedMessages = this.buffer.length;
     state.queuedRequests = [...this.buffer];
 
     // Route each consumed message downstream via resolveTargets
-    const edges = context.getOutgoingEdges(event.nodeId);
     if (edges.length > 0) {
       for (let i = 0; i < batch.length; i++) {
         // Use resolveTargets for each message — requires a dummy request for the
@@ -184,7 +196,9 @@ export class MessageQueueProcessor implements NodeProcessor {
       }
     }
 
-    // Schedule next poll if buffer still has messages
+    // Reschedule poll whenever buffer is non-empty, even if batchSize was 0,
+    // so consumption resumes when the pool drains (R25.4, task 370).
+    // The consumerScheduled latch handles the empty-buffer case.
     if (this.buffer.length > 0) {
       this.scheduleConsumerPoll(event.nodeId, event.timestamp, context);
     } else {

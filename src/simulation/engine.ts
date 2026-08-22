@@ -18,12 +18,12 @@ import { CacheProcessor } from './processors/CacheProcessor';
 import { DatabaseProcessor } from './processors/DatabaseProcessor';
 import { MessageQueueProcessor } from './processors/MessageQueueProcessor';
 import { MetricsCollector } from './metrics/MetricsCollector';
-import { AuthServiceSkeletonProcessor } from './processors/AuthServiceSkeletonProcessor';
-import { AuthzServiceSkeletonProcessor } from './processors/AuthzServiceSkeletonProcessor';
-import { WorkerPoolSkeletonProcessor } from './processors/WorkerPoolSkeletonProcessor';
-import { DeadLetterQueueSkeletonProcessor } from './processors/DeadLetterQueueSkeletonProcessor';
-import { ObjectStoreSkeletonProcessor } from './processors/ObjectStoreSkeletonProcessor';
-import { SchedulerSkeletonProcessor } from './processors/SchedulerSkeletonProcessor';
+import { AuthServiceProcessor } from './processors/AuthServiceProcessor';
+import { AuthzServiceProcessor } from './processors/AuthzServiceProcessor';
+import { WorkerPoolProcessor } from './processors/WorkerPoolProcessor';
+import { DeadLetterQueueProcessor } from './processors/DeadLetterQueueProcessor';
+import { ObjectStoreProcessor } from './processors/ObjectStoreProcessor';
+import { SchedulerProcessor } from './processors/SchedulerProcessor';
 import { dispatchBranches, settleBranch, mapBranchFailureToParent } from './subRequests';
 
 export class SimulationEngine {
@@ -172,6 +172,9 @@ export class SimulationEngine {
         applies = !targetNodeId || targetNodeId === nodeId;
       }
       if (chaosType === 'SPIKE_TRAFFIC' && node.nodeType === NodeType.TrafficGenerator) applies = true;
+      if (chaosType === 'DLQ_REDRIVE' && node.nodeType === NodeType.DeadLetterQueue) {
+        applies = !targetNodeId || targetNodeId === nodeId;
+      }
 
       if (applies) {
         state.processor.onChaosApplied(chaosType, payload.params);
@@ -203,6 +206,17 @@ export class SimulationEngine {
               payload: {},
             });
           }
+        }
+
+        // For DLQ_REDRIVE, trigger an immediate manual redrive
+        if (chaosType === 'DLQ_REDRIVE') {
+          this.scheduleEvent({
+            type: SimEventType.DlqRedrive,
+            timestamp: this.virtualClockMs,
+            nodeId,
+            requestId: '',
+            payload: { manual: true },
+          });
         }
       }
     }
@@ -269,6 +283,33 @@ export class SimulationEngine {
         break;
       case SimEventType.SubRequestSettled:
         this.handleSubRequestSettled(event);
+        break;
+      case SimEventType.VerificationComplete:
+        this.handleVerificationComplete(event);
+        break;
+      case SimEventType.PolicyEvaluated:
+        this.handlePolicyEvaluated(event);
+        break;
+      case SimEventType.JobAdmit:
+        this.handleJobAdmit(event);
+        break;
+      case SimEventType.JobAttemptComplete:
+        this.handleJobAttemptComplete(event);
+        break;
+      case SimEventType.JobRetryReady:
+        this.handleJobRetryReady(event);
+        break;
+      case SimEventType.JobTimeout:
+        this.handleJobTimeout(event);
+        break;
+      case SimEventType.DlqRedrive:
+        this.handleDlqRedrive(event);
+        break;
+      case SimEventType.TransferComplete:
+        this.handleTransferComplete(event);
+        break;
+      case SimEventType.SchedulerTrigger:
+        this.handleSchedulerTrigger(event);
         break;
       default:
         break;
@@ -417,6 +458,7 @@ export class SimulationEngine {
           } else {
             this.metricsCollector.recordCompletion(request);
           }
+          this.notifySourceOfTerminal(request);
         }
       }
     }
@@ -547,6 +589,9 @@ export class SimulationEngine {
     this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
 
+    // Notify the emitting source node (Scheduler overlap tracking)
+    this.notifySourceOfTerminal(request);
+
     // Log every Nth completion
     this.completionLogCounter++;
     if (this.completionLogCounter >= this.COMPLETION_LOG_SAMPLE_RATE) {
@@ -568,6 +613,9 @@ export class SimulationEngine {
    * Accumulates maxBranchSettleMs, removes from pendingBranchIds.
    * On last settle: adds max settle time to parent latency, resumes parent.
    * On failure: applies branchPolicy failure mapping to terminate parent.
+   *
+   * For Auth_Service and Authz_Service parents, delegates to processor-specific
+   * settlement logic instead of the generic fan-out resume.
    */
   private handleSubRequestSettled(event: SimEvent): void {
     const branch = this.requests.get(event.requestId);
@@ -584,17 +632,60 @@ export class SimulationEngine {
     const result = settleBranch(branch, parent, this.requests, event.timestamp);
 
     if (result.parentTerminated) {
-      // Apply failure mapping per branchPolicy (task 332)
+      // Check if parent is at an Auth or Authz node — delegate to processor
+      const dispatchNodeId = parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
+      const nodeConfig = this.nodeConfigs.get(dispatchNodeId);
+
+      if (nodeConfig?.nodeType === NodeType.AuthService) {
+        const state = this.nodeStates.get(dispatchNodeId);
+        if (state) {
+          (state.processor as AuthServiceProcessor).onSubRequestSettled(
+            parent, false, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+          );
+        }
+        return;
+      }
+      if (nodeConfig?.nodeType === NodeType.AuthzService) {
+        const state = this.nodeStates.get(dispatchNodeId);
+        if (state) {
+          (state.processor as AuthzServiceProcessor).onSubRequestSettled(
+            parent, false, branch.status, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+          );
+        }
+        return;
+      }
+
+      // Generic fan-out: apply failure mapping per branchPolicy (task 332)
       const mappedStatus = mapBranchFailureToParent(
         branch,
         parent.branchPolicy ?? SubRequestPolicy.FanOut,
       );
-      // Terminate the parent with the mapped status at the dispatch node
-      const dispatchNodeId = parent.path[parent.path.length - 1] ?? event.nodeId;
       this.terminateRequest(parent, mappedStatus as TerminalStatus, dispatchNodeId, event.timestamp);
     } else if (result.parentResumes) {
-      // All branches settled successfully — resume parent
-      // The parent is at a fan-out node. Start its response traversal.
+      // All branches settled successfully — check if parent is at Auth/Authz node
+      const dispatchNodeId = parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
+      const nodeConfig = this.nodeConfigs.get(dispatchNodeId);
+
+      if (nodeConfig?.nodeType === NodeType.AuthService) {
+        const state = this.nodeStates.get(dispatchNodeId);
+        if (state) {
+          (state.processor as AuthServiceProcessor).onSubRequestSettled(
+            parent, true, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+          );
+        }
+        return;
+      }
+      if (nodeConfig?.nodeType === NodeType.AuthzService) {
+        const state = this.nodeStates.get(dispatchNodeId);
+        if (state) {
+          (state.processor as AuthzServiceProcessor).onSubRequestSettled(
+            parent, true, undefined, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+          );
+        }
+        return;
+      }
+
+      // Generic fan-out: resume parent with response traversal
       if (parent.status === RequestStatus.InFlight) {
         parent.status = RequestStatus.Success;
         parent.completedAt = event.timestamp;
@@ -618,6 +709,229 @@ export class SimulationEngine {
       requestId: request.id,
       payload: {},
     });
+  }
+
+  // ─── Auth/Authz/WorkerPool Event Handlers ────────────────────
+
+  private handleVerificationComplete(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+    if (request.status !== RequestStatus.InFlight) return;
+
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as AuthServiceProcessor).onVerificationComplete(
+        event, request, this.getProcessorContext(),
+      );
+      // If the processor set a terminal status, handle accounting
+      // (The processor mutates request.status; TS narrowing from the guard above is stale.)
+      const postStatus = request.status as RequestStatus;
+      if (postStatus !== RequestStatus.InFlight && postStatus !== RequestStatus.Success) {
+        this.recordTerminalStatus(event.nodeId, postStatus as TerminalStatus);
+        if (request.parentRequestId) {
+          this.scheduleSubRequestSettled(request, event.timestamp);
+          this.metricsCollector.recordBranchTermination(request);
+        } else {
+          this.markRequestDone(request.id);
+          this.metricsCollector.recordCompletion(request);
+        }
+        this.notifySourceOfTerminal(request);
+      } else if (postStatus === RequestStatus.Success) {
+        // Auth verified and forwarded or terminal Success — start response traversal
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.startResponseTraversal(event, request);
+      }
+    }
+  }
+
+  private handlePolicyEvaluated(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+    if (request.status !== RequestStatus.InFlight) return;
+
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as AuthzServiceProcessor).onPolicyEvaluated(
+        event, request, this.getProcessorContext(),
+      );
+      // If the processor set a terminal status, handle accounting
+      const postStatus2 = request.status as RequestStatus;
+      if (postStatus2 !== RequestStatus.InFlight && postStatus2 !== RequestStatus.Success) {
+        this.recordTerminalStatus(event.nodeId, postStatus2 as TerminalStatus);
+        if (request.parentRequestId) {
+          this.scheduleSubRequestSettled(request, event.timestamp);
+          this.metricsCollector.recordBranchTermination(request);
+        } else {
+          this.markRequestDone(request.id);
+          this.metricsCollector.recordCompletion(request);
+        }
+        this.notifySourceOfTerminal(request);
+      } else if (postStatus2 === RequestStatus.Success) {
+        // Policy evaluated and forwarded or terminal Success — start response traversal
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.startResponseTraversal(event, request);
+      }
+    }
+  }
+
+  private handleJobAdmit(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as WorkerPoolProcessor).onJobAdmit(event, this.getProcessorContext());
+    }
+  }
+
+  private handleJobAttemptComplete(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as WorkerPoolProcessor).onJobAttemptComplete(event, this.getProcessorContext());
+      // If the processor set a terminal status, handle accounting
+      if (request.status !== RequestStatus.InFlight) {
+        if (request.status === RequestStatus.RetryExhausted) {
+          this.recordTerminalStatus(event.nodeId, RequestStatus.RetryExhausted);
+          if (request.parentRequestId) {
+            this.scheduleSubRequestSettled(request, event.timestamp);
+            this.metricsCollector.recordBranchTermination(request);
+          } else {
+            this.markRequestDone(request.id);
+            this.metricsCollector.recordCompletion(request);
+          }
+        } else if (request.status === RequestStatus.Success) {
+          // Success is handled by the routing — response traversal is triggered by RequestRoute
+        }
+      }
+    }
+  }
+
+  private handleJobRetryReady(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as WorkerPoolProcessor).onJobRetryReady(event, this.getProcessorContext());
+    }
+  }
+
+  private handleJobTimeout(event: SimEvent): void {
+    const request = this.requests.get(event.requestId);
+    if (!request) return;
+
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as WorkerPoolProcessor).onJobTimeout(event, this.getProcessorContext());
+      // If the processor set a terminal status, handle accounting
+      if (request.status !== RequestStatus.InFlight) {
+        this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus);
+        if (request.parentRequestId) {
+          this.scheduleSubRequestSettled(request, event.timestamp);
+          this.metricsCollector.recordBranchTermination(request);
+        } else {
+          this.markRequestDone(request.id);
+          this.metricsCollector.recordCompletion(request);
+        }
+      }
+    }
+  }
+
+  // ─── DLQ/ObjectStore/Scheduler Event Handlers ────────────────
+
+  private handleDlqRedrive(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as DeadLetterQueueProcessor).onDlqRedrive(event, this.getProcessorContext());
+    }
+  }
+
+  private handleTransferComplete(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      const request = this.requests.get(event.requestId);
+      const wasPreviouslyInFlight = request?.status === RequestStatus.InFlight;
+
+      (state.processor as ObjectStoreProcessor).onTransferComplete(event, this.getProcessorContext());
+
+      // If the processor set success, handle accounting
+      if (request && wasPreviouslyInFlight && request.status === RequestStatus.Success) {
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        if (request.parentRequestId) {
+          this.scheduleSubRequestSettled(request, event.timestamp);
+          this.metricsCollector.recordBranchTermination(request);
+        } else {
+          this.markRequestDone(request.id);
+          this.metricsCollector.recordCompletion(request);
+        }
+        this.notifySourceOfTerminal(request);
+      }
+    }
+  }
+
+  private handleSchedulerTrigger(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      const processor = state.processor as SchedulerProcessor;
+      processor.onSchedulerTrigger(event, this.getProcessorContext());
+
+      // Process emitted Jobs — register in-flight and handle NO_ROUTE
+      for (const jobId of processor.lastEmittedIds) {
+        const req = this.requests.get(jobId);
+        if (!req) continue;
+
+        if (req.status === RequestStatus.NoRoute) {
+          // NO_ROUTE Job — register and immediately complete
+          this.updateInFlightWeightedSum();
+          this.inFlightCount++;
+          this.recordTerminalStatus(event.nodeId, RequestStatus.NoRoute);
+          this.markRequestDone(req.id);
+          this.metricsCollector.recordCompletion(req);
+          this.notifySourceOfTerminal(req);
+        } else {
+          // In-flight Job — register in the in-flight counter
+          this.updateInFlightWeightedSum();
+          this.inFlightCount++;
+        }
+      }
+      processor.lastEmittedIds = [];
+    }
+  }
+
+  /**
+   * Notify the emitting Scheduler node when one of its Jobs reaches a terminal status.
+   * Called from terminateRequest and other terminal paths.
+   */
+  private notifySourceOfTerminal(request: SimRequest): void {
+    if (!request.emittedByNodeId) return;
+    const sourceState = this.nodeStates.get(request.emittedByNodeId);
+    if (!sourceState) return;
+    const sourceConfig = this.nodeConfigs.get(request.emittedByNodeId);
+    if (sourceConfig?.nodeType === NodeType.Scheduler) {
+      const processor = sourceState.processor as SchedulerProcessor;
+      processor.onJobTerminal(
+        request.id,
+        request.emittedByNodeId,
+        request.completedAt ?? this.virtualClockMs,
+        this.getProcessorContext(),
+      );
+
+      // If the scheduler emitted deferred Jobs, handle their accounting
+      for (const jobId of processor.lastEmittedIds) {
+        const req = this.requests.get(jobId);
+        if (!req) continue;
+        if (req.status === RequestStatus.NoRoute) {
+          this.updateInFlightWeightedSum();
+          this.inFlightCount++;
+          this.recordTerminalStatus(request.emittedByNodeId, RequestStatus.NoRoute);
+          this.markRequestDone(req.id);
+          this.metricsCollector.recordCompletion(req);
+          // Don't recursively call notifySourceOfTerminal for NO_ROUTE Jobs
+          // since the outstanding set is already empty at this point
+        } else {
+          this.updateInFlightWeightedSum();
+          this.inFlightCount++;
+        }
+      }
+      processor.lastEmittedIds = [];
+    }
   }
 
   private handleRequestTimeout(event: SimEvent): void {
@@ -710,6 +1024,11 @@ export class SimulationEngine {
     // Emit node statuses
     for (const nodeSnapshot of batch.nodes) {
       this.onNodeStatus?.(nodeSnapshot.nodeId, nodeSnapshot.healthStatus);
+    }
+
+    // R26.5 — call onMetricsWindowBoundary on all processors BEFORE resetting counters
+    for (const state of this.nodeStates.values()) {
+      state.processor.onMetricsWindowBoundary?.(this.getProcessorContext());
     }
 
     // Reset per-window counters
@@ -814,17 +1133,17 @@ export class SimulationEngine {
       case NodeType.MessageQueue:
         return new MessageQueueProcessor(node.config);
       case NodeType.AuthService:
-        return new AuthServiceSkeletonProcessor(node.config);
+        return new AuthServiceProcessor(node.config);
       case NodeType.AuthzService:
-        return new AuthzServiceSkeletonProcessor(node.config);
+        return new AuthzServiceProcessor(node.config);
       case NodeType.WorkerPool:
-        return new WorkerPoolSkeletonProcessor(node.config);
+        return new WorkerPoolProcessor(node.config);
       case NodeType.DeadLetterQueue:
-        return new DeadLetterQueueSkeletonProcessor(node.config);
+        return new DeadLetterQueueProcessor(node.config);
       case NodeType.ObjectStore:
-        return new ObjectStoreSkeletonProcessor(node.config);
+        return new ObjectStoreProcessor(node.config);
       case NodeType.Scheduler:
-        return new SchedulerSkeletonProcessor(node.config);
+        return new SchedulerProcessor(node.config);
     }
   }
 
@@ -834,6 +1153,11 @@ export class SimulationEngine {
       if (node.nodeType === NodeType.TrafficGenerator) {
         const processor = this.nodeStates.get(node.id)?.processor as TrafficGeneratorProcessor;
         processor.scheduleNextArrival(node.id, 0, this.getProcessorContext());
+      }
+      // Schedule first trigger from each Scheduler
+      if (node.nodeType === NodeType.Scheduler) {
+        const processor = this.nodeStates.get(node.id)?.processor as SchedulerProcessor;
+        processor.scheduleFirstTrigger(node.id, this.getProcessorContext());
       }
     }
 
@@ -895,6 +1219,9 @@ export class SimulationEngine {
       this.markRequestDone(request.id);
       this.metricsCollector.recordCompletion(request);
     }
+
+    // Notify the emitting source node (Scheduler overlap tracking)
+    this.notifySourceOfTerminal(request);
   }
 
   /**
@@ -1031,10 +1358,19 @@ export class SimulationEngine {
       recordDeparture: (nodeId, requestId, timestamp) =>
         this.metricsCollector.recordDeparture(nodeId, requestId, timestamp),
       unmarkRequestDone: (requestId) => this.unmarkRequestDone(requestId),
+      getRequestMap: () => this.requests,
+      getNextRequestId: () => `req-${this.requestCounter++}`,
     };
   }
 
   private emitComplete(): void {
+    // R28.13 — notify Scheduler processors of completion
+    for (const [, state] of this.nodeStates) {
+      if (state.processor instanceof SchedulerProcessor) {
+        state.processor.onSimulationComplete();
+      }
+    }
+
     const wallClockMs = Date.now() - this.startWallTime;
     const allRequests = [...this.requests.values()];
     // Only count non-branch requests for system-wide summary

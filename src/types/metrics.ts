@@ -51,6 +51,8 @@ export interface NodeMetricsSnapshot {
   terminalCounts: Record<string, number>;
   /** R31.3 — cumulative terminal counts across the run, never reset. */
   cumulativeTerminalCounts: Record<string, number>;
+  /** Type-specific metrics for new node types (R23.9, R24.11, R25.11, R26.9, R27.10, R28.9). */
+  typeSpecificMetrics?: Record<string, unknown>;
 }
 
 /** Batch of metrics emitted periodically by the simulation worker. */

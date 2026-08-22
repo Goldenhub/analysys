@@ -29,7 +29,7 @@ export interface SimulationEngineConfig {
 // ─── Main Thread → Worker Messages ──────────────────────────────
 
 export interface ChaosEventPayload {
-  chaosType: 'FLUSH_CACHE' | 'DROP_DB' | 'SPIKE_TRAFFIC';
+  chaosType: 'FLUSH_CACHE' | 'DROP_DB' | 'SPIKE_TRAFFIC' | 'DLQ_REDRIVE';
   targetNodeId?: string;
   durationMs: number;
   params: Record<string, unknown>;

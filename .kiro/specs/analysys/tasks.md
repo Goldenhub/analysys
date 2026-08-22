@@ -603,74 +603,74 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 16.1 Auth Service (`src/simulation/processors/AuthServiceProcessor.ts`)
 
-- [~] 348. Extract the `NodeProcessor` interface and `UtilizationReading` helpers into `src/simulation/processors/NodeProcessor.ts` per the design's file structure, re-exporting from `simulation/types.ts` so existing imports keep working.
-- [~] 349. **AuthServiceProcessor.ts**: implement the slot-and-queue admission path — admit while `slots.size < concurrencyLimit`, else queue in arrival order up to `queueDepth` adding each queued request's wait to its accumulated latency, else terminate `Dropped` with no verification latency added.
-- [~] 350. Draw exactly one verification latency sample per admitted request, treat a value below 0 ms as 0 ms, add it whether or not the request is later terminated, and schedule `VerificationComplete`.
-- [~] 351. Implement Local mode as completing verification with no downstream call, and Introspection mode as one token-cache test that on a miss dispatches exactly one sub-request under `SubRequestPolicy.AuthIntrospection`, keeps the verification slot occupied until it settles, counts it as one hop, and terminates `NO_ROUTE` where the node has no outgoing edge.
-- [~] 352. Apply the credential failure test after verification (and after a successful introspection settle), terminating `Unauthenticated` at that node, releasing the slot, and admitting the longest-waiting queued request; hold the PRNG draw order at verification latency, then token cache test, then credential test.
+- [x] 348. Extract the `NodeProcessor` interface and `UtilizationReading` helpers into `src/simulation/processors/NodeProcessor.ts` per the design's file structure, re-exporting from `simulation/types.ts` so existing imports keep working.
+- [x] 349. **AuthServiceProcessor.ts**: implement the slot-and-queue admission path — admit while `slots.size < concurrencyLimit`, else queue in arrival order up to `queueDepth` adding each queued request's wait to its accumulated latency, else terminate `Dropped` with no verification latency added.
+- [x] 350. Draw exactly one verification latency sample per admitted request, treat a value below 0 ms as 0 ms, add it whether or not the request is later terminated, and schedule `VerificationComplete`.
+- [x] 351. Implement Local mode as completing verification with no downstream call, and Introspection mode as one token-cache test that on a miss dispatches exactly one sub-request under `SubRequestPolicy.AuthIntrospection`, keeps the verification slot occupied until it settles, counts it as one hop, and terminates `NO_ROUTE` where the node has no outgoing edge.
+- [x] 352. Apply the credential failure test after verification (and after a successful introspection settle), terminating `Unauthenticated` at that node, releasing the slot, and admitting the longest-waiting queued request; hold the PRNG draw order at verification latency, then token cache test, then credential test.
 
 ### 16.2 Authz Service (`src/simulation/processors/AuthzServiceProcessor.ts`)
 
-- [~] 353. **AuthzServiceProcessor.ts**: implement the same slot-and-queue shape as Auth_Service, holding the slot occupied for the whole interval including any awaited lookups.
-- [~] 354. Add one policy evaluation latency sample per admitted request clamped at 0 ms, and the policy cache hit test recorded as a cache hit when it succeeds.
-- [~] 355. On a cache miss with at least one outgoing edge, dispatch exactly `lookupsPerRequest` sub-requests at one simulated timestamp under `SubRequestPolicy.AuthzLookup`, resume only when all have settled, and add the greatest settle interval to the parent.
-- [~] 356. On a cache miss with no outgoing edge, record a lookup-unavailable evaluation counted separately from cache hits, and apply the deny test only after every lookup has settled successfully so a denied request has already paid the policy and lookup latency.
-- [~] 357. Report the per-window amplification ratio as lookup calls issued over requests admitted, as not applicable rather than zero when no request was admitted in the window.
+- [x] 353. **AuthzServiceProcessor.ts**: implement the same slot-and-queue shape as Auth_Service, holding the slot occupied for the whole interval including any awaited lookups.
+- [x] 354. Add one policy evaluation latency sample per admitted request clamped at 0 ms, and the policy cache hit test recorded as a cache hit when it succeeds.
+- [x] 355. On a cache miss with at least one outgoing edge, dispatch exactly `lookupsPerRequest` sub-requests at one simulated timestamp under `SubRequestPolicy.AuthzLookup`, resume only when all have settled, and add the greatest settle interval to the parent.
+- [x] 356. On a cache miss with no outgoing edge, record a lookup-unavailable evaluation counted separately from cache hits, and apply the deny test only after every lookup has settled successfully so a denied request has already paid the policy and lookup latency.
+- [x] 357. Report the per-window amplification ratio as lookup calls issued over requests admitted, as not applicable rather than zero when no request was admitted in the window.
 
 ### 16.3 Worker Pool (`src/simulation/processors/WorkerPoolProcessor.ts`)
 
-- [~] 358. **WorkerPoolProcessor.ts**: define `WorkerPoolState` with the three disjoint Job populations `executing`, `prefetch`, and `retryWaiting`, plus the `attempts` and `epoch` maps.
-- [~] 359. Implement admission order: first any `retryWaiting` Job whose `readyAt` has elapsed in ascending `readyAt`, then `prefetch` in ascending enqueue time, bounded by `concurrency`.
-- [~] 360. Hold retry-waiting Jobs outside `prefetch` so they count against neither `prefetchBufferDepth` nor the Job_Backlog, and add each elapsed retry delay to that Job's accumulated latency.
-- [~] 361. Append arriving Jobs to the `prefetch` tail while concurrency is full, up to `prefetchBufferDepth`.
-- [~] 362. On admission, draw a processing time independently per attempt clamped at 0 ms, occupy one slot, and schedule both `JobAttemptComplete` and `JobTimeout` carrying that attempt's `epoch`, with the timeout measured from slot occupancy and excluding prefetch wait and retry delay.
-- [~] 363. Implement the epoch check at handling time so whichever of `JobAttemptComplete` and `JobTimeout` fires first increments the epoch and the loser is discarded as stale, keeping the min-heap untouched.
-- [~] 364. Draw one failure value per attempt against `jobFailureRate`, and on failure below `maxRetries + 1` attempts **release the concurrency slot first**, then schedule `JobRetryReady` — releasing before the delay is what lets a pool with a large retry budget still make progress.
-- [~] 365. Compute the backoff delay as exactly `retryBaseDelayMs` for Fixed with no growth, and `retryBaseDelayMs * 2^(n-1)` capped at 300,000 ms for Exponential, with no jitter in either case.
-- [~] 366. On retry exhaustion, route the Job along the outgoing edge to a Dead_Letter_Queue carrying its total attempt count and this node's identifier where one exists, else terminate `Retry_Exhausted` and record an error at this node.
-- [~] 367. Report Job completion rate, concurrency utilization, Job_Backlog as upstream buffered Jobs plus `prefetch.length` excluding `executing`, Backlog_Age reported as 0 ms while the backlog is empty, retry rate, retry-exhaustion rate, and either a Drain_Time projection or a plain "not draining" statement rather than a negative or infinite figure.
+- [x] 358. **WorkerPoolProcessor.ts**: define `WorkerPoolState` with the three disjoint Job populations `executing`, `prefetch`, and `retryWaiting`, plus the `attempts` and `epoch` maps.
+- [x] 359. Implement admission order: first any `retryWaiting` Job whose `readyAt` has elapsed in ascending `readyAt`, then `prefetch` in ascending enqueue time, bounded by `concurrency`.
+- [x] 360. Hold retry-waiting Jobs outside `prefetch` so they count against neither `prefetchBufferDepth` nor the Job_Backlog, and add each elapsed retry delay to that Job's accumulated latency.
+- [x] 361. Append arriving Jobs to the `prefetch` tail while concurrency is full, up to `prefetchBufferDepth`.
+- [x] 362. On admission, draw a processing time independently per attempt clamped at 0 ms, occupy one slot, and schedule both `JobAttemptComplete` and `JobTimeout` carrying that attempt's `epoch`, with the timeout measured from slot occupancy and excluding prefetch wait and retry delay.
+- [x] 363. Implement the epoch check at handling time so whichever of `JobAttemptComplete` and `JobTimeout` fires first increments the epoch and the loser is discarded as stale, keeping the min-heap untouched.
+- [x] 364. Draw one failure value per attempt against `jobFailureRate`, and on failure below `maxRetries + 1` attempts **release the concurrency slot first**, then schedule `JobRetryReady` — releasing before the delay is what lets a pool with a large retry budget still make progress.
+- [x] 365. Compute the backoff delay as exactly `retryBaseDelayMs` for Fixed with no growth, and `retryBaseDelayMs * 2^(n-1)` capped at 300,000 ms for Exponential, with no jitter in either case.
+- [x] 366. On retry exhaustion, route the Job along the outgoing edge to a Dead_Letter_Queue carrying its total attempt count and this node's identifier where one exists, else terminate `Retry_Exhausted` and record an error at this node.
+- [x] 367. Report Job completion rate, concurrency utilization, Job_Backlog as upstream buffered Jobs plus `prefetch.length` excluding `executing`, Backlog_Age reported as 0 ms while the backlog is empty, retry rate, retry-exhaustion rate, and either a Drain_Time projection or a plain "not draining" statement rather than a negative or infinite figure.
 
 ### 16.4 Message Queue Backpressure (`src/simulation/processors/MessageQueueProcessor.ts`)
 
-- [~] 368. Add the `BackpressureAwareConsumer` interface with `admissionCapacity(): number` and implement it on `WorkerPoolProcessor` as the room left across `executing` and `prefetch`.
-- [~] 369. Revise `onConsumerPoll` to clamp its batch by the downstream consumer's `admissionCapacity()` where the consumer implements the interface and by `Number.POSITIVE_INFINITY` otherwise, leaving the undelivered remainder in the buffer bounded by that queue's configured capacity.
-- [~] 370. Reschedule the consumer poll whenever the buffer is non-empty even when the computed batch size was 0, so consumption resumes when the pool drains, and leave the existing `consumerScheduled` latch to handle the empty-buffer case.
+- [x] 368. Add the `BackpressureAwareConsumer` interface with `admissionCapacity(): number` and implement it on `WorkerPoolProcessor` as the room left across `executing` and `prefetch`.
+- [x] 369. Revise `onConsumerPoll` to clamp its batch by the downstream consumer's `admissionCapacity()` where the consumer implements the interface and by `Number.POSITIVE_INFINITY` otherwise, leaving the undelivered remainder in the buffer bounded by that queue's configured capacity.
+- [x] 370. Reschedule the consumer poll whenever the buffer is non-empty even when the computed batch size was 0, so consumption resumes when the pool drains, and leave the existing `consumerScheduled` latch to handle the empty-buffer case.
 
 ### 16.5 Dead Letter Queue (`src/simulation/processors/DeadLetterQueueProcessor.ts`)
 
-- [~] 371. **DeadLetterQueueProcessor.ts**: define `RetainedMessage` and retain arriving Jobs in append order with their `retentionStartMs`, `exhaustedAtNodeId`, cumulative `attemptCount`, and `redriveAttempts`, recording the arrival as `Dead_Lettered` in error accounting.
-- [~] 372. Implement overflow at capacity by discarding index 0 of the append-ordered retained set — which is the earliest `retentionStartMs` — and logging a dead-letter-overflow event naming the node.
-- [~] 373. Implement retention expiry inside `onMetricsWindowBoundary`, called from `handleMetricsSnapshot` before the per-window counter reset, so a message cannot expire unobserved on access.
-- [~] 374. Implement Automatic redrive on the redrive interval and Manual redrive from the Chaos_Panel control, routing up to `redriveBatchSize` retained messages whose `redriveAttempts` is below `maxRedriveAttempts` in ascending retention start order, incrementing each and removing it from the retained set at the instant it is routed so an in-flight redrive is subject to neither expiry nor overflow.
-- [~] 375. On redrive, clear the Job's `Dead_Lettered` status, decrement that node's cumulative `Dead_Lettered` count, and call `engine.unmarkRequestDone` to return the Job to `In_Flight` so the nine cumulative counts still sum correctly.
-- [~] 376. Reset a redriven Job's retry attempt count to zero on arrival at a Worker_Pool while carrying `redriveAttempts` forward, and on re-retention at the same DLQ carry `redriveAttempts` forward unchanged with a fresh `retentionStartMs`.
-- [~] 377. Report retained count, fill fraction, dead-letter arrival rate, oldest-message age, retained count grouped by the upstream node identifier where exhaustion occurred, cumulative redrives, and cumulative discards separated by overflow and by expiry.
+- [x] 371. **DeadLetterQueueProcessor.ts**: define `RetainedMessage` and retain arriving Jobs in append order with their `retentionStartMs`, `exhaustedAtNodeId`, cumulative `attemptCount`, and `redriveAttempts`, recording the arrival as `Dead_Lettered` in error accounting.
+- [x] 372. Implement overflow at capacity by discarding index 0 of the append-ordered retained set — which is the earliest `retentionStartMs` — and logging a dead-letter-overflow event naming the node.
+- [x] 373. Implement retention expiry inside `onMetricsWindowBoundary`, called from `handleMetricsSnapshot` before the per-window counter reset, so a message cannot expire unobserved on access.
+- [x] 374. Implement Automatic redrive on the redrive interval and Manual redrive from the Chaos_Panel control, routing up to `redriveBatchSize` retained messages whose `redriveAttempts` is below `maxRedriveAttempts` in ascending retention start order, incrementing each and removing it from the retained set at the instant it is routed so an in-flight redrive is subject to neither expiry nor overflow.
+- [x] 375. On redrive, clear the Job's `Dead_Lettered` status, decrement that node's cumulative `Dead_Lettered` count, and call `engine.unmarkRequestDone` to return the Job to `In_Flight` so the nine cumulative counts still sum correctly.
+- [x] 376. Reset a redriven Job's retry attempt count to zero on arrival at a Worker_Pool while carrying `redriveAttempts` forward, and on re-retention at the same DLQ carry `redriveAttempts` forward unchanged with a fresh `retentionStartMs`.
+- [x] 377. Report retained count, fill fraction, dead-letter arrival rate, oldest-message age, retained count grouped by the upstream node identifier where exhaustion occurred, cumulative redrives, and cumulative discards separated by overflow and by expiry.
 
 ### 16.6 Object Store (`src/simulation/processors/ObjectStoreProcessor.ts`)
 
-- [~] 378. **ObjectStoreProcessor.ts**: define `ActiveTransfer` tracking `remainingWorkKB`, `actualSizeKB`, `lastUpdateMs`, and `epoch`, and draw per request in the fixed order read/write classification, object size, base latency.
-- [~] 379. Clamp the sampled object size to the inclusive range 1 to 10,485,760 KB before it is used in any latency computation.
-- [~] 380. Encode the write multiplier as scaled remaining *work* (`sizeKB × multiplier` for a write) rather than as a post-hoc multiplication on a computed duration, so the multiplier stays exact under repricing while the sum of active bandwidth shares still equals the configured capacity.
-- [~] 381. Implement `reprice(now)` in three steps — charge elapsed progress against each active transfer, re-divide `throughputCapacityMBps` equally among active transfers, then reschedule each `TransferComplete` from remaining work and the new share with a fresh epoch — and call it whenever a transfer begins or completes.
-- [~] 382. Add base latency plus transfer time to each request, using 1 MB = 1,024 KB and 1 second = 1,000 ms, with the base latency clamped at 0 ms and left unscaled by the write multiplier.
-- [~] 383. Hold arriving requests in the transfer queue in arrival order while `maxConcurrentTransfers` is full, adding each wait to accumulated latency, and terminate `Dropped` beyond `transferQueueDepth` recording the latency accumulated before reaching this node.
-- [~] 384. Report the aggregate transfer rate from `actualSizeKB` rather than scaled work so a write-heavy window does not over-report bytes moved, plus the rate as a fraction of capacity, active transfers, queued requests, mean transfer time, drop rate, and read and write counts, and name bandwidth as the limiting resource in the Activity view at or above 0.85 of capacity.
+- [x] 378. **ObjectStoreProcessor.ts**: define `ActiveTransfer` tracking `remainingWorkKB`, `actualSizeKB`, `lastUpdateMs`, and `epoch`, and draw per request in the fixed order read/write classification, object size, base latency.
+- [x] 379. Clamp the sampled object size to the inclusive range 1 to 10,485,760 KB before it is used in any latency computation.
+- [x] 380. Encode the write multiplier as scaled remaining *work* (`sizeKB × multiplier` for a write) rather than as a post-hoc multiplication on a computed duration, so the multiplier stays exact under repricing while the sum of active bandwidth shares still equals the configured capacity.
+- [x] 381. Implement `reprice(now)` in three steps — charge elapsed progress against each active transfer, re-divide `throughputCapacityMBps` equally among active transfers, then reschedule each `TransferComplete` from remaining work and the new share with a fresh epoch — and call it whenever a transfer begins or completes.
+- [x] 382. Add base latency plus transfer time to each request, using 1 MB = 1,024 KB and 1 second = 1,000 ms, with the base latency clamped at 0 ms and left unscaled by the write multiplier.
+- [x] 383. Hold arriving requests in the transfer queue in arrival order while `maxConcurrentTransfers` is full, adding each wait to accumulated latency, and terminate `Dropped` beyond `transferQueueDepth` recording the latency accumulated before reaching this node.
+- [x] 384. Report the aggregate transfer rate from `actualSizeKB` rather than scaled work so a write-heavy window does not over-report bytes moved, plus the rate as a fraction of capacity, active transfers, queued requests, mean transfer time, drop rate, and read and write counts, and name bandwidth as the limiting resource in the Activity view at or above 0.85 of capacity.
 
 ### 16.7 Scheduler (`src/simulation/processors/SchedulerProcessor.ts`)
 
-- [~] 385. **SchedulerProcessor.ts**: separate the schedule from the fire time — `scheduledTime(n) = startOffsetMs + n * intervalMs` never adjusted by anything, and `fireTime(n) = scheduledTime(n) + uniform[0, min(jitterMs, intervalMs)]` — so jitter can never accumulate as drift.
-- [~] 386. Draw trigger `n+1`'s jitter offset and schedule its `SchedulerTrigger` event when trigger `n` is handled, a fixed draw position that keeps the fire-time sequence reproducible.
-- [~] 387. Emit exactly `jobsPerTrigger` Jobs at the fire timestamp, routing each along the node's resolved targets, and set `emittedByNodeId` on every emitted Job.
-- [~] 388. Track `outstanding` Jobs per Scheduler node via an engine notification when one of its Jobs reaches a terminal status, and treat the node as a source requiring no incoming edge that terminates emitted Jobs `NO_ROUTE` immediately when it has no outgoing edge.
-- [~] 389. Implement the three overlap policies: Allow emits regardless, Skip emits nothing and logs a skipped-trigger event, and Queue appends one entry per deferred trigger in ascending trigger index up to `maxDeferredTriggers`.
-- [~] 390. Under Queue, emit exactly the earliest deferred entry when `outstanding` becomes empty, remove that one entry, retain the rest, and on a trigger firing at `maxDeferredTriggers` count a skipped trigger and log a deferred-trigger-overflow event naming the node and fire time.
-- [~] 391. On entering `Complete`, retain the count of outstanding Jobs as the node's unfinished Job count, discard every remaining deferred entry without emitting it, report both figures with the run's final metrics, and widen the existing `isSource` branch in `ActivityPanel` so a Scheduler reports latency percentiles and Little's Law figures as not applicable.
+- [x] 385. **SchedulerProcessor.ts**: separate the schedule from the fire time — `scheduledTime(n) = startOffsetMs + n * intervalMs` never adjusted by anything, and `fireTime(n) = scheduledTime(n) + uniform[0, min(jitterMs, intervalMs)]` — so jitter can never accumulate as drift.
+- [x] 386. Draw trigger `n+1`'s jitter offset and schedule its `SchedulerTrigger` event when trigger `n` is handled, a fixed draw position that keeps the fire-time sequence reproducible.
+- [x] 387. Emit exactly `jobsPerTrigger` Jobs at the fire timestamp, routing each along the node's resolved targets, and set `emittedByNodeId` on every emitted Job.
+- [x] 388. Track `outstanding` Jobs per Scheduler node via an engine notification when one of its Jobs reaches a terminal status, and treat the node as a source requiring no incoming edge that terminates emitted Jobs `NO_ROUTE` immediately when it has no outgoing edge.
+- [x] 389. Implement the three overlap policies: Allow emits regardless, Skip emits nothing and logs a skipped-trigger event, and Queue appends one entry per deferred trigger in ascending trigger index up to `maxDeferredTriggers`.
+- [x] 390. Under Queue, emit exactly the earliest deferred entry when `outstanding` becomes empty, remove that one entry, retain the rest, and on a trigger firing at `maxDeferredTriggers` count a skipped trigger and log a deferred-trigger-overflow event naming the node and fire time.
+- [x] 391. On entering `Complete`, retain the count of outstanding Jobs as the node's unfinished Job count, discard every remaining deferred entry without emitting it, report both figures with the run's final metrics, and widen the existing `isSource` branch in `ActivityPanel` so a Scheduler reports latency percentiles and Little's Law figures as not applicable.
 
 ### 16.8 Integration and Smoke Coverage
 
-- [~] 392. Report the type-specific per-node figures of Requirements 23.9, 24.11, 25.11, 26.9, 27.10, and 28.9 through the `METRICS_BATCH` snapshot fields the design lists, each with its unit surfaced in the Activity view.
-- [~] 393. Write the Requirement 29.5 smoke test for each of the six new types: one node at default configuration wired to a default Traffic_Generator or Scheduler, run 60 simulated seconds with `disablePacing: true`, and assert no validation error, no engine error, and at least one request or Job reaching a terminal status at that node.
-- [~] 394. Run the full suite and confirm the nine shipped processors' existing tests still pass unchanged after the `resolveTargets` and `UtilizationReading` migrations.
+- [x] 392. Report the type-specific per-node figures of Requirements 23.9, 24.11, 25.11, 26.9, 27.10, and 28.9 through the `METRICS_BATCH` snapshot fields the design lists, each with its unit surfaced in the Activity view.
+- [x] 393. Write the Requirement 29.5 smoke test for each of the six new types: one node at default configuration wired to a default Traffic_Generator or Scheduler, run 60 simulated seconds with `disablePacing: true`, and assert no validation error, no engine error, and at least one request or Job reaching a terminal status at that node.
+- [x] 394. Run the full suite and confirm the nine shipped processors' existing tests still pass unchanged after the `resolveTargets` and `UtilizationReading` migrations.
 
 ---
 
