@@ -1,5 +1,6 @@
 import type { SimulationNode } from '@/types/nodes';
 import { NodeType } from '@/types/nodes';
+import type { EdgeData } from '@/types/edges';
 import type {
   MetricsBatchPayload,
   NodeMetricsSnapshot,
@@ -9,6 +10,8 @@ import type { NodeRuntimeState, SimRequest, TerminalStatus } from '../types';
 import { RequestStatus, FAILURE_CLASS_OF, FailureClass } from '../types';
 import { NodeMetricsAccumulator } from './NodeMetricsAccumulator';
 import { computePercentiles } from './percentiles';
+import { AnalysisAggregatesAccumulator } from './analysisAggregates';
+import { RunCumulativeAccumulator } from './RunCumulativeAccumulator';
 import { WorkerPoolProcessor } from '../processors/WorkerPoolProcessor';
 import { DeadLetterQueueProcessor } from '../processors/DeadLetterQueueProcessor';
 import { ObjectStoreProcessor } from '../processors/ObjectStoreProcessor';
@@ -20,13 +23,16 @@ export class MetricsCollector {
   private windowMs: number;
   private lastBatchTime = 0;
   private nodeConfigs: Map<string, SimulationNode> = new Map();
+  private analysisAggregates: AnalysisAggregatesAccumulator;
+  private runCumulative: RunCumulativeAccumulator = new RunCumulativeAccumulator();
 
-  constructor(nodes: SimulationNode[], windowMs = 5000) {
+  constructor(nodes: SimulationNode[], windowMs = 5000, edges: EdgeData[] = []) {
     this.windowMs = windowMs;
     for (const node of nodes) {
       this.accumulators.set(node.id, new NodeMetricsAccumulator(node.id, windowMs));
       this.nodeConfigs.set(node.id, node);
     }
+    this.analysisAggregates = new AnalysisAggregatesAccumulator(nodes, edges);
   }
 
   recordArrival(nodeId: string, requestId: string, timestamp: number): void {
@@ -50,6 +56,51 @@ export class MetricsCollector {
     // by the engine's recordTerminalStatus. System-wide completion is NOT recorded.
   }
 
+  // ─── Analysis Aggregates (Tasks 428–436) ───────────────────────
+
+  /**
+   * Record a termination for analysis aggregates. Called at terminal-status
+   * assignment time while the request still holds its full lineage.
+   */
+  recordTerminationForAnalysis(
+    request: SimRequest,
+    status: TerminalStatus,
+    timestamp: number,
+    nodeStates: Map<string, NodeRuntimeState>,
+    allRequests: Map<string, SimRequest>,
+  ): void {
+    this.analysisAggregates.recordTermination(request, nodeStates, allRequests);
+    this.runCumulative.recordTermination(request, status, timestamp);
+  }
+
+  recordAnalysisArrival(nodeId: string): void {
+    this.analysisAggregates.recordArrival(nodeId);
+  }
+
+  recordAnalysisDeparture(nodeId: string): void {
+    this.analysisAggregates.recordDeparture(nodeId);
+  }
+
+  recordBranchDispatched(nodeId: string): void {
+    this.analysisAggregates.recordBranchDispatched(nodeId);
+  }
+
+  recordForwardedByEdge(edgeId: string, sourceNodeId: string): void {
+    this.analysisAggregates.recordForwardedByEdge(edgeId, sourceNodeId);
+  }
+
+  setRunStartTime(startTimeMs: number): void {
+    this.runCumulative.setStartTime(startTimeMs);
+  }
+
+  getRunCumulativeAccumulator(): RunCumulativeAccumulator {
+    return this.runCumulative;
+  }
+
+  getAnalysisAggregates(): AnalysisAggregatesAccumulator {
+    return this.analysisAggregates;
+  }
+
   generateBatch(
     currentTime: number,
     nodeStates: Map<string, NodeRuntimeState>,
@@ -67,6 +118,17 @@ export class MetricsCollector {
       const utilization = state.processor.getUtilization();
       const errorRate = this.computeErrorRate(state);
 
+      // Analysis aggregates (Tasks 428–436)
+      const agg = this.analysisAggregates.getAggregates(nodeId);
+      const monitoredDepth = this.analysisAggregates.getMonitoredDepth(nodeId, state);
+      const monitoredDepthBound = this.analysisAggregates.getMonitoredDepthBound(nodeId);
+      const typeSpecificAnalysis = this.analysisAggregates.getTypeSpecificAnalysisFields(
+        nodeId, state, currentTime, elapsedSinceLastBatch,
+      );
+
+      // Task 436: actual window duration; ≤0 marks unavailable
+      const durationMs = elapsedSinceLastBatch;
+
       const snapshot: NodeMetricsSnapshot = {
         nodeId,
         timestamp: currentTime,
@@ -82,11 +144,28 @@ export class MetricsCollector {
         terminalCounts: { ...state.terminalCounts },
         cumulativeTerminalCounts: { ...state.cumulativeTerminalCounts },
         typeSpecificMetrics: this.computeTypeSpecificMetrics(nodeId, state, currentTime, elapsedSinceLastBatch),
+
+        // Analysis aggregate fields
+        timeInSystemAtNodeMs: agg.timeInSystemAtNodeMs,
+        pathTimeInSystemMs: agg.pathTimeInSystemMs,
+        terminatedThroughNodeCount: agg.terminatedThroughNodeCount,
+        monitoredDepth,
+        monitoredDepthBound,
+        arrivalCount: agg.arrivalCount,
+        departureCount: agg.departureCount,
+        durationMs,
+
+        // Type-specific optional fields (Task 435)
+        ...typeSpecificAnalysis,
+        branchesDispatched: agg.branchesDispatched > 0 ? agg.branchesDispatched : undefined,
+        forwardedByEdge: Object.keys(agg.forwardedByEdge).length > 0 ? agg.forwardedByEdge : undefined,
       };
 
       nodeSnapshots.push(snapshot);
     }
 
+    // Reset analysis aggregates for next window
+    this.analysisAggregates.resetWindow();
     this.lastBatchTime = currentTime;
 
     return {
@@ -102,6 +181,8 @@ export class MetricsCollector {
     }
     this.completedRequests = [];
     this.lastBatchTime = 0;
+    this.analysisAggregates.reset();
+    this.runCumulative.reset();
   }
 
   private computeErrorRate(state: NodeRuntimeState): number {

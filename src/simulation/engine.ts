@@ -71,7 +71,7 @@ export class SimulationEngine {
     this.config = config;
     this.rng = new SeededRNG(config.seed);
     this.eventQueue = new MinHeap<SimEvent>((a, b) => a.timestamp - b.timestamp);
-    this.metricsCollector = new MetricsCollector(config.topology.nodes, 5000);
+    this.metricsCollector = new MetricsCollector(config.topology.nodes, 5000, config.topology.edges);
 
     this.buildAdjacency(config.topology.edges);
     this.initializeNodeStates(config.topology.nodes);
@@ -95,6 +95,7 @@ export class SimulationEngine {
   async run(): Promise<void> {
     this.state = SimState.Running;
     this.startWallTime = Date.now();
+    this.metricsCollector.setRunStartTime(0); // Virtual clock starts at 0
 
     while (this.state === SimState.Running) {
       let processed = 0;
@@ -452,7 +453,7 @@ export class SimulationEngine {
 
         // Record terminal status for non-success (processor already set it)
         if (request.status !== RequestStatus.Success) {
-          this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus);
+          this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus, request);
           if (request.parentRequestId) {
             this.metricsCollector.recordBranchTermination(request);
           } else {
@@ -483,10 +484,10 @@ export class SimulationEngine {
 
     // If request is now complete, start response traversal
     if (request.status === RequestStatus.Success) {
-      this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+      this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
       this.startResponseTraversal(event, request);
     } else if (request.status === RequestStatus.Timeout) {
-      this.recordTerminalStatus(event.nodeId, RequestStatus.Timeout);
+      this.recordTerminalStatus(event.nodeId, RequestStatus.Timeout, request);
       if (!request.parentRequestId) {
         this.markRequestDone(request.id);
       } else {
@@ -504,7 +505,7 @@ export class SimulationEngine {
     }
     if (request.status !== RequestStatus.Success) return;
 
-    this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+    this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
     // Start response traversal
     this.startResponseTraversal(event, request);
   }
@@ -585,7 +586,7 @@ export class SimulationEngine {
     if (request.parentRequestId) return;
 
     request.completedAt = event.timestamp;
-    this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+    this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
     this.markRequestDone(request.id);
     this.metricsCollector.recordCompletion(request);
 
@@ -689,7 +690,7 @@ export class SimulationEngine {
       if (parent.status === RequestStatus.InFlight) {
         parent.status = RequestStatus.Success;
         parent.completedAt = event.timestamp;
-        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success, parent);
         this.startResponseTraversal(
           { ...event, nodeId: parent.path[parent.path.length - 1]! },
           parent,
@@ -727,7 +728,7 @@ export class SimulationEngine {
       // (The processor mutates request.status; TS narrowing from the guard above is stale.)
       const postStatus = request.status as RequestStatus;
       if (postStatus !== RequestStatus.InFlight && postStatus !== RequestStatus.Success) {
-        this.recordTerminalStatus(event.nodeId, postStatus as TerminalStatus);
+        this.recordTerminalStatus(event.nodeId, postStatus as TerminalStatus, request);
         if (request.parentRequestId) {
           this.scheduleSubRequestSettled(request, event.timestamp);
           this.metricsCollector.recordBranchTermination(request);
@@ -738,7 +739,7 @@ export class SimulationEngine {
         this.notifySourceOfTerminal(request);
       } else if (postStatus === RequestStatus.Success) {
         // Auth verified and forwarded or terminal Success — start response traversal
-        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
         this.startResponseTraversal(event, request);
       }
     }
@@ -757,7 +758,7 @@ export class SimulationEngine {
       // If the processor set a terminal status, handle accounting
       const postStatus2 = request.status as RequestStatus;
       if (postStatus2 !== RequestStatus.InFlight && postStatus2 !== RequestStatus.Success) {
-        this.recordTerminalStatus(event.nodeId, postStatus2 as TerminalStatus);
+        this.recordTerminalStatus(event.nodeId, postStatus2 as TerminalStatus, request);
         if (request.parentRequestId) {
           this.scheduleSubRequestSettled(request, event.timestamp);
           this.metricsCollector.recordBranchTermination(request);
@@ -768,7 +769,7 @@ export class SimulationEngine {
         this.notifySourceOfTerminal(request);
       } else if (postStatus2 === RequestStatus.Success) {
         // Policy evaluated and forwarded or terminal Success — start response traversal
-        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
         this.startResponseTraversal(event, request);
       }
     }
@@ -791,7 +792,7 @@ export class SimulationEngine {
       // If the processor set a terminal status, handle accounting
       if (request.status !== RequestStatus.InFlight) {
         if (request.status === RequestStatus.RetryExhausted) {
-          this.recordTerminalStatus(event.nodeId, RequestStatus.RetryExhausted);
+          this.recordTerminalStatus(event.nodeId, RequestStatus.RetryExhausted, request);
           if (request.parentRequestId) {
             this.scheduleSubRequestSettled(request, event.timestamp);
             this.metricsCollector.recordBranchTermination(request);
@@ -822,7 +823,7 @@ export class SimulationEngine {
       (state.processor as WorkerPoolProcessor).onJobTimeout(event, this.getProcessorContext());
       // If the processor set a terminal status, handle accounting
       if (request.status !== RequestStatus.InFlight) {
-        this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus);
+        this.recordTerminalStatus(event.nodeId, request.status as TerminalStatus, request);
         if (request.parentRequestId) {
           this.scheduleSubRequestSettled(request, event.timestamp);
           this.metricsCollector.recordBranchTermination(request);
@@ -853,7 +854,7 @@ export class SimulationEngine {
 
       // If the processor set success, handle accounting
       if (request && wasPreviouslyInFlight && request.status === RequestStatus.Success) {
-        this.recordTerminalStatus(event.nodeId, RequestStatus.Success);
+        this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
         if (request.parentRequestId) {
           this.scheduleSubRequestSettled(request, event.timestamp);
           this.metricsCollector.recordBranchTermination(request);
@@ -881,7 +882,7 @@ export class SimulationEngine {
           // NO_ROUTE Job — register and immediately complete
           this.updateInFlightWeightedSum();
           this.inFlightCount++;
-          this.recordTerminalStatus(event.nodeId, RequestStatus.NoRoute);
+          this.recordTerminalStatus(event.nodeId, RequestStatus.NoRoute, req);
           this.markRequestDone(req.id);
           this.metricsCollector.recordCompletion(req);
           this.notifySourceOfTerminal(req);
@@ -920,7 +921,7 @@ export class SimulationEngine {
         if (req.status === RequestStatus.NoRoute) {
           this.updateInFlightWeightedSum();
           this.inFlightCount++;
-          this.recordTerminalStatus(request.emittedByNodeId, RequestStatus.NoRoute);
+          this.recordTerminalStatus(request.emittedByNodeId, RequestStatus.NoRoute, req);
           this.markRequestDone(req.id);
           this.metricsCollector.recordCompletion(req);
           // Don't recursively call notifySourceOfTerminal for NO_ROUTE Jobs
@@ -1209,7 +1210,7 @@ export class SimulationEngine {
     request.completedAt = timestamp;
 
     // Record terminal status counts on the node
-    this.recordTerminalStatus(nodeId, status);
+    this.recordTerminalStatus(nodeId, status, request);
 
     if (request.parentRequestId) {
       // Branch — per-node aggregates only, no system-wide counting
@@ -1227,11 +1228,21 @@ export class SimulationEngine {
   /**
    * Task 340 — record a terminal status against a node's per-window and cumulative counts.
    */
-  private recordTerminalStatus(nodeId: string, status: TerminalStatus): void {
+  private recordTerminalStatus(nodeId: string, status: TerminalStatus, request?: SimRequest): void {
     const state = this.nodeStates.get(nodeId);
     if (!state) return;
     state.terminalCounts[status]++;
     state.cumulativeTerminalCounts[status]++;
+
+    // Task 428–436: record analysis aggregates at terminal-status assignment time
+    // while the request still holds its full lineage.
+    if (request) {
+      this.metricsCollector.recordTerminationForAnalysis(
+        request, status, this.virtualClockMs, this.nodeStates, this.requests,
+      );
+      // Departures: a termination at this node counts as a departure
+      this.metricsCollector.recordAnalysisDeparture(nodeId);
+    }
   }
 
   private updateInFlightWeightedSum(): void {
@@ -1353,10 +1364,14 @@ export class SimulationEngine {
       getNodeState: (nodeId) => this.nodeStates.get(nodeId),
       getRNG: () => this.rng,
       currentTime: () => this.virtualClockMs,
-      recordArrival: (nodeId, requestId, timestamp) =>
-        this.metricsCollector.recordArrival(nodeId, requestId, timestamp),
-      recordDeparture: (nodeId, requestId, timestamp) =>
-        this.metricsCollector.recordDeparture(nodeId, requestId, timestamp),
+      recordArrival: (nodeId, requestId, timestamp) => {
+        this.metricsCollector.recordArrival(nodeId, requestId, timestamp);
+        this.metricsCollector.recordAnalysisArrival(nodeId);
+      },
+      recordDeparture: (nodeId, requestId, timestamp) => {
+        this.metricsCollector.recordDeparture(nodeId, requestId, timestamp);
+        this.metricsCollector.recordAnalysisDeparture(nodeId);
+      },
       unmarkRequestDone: (requestId) => this.unmarkRequestDone(requestId),
       getRequestMap: () => this.requests,
       getNextRequestId: () => `req-${this.requestCounter++}`,

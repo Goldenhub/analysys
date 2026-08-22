@@ -53,6 +53,39 @@ export interface NodeMetricsSnapshot {
   cumulativeTerminalCounts: Record<string, number>;
   /** Type-specific metrics for new node types (R23.9, R24.11, R25.11, R26.9, R27.10, R28.9). */
   typeSpecificMetrics?: Record<string, unknown>;
+
+  // ─── Analysis Aggregates (Tasks 428–436) ─────────────────────
+
+  /** Σ time-in-system accumulated AT THIS NODE by requests/Jobs terminating in this window. */
+  timeInSystemAtNodeMs: number;
+  /** Σ time-in-system those SAME requests/Jobs accumulated across their whole recorded path. */
+  pathTimeInSystemMs: number;
+  /** Terminating requests/Jobs whose recorded path — or branch paths — held this node. */
+  terminatedThroughNodeCount: number;
+
+  /** Job_Backlog for Worker_Pool, buffered messages for MQ, queue depth for others, or null. */
+  monitoredDepth: number | null;
+  /** Configured bound for monitoredDepth, or null if not applicable. */
+  monitoredDepthBound: number | null;
+
+  /** Arrivals in this window. */
+  arrivalCount: number;
+  /** Departures in this window (forwarded + completed + terminated at this node). */
+  departureCount: number;
+
+  /** Actual duration of this metrics window in ms. ≤0 marks the window unavailable. */
+  durationMs: number;
+
+  // ─── Type-Specific Optional Fields (Task 435) ────────────────
+
+  concurrencyOccupied?: number;
+  concurrencyBound?: number;
+  jobBacklog?: number;
+  backlogAgeMs?: number;
+  retainedByUpstreamNode?: Record<string, number>;
+  transferRateMBps?: number;
+  forwardedByEdge?: Record<string, number>;
+  branchesDispatched?: number;
 }
 
 /** Batch of metrics emitted periodically by the simulation worker. */

@@ -734,17 +734,17 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 19.1 Snapshot Aggregates (`src/simulation/metrics/analysisAggregates.ts`)
 
-- [~] 428. Create `analysisAggregates.ts` accumulating the per-node, per-window aggregates the analysis layer needs, so no rule ever reads a per-request record.
-- [~] 429. Accumulate `timeInSystemAtNodeMs` as the summed time-in-system that requests and Jobs terminating in this window accumulated at this node — the Latency_Share numerator.
-- [~] 430. Accumulate `pathTimeInSystemMs` as the summed time-in-system those **same** requests and Jobs accumulated across their whole recorded path — the Latency_Share denominator, which is what makes the share weighted for a node lying on several paths.
-- [~] 431. Accumulate `terminatedThroughNodeCount` as terminating requests and Jobs whose recorded path, or the path of any branch dispatched for them, held this node, folding branch paths in at the instant the terminal status is assigned while the parent still holds its lineage.
-- [~] 432. Emit `monitoredDepth` per node as Job_Backlog for a Worker_Pool, buffered messages for a Message_Queue, reported queue depth for every other type that reports one, and `null` otherwise, alongside `monitoredDepthBound`.
-- [~] 433. Compute `monitoredDepthBound` as the node's prefetch buffer depth plus the configured capacity of every Message_Queue holding an edge into it for a Worker_Pool, the configured max capacity for a Message_Queue, and the configured max queue depth for every other type.
-- [~] 434. Emit `arrivalCount` and `departureCount` per window, counting a departure for each request or Job forwarded downstream, completed at the node, or terminated at the node.
-- [~] 435. Emit the type-specific optional fields `concurrencyOccupied`, `concurrencyBound`, `jobBacklog`, `backlogAgeMs`, `retainedByUpstreamNode`, `transferRateMBps`, `forwardedByEdge`, and `branchesDispatched`.
-- [~] 436. Record each window's actual `durationMs` so a rate can be weighted by it, and mark a window with `durationMs <= 0` unavailable rather than zero — the engine emits a final snapshot before `emitComplete()` on both exit paths and that window is usually shorter than `metricsIntervalMs`.
-- [~] 437. Create `RunCumulativeAccumulator.ts` holding whole-run aggregates alongside the existing sliding 5,000 ms `completedRequests` window, so a baseline is not silently a snapshot of the last five seconds.
-- [~] 438. Write a test asserting the aggregates are window-scoped, reset at each boundary, and reproduce a hand-computed Latency_Share and Blast_Radius for a three-node topology.
+- [x] 428. Create `analysisAggregates.ts` accumulating the per-node, per-window aggregates the analysis layer needs, so no rule ever reads a per-request record.
+- [x] 429. Accumulate `timeInSystemAtNodeMs` as the summed time-in-system that requests and Jobs terminating in this window accumulated at this node — the Latency_Share numerator.
+- [x] 430. Accumulate `pathTimeInSystemMs` as the summed time-in-system those **same** requests and Jobs accumulated across their whole recorded path — the Latency_Share denominator, which is what makes the share weighted for a node lying on several paths.
+- [x] 431. Accumulate `terminatedThroughNodeCount` as terminating requests and Jobs whose recorded path, or the path of any branch dispatched for them, held this node, folding branch paths in at the instant the terminal status is assigned while the parent still holds its lineage.
+- [x] 432. Emit `monitoredDepth` per node as Job_Backlog for a Worker_Pool, buffered messages for a Message_Queue, reported queue depth for every other type that reports one, and `null` otherwise, alongside `monitoredDepthBound`.
+- [x] 433. Compute `monitoredDepthBound` as the node's prefetch buffer depth plus the configured capacity of every Message_Queue holding an edge into it for a Worker_Pool, the configured max capacity for a Message_Queue, and the configured max queue depth for every other type.
+- [x] 434. Emit `arrivalCount` and `departureCount` per window, counting a departure for each request or Job forwarded downstream, completed at the node, or terminated at the node.
+- [x] 435. Emit the type-specific optional fields `concurrencyOccupied`, `concurrencyBound`, `jobBacklog`, `backlogAgeMs`, `retainedByUpstreamNode`, `transferRateMBps`, `forwardedByEdge`, and `branchesDispatched`.
+- [x] 436. Record each window's actual `durationMs` so a rate can be weighted by it, and mark a window with `durationMs <= 0` unavailable rather than zero — the engine emits a final snapshot before `emitComplete()` on both exit paths and that window is usually shorter than `metricsIntervalMs`.
+- [x] 437. Create `RunCumulativeAccumulator.ts` holding whole-run aggregates alongside the existing sliding 5,000 ms `completedRequests` window, so a baseline is not silently a snapshot of the last five seconds.
+- [x] 438. Write a test asserting the aggregates are window-scoped, reset at each boundary, and reproduce a hand-computed Latency_Share and Blast_Radius for a three-node topology.
 
 ---
 
