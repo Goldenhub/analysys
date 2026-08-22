@@ -27,6 +27,33 @@ function TrafficGeneratorIcon() {
   );
 }
 
+function ApiGatewayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
+    </svg>
+  );
+}
+
+function RateLimiterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
+    </svg>
+  );
+}
+
+function CircuitBreakerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v10" />
+    </svg>
+  );
+}
+
 function LoadBalancerIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -74,6 +101,14 @@ const PALETTE_CATEGORIES: PaletteCategory[] = [
     name: 'Sources',
     items: [
       { nodeType: NodeType.TrafficGenerator, label: 'Traffic Generator', icon: <TrafficGeneratorIcon /> },
+    ],
+  },
+  {
+    name: 'Edge & Resilience',
+    items: [
+      { nodeType: NodeType.ApiGateway, label: 'API Gateway', icon: <ApiGatewayIcon /> },
+      { nodeType: NodeType.RateLimiter, label: 'Rate Limiter', icon: <RateLimiterIcon /> },
+      { nodeType: NodeType.CircuitBreaker, label: 'Circuit Breaker', icon: <CircuitBreakerIcon /> },
     ],
   },
   {

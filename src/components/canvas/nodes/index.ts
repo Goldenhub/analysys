@@ -1,5 +1,8 @@
 export { TrafficGeneratorNode } from './TrafficGeneratorNode';
+export { ApiGatewayNode } from './ApiGatewayNode';
+export { RateLimiterNode } from './RateLimiterNode';
 export { LoadBalancerNode } from './LoadBalancerNode';
+export { CircuitBreakerNode } from './CircuitBreakerNode';
 export { AppServerNode } from './AppServerNode';
 export { CacheNode } from './CacheNode';
 export { DatabaseNode } from './DatabaseNode';

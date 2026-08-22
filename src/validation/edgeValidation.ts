@@ -18,6 +18,7 @@ export const CONNECTION_RULES: Record<
     allowedTargets: [
       NodeType.ApiGateway,
       NodeType.RateLimiter,
+      NodeType.CircuitBreaker,
       NodeType.LoadBalancer,
       NodeType.AppServer,
       NodeType.MessageQueue,

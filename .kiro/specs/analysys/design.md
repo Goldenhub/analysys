@@ -39,7 +39,10 @@ Analysys is a browser-based discrete-event simulation tool for modeling distribu
 │  │  ┌──────┴──────────────────────────────────────────────┐  │  │
 │  │  │  Node Processors (per-type simulation logic)        │  │  │
 │  │  │  • TrafficGeneratorProcessor                        │  │  │
+│  │  │  • ApiGatewayProcessor                              │  │  │
+│  │  │  • RateLimiterProcessor                             │  │  │
 │  │  │  • LoadBalancerProcessor                            │  │  │
+│  │  │  • CircuitBreakerProcessor                          │  │  │
 │  │  │  • AppServerProcessor                               │  │  │
 │  │  │  • CacheProcessor                                   │  │  │
 │  │  │  • DatabaseProcessor                                │  │  │
@@ -68,7 +71,10 @@ All canvas nodes extend a shared base and are discriminated by the `nodeType` fi
 
 export enum NodeType {
   TrafficGenerator = 'TRAFFIC_GENERATOR',
+  ApiGateway = 'API_GATEWAY',
+  RateLimiter = 'RATE_LIMITER',
   LoadBalancer = 'LOAD_BALANCER',
+  CircuitBreaker = 'CIRCUIT_BREAKER',
   AppServer = 'APP_SERVER',
   Cache = 'CACHE',
   Database = 'DATABASE',
@@ -120,10 +126,27 @@ export interface TrafficGeneratorConfig {
   spikeDurationSec: number;     // seconds of spike when triggered
 }
 
+export interface ApiGatewayConfig {
+  authLatencyMeanMs: number;         // 0–60,000
+  authLatencyStdDevMs: number;       // 0–30,000
+  rejectionRate: number;             // 0.0–1.0, fraction rejected as unauthorized
+}
+
+export interface RateLimiterConfig {
+  bucketCapacity: number;            // 1–1,000,000, the maximum burst admitted
+  refillRatePerSec: number;          // 1–1,000,000, the sustained rate allowed
+}
+
 export interface LoadBalancerConfig {
   algorithm: LBAlgorithm;
   healthCheckIntervalMs: number;     // ms between health checks
   evictionThreshold: number;         // consecutive failures before eviction
+}
+
+export interface CircuitBreakerConfig {
+  errorThreshold: number;            // 0.0–1.0 downstream error rate that trips
+  openDurationMs: number;            // 100–300,000 before probing resumes
+  probeCount: number;                // 1–1,000 requests allowed while half-open
 }
 
 export interface AppServerConfig {
@@ -161,9 +184,24 @@ export interface TrafficGeneratorNode extends BaseNodeData {
   config: TrafficGeneratorConfig;
 }
 
+export interface ApiGatewayNode extends BaseNodeData {
+  nodeType: NodeType.ApiGateway;
+  config: ApiGatewayConfig;
+}
+
+export interface RateLimiterNode extends BaseNodeData {
+  nodeType: NodeType.RateLimiter;
+  config: RateLimiterConfig;
+}
+
 export interface LoadBalancerNode extends BaseNodeData {
   nodeType: NodeType.LoadBalancer;
   config: LoadBalancerConfig;
+}
+
+export interface CircuitBreakerNode extends BaseNodeData {
+  nodeType: NodeType.CircuitBreaker;
+  config: CircuitBreakerConfig;
 }
 
 export interface AppServerNode extends BaseNodeData {
@@ -188,7 +226,10 @@ export interface MessageQueueNode extends BaseNodeData {
 
 export type SimulationNode =
   | TrafficGeneratorNode
+  | ApiGatewayNode
+  | RateLimiterNode
   | LoadBalancerNode
+  | CircuitBreakerNode
   | AppServerNode
   | CacheNode
   | DatabaseNode
@@ -273,15 +314,50 @@ export function validateEdgeConnection(
  */
 export const CONNECTION_RULES: Record<NodeType, { allowedTargets: NodeType[]; allowedProtocols: EdgeProtocol[] }> = {
   [NodeType.TrafficGenerator]: {
-    allowedTargets: [NodeType.LoadBalancer, NodeType.AppServer, NodeType.MessageQueue],
+    allowedTargets: [
+      NodeType.ApiGateway,
+      NodeType.RateLimiter,
+      NodeType.CircuitBreaker,
+      NodeType.LoadBalancer,
+      NodeType.AppServer,
+      NodeType.MessageQueue,
+    ],
     allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
   },
-  [NodeType.LoadBalancer]: {
-    allowedTargets: [NodeType.AppServer],
+  [NodeType.ApiGateway]: {
+    allowedTargets: [
+      NodeType.RateLimiter,
+      NodeType.CircuitBreaker,
+      NodeType.LoadBalancer,
+      NodeType.AppServer,
+    ],
     allowedProtocols: [EdgeProtocol.Sync],
   },
+  [NodeType.RateLimiter]: {
+    allowedTargets: [NodeType.CircuitBreaker, NodeType.LoadBalancer, NodeType.AppServer],
+    allowedProtocols: [EdgeProtocol.Sync],
+  },
+  [NodeType.LoadBalancer]: {
+    allowedTargets: [NodeType.AppServer, NodeType.CircuitBreaker],
+    allowedProtocols: [EdgeProtocol.Sync],
+  },
+  [NodeType.CircuitBreaker]: {
+    allowedTargets: [
+      NodeType.AppServer,
+      NodeType.Database,
+      NodeType.Cache,
+      NodeType.MessageQueue,
+    ],
+    allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
+  },
   [NodeType.AppServer]: {
-    allowedTargets: [NodeType.Cache, NodeType.Database, NodeType.MessageQueue, NodeType.AppServer],
+    allowedTargets: [
+      NodeType.Cache,
+      NodeType.Database,
+      NodeType.MessageQueue,
+      NodeType.AppServer,
+      NodeType.CircuitBreaker,
+    ],
     allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
   },
   [NodeType.Cache]: {
@@ -1218,7 +1294,10 @@ src/
 │   │   ├── NodePalette.tsx            # Drag source sidebar
 │   │   ├── nodes/                     # Custom React Flow node components
 │   │   │   ├── TrafficGeneratorNode.tsx
+│   │   │   ├── ApiGatewayNode.tsx
+│   │   │   ├── RateLimiterNode.tsx
 │   │   │   ├── LoadBalancerNode.tsx
+│   │   │   ├── CircuitBreakerNode.tsx
 │   │   │   ├── AppServerNode.tsx
 │   │   │   ├── CacheNode.tsx
 │   │   │   ├── DatabaseNode.tsx
@@ -1251,7 +1330,10 @@ src/
 │   ├── processors/
 │   │   ├── NodeProcessor.ts           # Interface
 │   │   ├── TrafficGeneratorProcessor.ts
+│   │   ├── ApiGatewayProcessor.ts
+│   │   ├── RateLimiterProcessor.ts
 │   │   ├── LoadBalancerProcessor.ts
+│   │   ├── CircuitBreakerProcessor.ts
 │   │   ├── AppServerProcessor.ts
 │   │   ├── CacheProcessor.ts
 │   │   ├── DatabaseProcessor.ts

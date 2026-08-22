@@ -24,7 +24,10 @@ import { validateEdgeConnection } from '@/validation';
 
 import {
   TrafficGeneratorNode,
+  ApiGatewayNode,
+  RateLimiterNode,
   LoadBalancerNode,
+  CircuitBreakerNode,
   AppServerNode,
   CacheNode,
   DatabaseNode,
@@ -37,7 +40,10 @@ import { HealthLegend } from './HealthLegend';
 
 const nodeTypes: NodeTypes = {
   [NodeType.TrafficGenerator]: TrafficGeneratorNode,
+  [NodeType.ApiGateway]: ApiGatewayNode,
+  [NodeType.RateLimiter]: RateLimiterNode,
   [NodeType.LoadBalancer]: LoadBalancerNode,
+  [NodeType.CircuitBreaker]: CircuitBreakerNode,
   [NodeType.AppServer]: AppServerNode,
   [NodeType.Cache]: CacheNode,
   [NodeType.Database]: DatabaseNode,

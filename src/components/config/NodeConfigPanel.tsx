@@ -19,6 +19,9 @@ import type {
   CacheConfig,
   DatabaseConfig,
   MessageQueueConfig,
+  ApiGatewayConfig,
+  RateLimiterConfig,
+  CircuitBreakerConfig,
 } from '@/types/nodes';
 
 // ─── Validation Types ────────────────────────────────────────────
@@ -37,9 +40,23 @@ const VALIDATION_RULES: Record<string, Record<string, FieldValidation>> = {
     spikeMultiplier: { min: 1, max: 20 },
     spikeDurationSec: { min: 0, max: 3600 },
   },
+  [NodeType.ApiGateway]: {
+    authLatencyMeanMs: { min: 0, max: 60000 },
+    authLatencyStdDevMs: { min: 0, max: 30000 },
+    rejectionRate: { min: 0, max: 1, step: 0.01 },
+  },
+  [NodeType.RateLimiter]: {
+    bucketCapacity: { min: 1, max: 1000000 },
+    refillRatePerSec: { min: 1, max: 1000000 },
+  },
   [NodeType.LoadBalancer]: {
     healthCheckIntervalMs: { min: 100, max: 60000 },
     evictionThreshold: { min: 1, max: 100 },
+  },
+  [NodeType.CircuitBreaker]: {
+    errorThreshold: { min: 0, max: 1, step: 0.01 },
+    openDurationMs: { min: 100, max: 300000 },
+    probeCount: { min: 1, max: 1000 },
   },
   [NodeType.AppServer]: {
     workerThreadPoolSize: { min: 1, max: 1000 },
@@ -261,6 +278,106 @@ function TrafficGeneratorForm({ config, onFieldChange, errors }: FormProps) {
         error={errors.spikeDurationSec}
         min={0}
         max={3600}
+      />
+    </div>
+  );
+}
+
+function ApiGatewayForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as ApiGatewayConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <NumberField
+        label="Auth Latency Mean (ms)"
+        field="authLatencyMeanMs"
+        value={c.authLatencyMeanMs}
+        onChange={onFieldChange}
+        error={errors.authLatencyMeanMs}
+        min={0}
+        max={60000}
+      />
+      <NumberField
+        label="Auth Latency Std Dev (ms)"
+        field="authLatencyStdDevMs"
+        value={c.authLatencyStdDevMs}
+        onChange={onFieldChange}
+        error={errors.authLatencyStdDevMs}
+        min={0}
+        max={30000}
+      />
+      <SliderField
+        label="Rejection Rate"
+        field="rejectionRate"
+        value={c.rejectionRate}
+        onChange={onFieldChange}
+        error={errors.rejectionRate}
+        min={0}
+        max={1}
+        step={0.01}
+        displayValue={`${(c.rejectionRate * 100).toFixed(0)}%`}
+      />
+    </div>
+  );
+}
+
+function RateLimiterForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as RateLimiterConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <NumberField
+        label="Bucket Capacity (burst)"
+        field="bucketCapacity"
+        value={c.bucketCapacity}
+        onChange={onFieldChange}
+        error={errors.bucketCapacity}
+        min={1}
+        max={1000000}
+      />
+      <NumberField
+        label="Refill Rate (tokens/sec)"
+        field="refillRatePerSec"
+        value={c.refillRatePerSec}
+        onChange={onFieldChange}
+        error={errors.refillRatePerSec}
+        min={1}
+        max={1000000}
+      />
+    </div>
+  );
+}
+
+function CircuitBreakerForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as CircuitBreakerConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <SliderField
+        label="Error Threshold"
+        field="errorThreshold"
+        value={c.errorThreshold}
+        onChange={onFieldChange}
+        error={errors.errorThreshold}
+        min={0}
+        max={1}
+        step={0.01}
+        displayValue={`${(c.errorThreshold * 100).toFixed(0)}%`}
+      />
+      <NumberField
+        label="Open Duration (ms)"
+        field="openDurationMs"
+        value={c.openDurationMs}
+        onChange={onFieldChange}
+        error={errors.openDurationMs}
+        min={100}
+        max={300000}
+      />
+      <NumberField
+        label="Probe Count"
+        field="probeCount"
+        value={c.probeCount}
+        onChange={onFieldChange}
+        error={errors.probeCount}
+        min={1}
+        max={1000}
       />
     </div>
   );
@@ -506,6 +623,27 @@ function NodeTypeIcon({ nodeType }: { nodeType: NodeType }) {
       return (
         <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+      );
+    case NodeType.ApiGateway:
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
+        </svg>
+      );
+    case NodeType.RateLimiter:
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
+        </svg>
+      );
+    case NodeType.CircuitBreaker:
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v10" />
         </svg>
       );
     case NodeType.LoadBalancer:
@@ -957,6 +1095,27 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
       <div className={tab === 'config' ? 'flex-1 overflow-y-auto px-4 py-3' : 'hidden'}>
         {nodeData.nodeType === NodeType.TrafficGenerator && (
           <TrafficGeneratorForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.ApiGateway && (
+          <ApiGatewayForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.RateLimiter && (
+          <RateLimiterForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.CircuitBreaker && (
+          <CircuitBreakerForm
             config={nodeData.config as unknown as Record<string, unknown>}
             onFieldChange={handleFieldChange}
             errors={errors}

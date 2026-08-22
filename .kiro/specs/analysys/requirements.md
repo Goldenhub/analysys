@@ -10,7 +10,10 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 - **Canvas**: The interactive visual workspace where nodes and edges are placed to model a topology.
 - **Simulation_Engine**: The discrete-event simulation engine running in a Web Worker, responsible for processing events in virtual-time order.
 - **Traffic_Generator**: A node type that emits simulated requests at a configured rate and distribution.
+- **API_Gateway**: A node type representing the front door of a topology, applying an authentication latency to every request and rejecting a configured fraction as unauthorized before they reach downstream capacity.
+- **Rate_Limiter**: A node type that admits requests according to a token bucket, allowing a burst up to its capacity and then only as fast as tokens are replenished, rejecting the remainder.
 - **Load_Balancer**: A node type that distributes incoming requests across downstream nodes using a configured algorithm.
+- **Circuit_Breaker**: A node type guarding a downstream dependency, fast-failing requests once the observed downstream error rate crosses a threshold so the dependency has room to recover.
 - **App_Server**: A node type representing an application server with a thread pool and request queue.
 - **Cache**: A node type representing a caching layer (e.g., Redis) with configurable hit ratio and eviction policy.
 - **Database**: A node type representing a database with a connection pool and query latency distribution.
@@ -34,7 +37,7 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 
 #### Acceptance Criteria
 
-1. THE System SHALL display a side palette listing all supported node types: Traffic Generator, Load Balancer, App Server, Cache, Database, Message Queue.
+1. THE System SHALL display a side palette listing all supported node types: Traffic Generator, API Gateway, Rate Limiter, Load Balancer, Circuit Breaker, App Server, Cache, Database, Message Queue.
 2. THE System SHALL render each node type with a distinct icon and label in the palette.
 3. WHEN a node is dragged from the palette onto the Canvas, THE System SHALL create a new instance at the drop coordinates.
 4. WHEN a node is repositioned on the Canvas, THE System SHALL update its position freely without constraint.
@@ -62,13 +65,16 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 
 1. WHEN a node is clicked, THE System SHALL open a configuration panel displaying editable parameters for that node type.
 2. WHILE a Traffic_Generator node is selected, THE System SHALL display configurable parameters: RPS (1–100,000), distribution (Poisson, Uniform), spike multiplier (1x–20x), spike duration (seconds).
-3. WHILE a Load_Balancer node is selected, THE System SHALL display configurable parameters: algorithm (Round Robin, Least Connections), health-check interval (ms), eviction threshold (consecutive failures).
-4. WHILE an App_Server node is selected, THE System SHALL display configurable parameters: worker thread pool size (1–1,000), request queue depth (0–10,000), processing time distribution (mean, std dev in ms).
-5. WHILE a Cache node is selected, THE System SHALL display configurable parameters: hit ratio (0.0–1.0), eviction policy (LRU, LFU, TTL), access latency (ms).
-6. WHILE a Database node is selected, THE System SHALL display configurable parameters: connection pool size (1–500), query latency distribution (mean, std dev in ms), lock timeout (ms), type (Relational/NoSQL).
-7. WHILE a Message_Queue node is selected, THE System SHALL display configurable parameters: consumer batch size (1–10,000), buffer capacity (messages), backpressure threshold (%), retention policy.
-8. IF an invalid value is entered for a parameter, THEN THE System SHALL display an inline error message indicating the valid range.
-9. WHILE the simulation is paused, THE System SHALL apply configuration changes immediately without requiring a simulation restart.
+3. WHILE an API_Gateway node is selected, THE System SHALL display configurable parameters: auth latency distribution (mean 0–60,000 ms, std dev 0–30,000 ms), rejection rate (0.0–1.0).
+4. WHILE a Rate_Limiter node is selected, THE System SHALL display configurable parameters: bucket capacity (1–1,000,000 tokens), refill rate (1–1,000,000 tokens/sec).
+5. WHILE a Load_Balancer node is selected, THE System SHALL display configurable parameters: algorithm (Round Robin, Least Connections), health-check interval (ms), eviction threshold (consecutive failures).
+6. WHILE a Circuit_Breaker node is selected, THE System SHALL display configurable parameters: error threshold (0.0–1.0), open duration (100–300,000 ms), probe count (1–1,000).
+7. WHILE an App_Server node is selected, THE System SHALL display configurable parameters: worker thread pool size (1–1,000), request queue depth (0–10,000), processing time distribution (mean, std dev in ms).
+8. WHILE a Cache node is selected, THE System SHALL display configurable parameters: hit ratio (0.0–1.0), eviction policy (LRU, LFU, TTL), access latency (ms).
+9. WHILE a Database node is selected, THE System SHALL display configurable parameters: connection pool size (1–500), query latency distribution (mean, std dev in ms), lock timeout (ms), type (Relational/NoSQL).
+10. WHILE a Message_Queue node is selected, THE System SHALL display configurable parameters: consumer batch size (1–10,000), buffer capacity (messages), backpressure threshold (%), retention policy.
+11. IF an invalid value is entered for a parameter, THEN THE System SHALL display an inline error message indicating the valid range.
+12. WHILE the simulation is paused, THE System SHALL apply configuration changes immediately without requiring a simulation restart.
 
 ### Requirement 4: Simulation Lifecycle Controls
 
@@ -292,6 +298,24 @@ Analysys is a browser-based tool that enables engineers to visually model distri
 2. WHEN Summary view is selected, THE System SHALL display all system-wide metrics as large numeric cards with values, units (req/s, ms, %, count), and one-line descriptions.
 3. THE Summary view SHALL include a per-node breakdown table showing: Node label, Health status, Throughput (req/s), Error Rate (%), Latency p50 (ms), Queue depth (items), Active connections, and Utilization (%).
 4. ALL displayed values SHALL include their unit of measurement.
+
+### Requirement 22: Edge and Resilience Node Behaviors
+
+**User Story:** As a systems engineer, I want to model the gateway, rate limiting, and circuit breaking layers that sit in front of my services, so that I can observe how admission control and fast-failing change a cascading failure.
+
+#### Acceptance Criteria
+
+1. WHEN a request arrives at an API_Gateway node, THE Simulation_Engine SHALL add an authentication latency drawn from the node's configured distribution to that request's accumulated latency, whether or not the request is subsequently admitted.
+2. WHEN a request arrives at an API_Gateway node, THE Simulation_Engine SHALL reject it as unauthorized with probability equal to the node's configured rejection rate, and a rejected request SHALL terminate at the gateway without reaching any downstream node.
+3. WHEN a request arrives at a Rate_Limiter node and at least one token is available in its bucket, THE Simulation_Engine SHALL consume one token and forward the request downstream.
+4. WHEN a request arrives at a Rate_Limiter node and its bucket is empty, THE Simulation_Engine SHALL reject the request without consulting any downstream node.
+5. THE Rate_Limiter SHALL replenish tokens at its configured refill rate, bounded by its configured bucket capacity, so that a burst of up to the bucket capacity is admitted before the admitted rate settles to the refill rate.
+6. WHILE a Circuit_Breaker node's circuit is Closed and the observed error rate of its downstream node exceeds the node's configured error threshold, THE Simulation_Engine SHALL trip the circuit to Open.
+7. WHILE a Circuit_Breaker node's circuit is Open, THE Simulation_Engine SHALL fast-fail every arriving request without forwarding it downstream.
+8. WHEN the configured open duration has elapsed since a Circuit_Breaker node's circuit tripped and a request arrives, THE Simulation_Engine SHALL transition the circuit to Half_Open.
+9. WHILE a Circuit_Breaker node's circuit is Half_Open, THE Simulation_Engine SHALL forward up to the configured probe count of requests downstream to test recovery, then close the circuit if the observed downstream error rate is at or below the threshold, or re-open it otherwise.
+10. THE Circuit_Breaker SHALL require a minimum number of downstream observations within the current metrics window before acting on the observed error rate, so that the per-window counter reset at a metrics-window boundary does not cause the circuit to flap.
+11. THE Simulation_Engine SHALL treat API_Gateway, Rate_Limiter, and Circuit_Breaker nodes as holding no request queue and no connection pool, so that no queue-depth or connection measure is reported for them.
 
 ## Non-Functional Requirements
 

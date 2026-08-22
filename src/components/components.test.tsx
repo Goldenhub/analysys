@@ -13,14 +13,17 @@ import type { AnalysysNode } from '@/types/nodes';
 import type { SimEventLogEntry } from '@/types/messages';
 import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
 
-// ─── Task 250: NodePalette renders all 6 node types ──────────────
+// ─── Task 250: NodePalette renders all 9 node types ──────────────
 
 describe('NodePalette', () => {
-  it('renders all 6 node type items', () => {
+  it('renders all 9 node type items', () => {
     render(<NodePalette />);
 
     expect(screen.getByRole('button', { name: /traffic generator/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /api gateway/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /rate limiter/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /load balancer/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /circuit breaker/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /app server/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /cache/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /database/i })).toBeDefined();
@@ -31,6 +34,7 @@ describe('NodePalette', () => {
     render(<NodePalette />);
 
     expect(screen.getByText('Sources')).toBeDefined();
+    expect(screen.getByText('Edge & Resilience')).toBeDefined();
     expect(screen.getByText('Compute')).toBeDefined();
     expect(screen.getByText('Storage')).toBeDefined();
     expect(screen.getByText('Messaging')).toBeDefined();
@@ -213,21 +217,33 @@ describe('MetricsSummary node identification', () => {
 describe('NodeConfigPanel activity tab', () => {
   const NODE_ID = 'aabbccdd-1122-3344-5566-778899aabbcc';
 
+  function configFor(nodeType: NodeType): Record<string, unknown> {
+    switch (nodeType) {
+      case NodeType.TrafficGenerator:
+        return {
+          rps: 100,
+          distribution: 'poisson',
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        };
+      case NodeType.CircuitBreaker:
+        return {
+          errorThreshold: 0.5,
+          openDurationMs: 5000,
+          probeCount: 3,
+        };
+      default:
+        return {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        };
+    }
+  }
+
   function seedNode(nodeType: NodeType) {
-    const config =
-      nodeType === NodeType.TrafficGenerator
-        ? {
-            rps: 100,
-            distribution: 'poisson',
-            spikeMultiplier: 1,
-            spikeDurationSec: 0,
-          }
-        : {
-            workerThreadPoolSize: 10,
-            requestQueueDepth: 100,
-            processingTimeMeanMs: 50,
-            processingTimeStdDevMs: 10,
-          };
+    const config = configFor(nodeType);
 
     const node = {
       id: NODE_ID,
@@ -333,5 +349,61 @@ describe('NodeConfigPanel activity tab', () => {
 
     expect(screen.getByText('(idle)')).toBeDefined();
     expect(screen.getByText('Worker threads busy — currently idle')).toBeDefined();
+  });
+
+  it('omits queue and connection rows for a circuit breaker, which holds neither', () => {
+    seedNode(NodeType.CircuitBreaker);
+    seedMetrics({
+      throughput: 20,
+      queueDepth: 7,
+      activeConnections: 4,
+      utilization: 1,
+      latencyPercentiles: { p50: 0.2, p90: 0.2, p99: 0.2 },
+    });
+    renderActivityTab();
+
+    expect(screen.queryByText('Queue depth')).toBeNull();
+    expect(screen.queryByText('Active connections')).toBeNull();
+    expect(screen.queryByText('Buffered messages')).toBeNull();
+    // The measures that do apply are still reported
+    expect(screen.getByText('Throughput')).toBeDefined();
+    expect(screen.getByText('Utilization')).toBeDefined();
+    expect(screen.getByText('Breaker tripped')).toBeDefined();
+  });
+});
+
+// ─── NodeConfigPanel renders the new resilience forms ────────────
+
+describe('NodeConfigPanel circuit breaker configuration', () => {
+  const NODE_ID = '11223344-5566-7788-99aa-bbccddeeff00';
+
+  afterEach(() => {
+    cleanup();
+    useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
+  });
+
+  it('renders the circuit breaker parameters when the node is selected', () => {
+    const node = {
+      id: NODE_ID,
+      type: 'default',
+      position: { x: 0, y: 0 },
+      data: {
+        id: NODE_ID,
+        nodeType: NodeType.CircuitBreaker,
+        label: 'Payments Breaker',
+        position: { x: 0, y: 0 },
+        config: { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 },
+      },
+    } as unknown as AnalysysNode;
+
+    useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
+
+    render(<NodeConfigPanel selectedNodeId={NODE_ID} onClose={() => {}} />);
+
+    expect(screen.getByText('Error Threshold')).toBeDefined();
+    expect(screen.getByText('Probe Count')).toBeDefined();
+    expect(screen.getByText('Open Duration (ms)')).toBeDefined();
+    // The threshold slider reports the fraction as a percentage
+    expect(screen.getByText('50%')).toBeDefined();
   });
 });
