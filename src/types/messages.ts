@@ -4,6 +4,18 @@ import type { MetricsBatchPayload } from './metrics';
 
 // ─── Simulation Engine Config (sent on INIT) ────────────────────
 
+/**
+ * Cycle guard: a request traversing more than this many hops is terminated
+ * LOOP_DETECTED. Requirement 13.1 fixes the default at 20.
+ */
+export const DEFAULT_MAX_HOPS_PER_REQUEST = 20;
+
+/**
+ * Metrics window in simulated milliseconds. Requirement 7.2 requires at least
+ * 2 chart updates per simulated second at 1x, so this must not exceed 500.
+ */
+export const DEFAULT_METRICS_INTERVAL_MS = 500;
+
 export interface SimulationEngineConfig {
   topology: { nodes: SimulationNode[]; edges: EdgeData[] };
   seed: number;

@@ -9,6 +9,10 @@ import type { AnalysysNode } from '@/types/nodes';
 import type { AnalysysEdge } from '@/types/edges';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
+import {
+  DEFAULT_MAX_HOPS_PER_REQUEST,
+  DEFAULT_METRICS_INTERVAL_MS,
+} from '@/types/messages';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -99,8 +103,8 @@ export function PresetSelector() {
           seed: Date.now(),
           speedMultiplier: 1,
           maxSimulatedTimeMs: 120000,
-          metricsIntervalMs: 1000,
-          maxHopsPerRequest: 10,
+          metricsIntervalMs: DEFAULT_METRICS_INTERVAL_MS,
+          maxHopsPerRequest: DEFAULT_MAX_HOPS_PER_REQUEST,
         },
       });
 

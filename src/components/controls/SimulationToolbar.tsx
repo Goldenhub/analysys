@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSimulationStore } from '@/store';
+import {
+  DEFAULT_MAX_HOPS_PER_REQUEST,
+  DEFAULT_METRICS_INTERVAL_MS,
+} from '@/types/messages';
 import { useTopologyStore } from '@/store';
 import { SimState } from '@/simulation/types';
 import { Button } from '@/components/ui/button';
@@ -132,8 +136,8 @@ export function SimulationToolbar() {
         seed: Date.now(),
         speedMultiplier,
         maxSimulatedTimeMs: durationMs,
-        metricsIntervalMs: 500,
-        maxHopsPerRequest: 20,
+        metricsIntervalMs: DEFAULT_METRICS_INTERVAL_MS,
+        maxHopsPerRequest: DEFAULT_MAX_HOPS_PER_REQUEST,
       },
     });
     sendToWorker({ type: 'START', payload: { speedMultiplier } });
