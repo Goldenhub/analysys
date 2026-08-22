@@ -1,4 +1,5 @@
 import type { CacheConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -97,12 +98,12 @@ export class CacheProcessor implements NodeProcessor {
     }
   }
 
-  getUtilization(): number {
+  getUtilization(): UtilizationReading {
     // Cache utilization isn't directly capacity-bound in this model.
     // Report the observed miss rate as a proxy (more misses = more stressed).
     const total = this.hitsInWindow + this.missesInWindow;
-    if (total === 0) return 0;
-    return this.missesInWindow / total;
+    if (total === 0) return { kind: 'value', value: 0, idle: true };
+    return { kind: 'value', value: this.missesInWindow / total, idle: false };
   }
 
   resetWindowCounters(): void {

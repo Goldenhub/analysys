@@ -1,4 +1,8 @@
-import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
+import type {
+  MetricsBatchPayload,
+  NodeMetricsSnapshot,
+  UtilizationReading,
+} from '@/types/metrics';
 import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -55,6 +59,46 @@ function GaugeBar({ label, current, max }: GaugeBarProps) {
         <div
           className={`h-full rounded-full transition-all duration-500 ${colorClass} ${
             isPulsing ? 'animate-pulse' : ''
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Utilization Bar ─────────────────────────────────────────────
+
+/**
+ * A bar can only express a fraction of a bound. Where the node has no bound, there is
+ * nothing to fill, so the reason is shown on its own and no bar is rendered at all.
+ */
+function UtilizationBar({ reading }: { reading: UtilizationReading | undefined }) {
+  if (!reading) return null;
+
+  if (reading.kind === 'not-applicable') {
+    return (
+      <div className="flex items-center justify-between">
+        <span className="truncate text-[10px] text-gray-400">Utilization</span>
+        <span className="text-[10px] text-gray-500">{reading.reason}</span>
+      </div>
+    );
+  }
+
+  const pct = Math.min(100, Math.max(0, reading.value * 100));
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center justify-between">
+        <span className="truncate text-[10px] text-gray-400">Utilization</span>
+        <span className={`text-[10px] font-mono ${getGaugeTextColor(pct)}`}>
+          {pct.toFixed(0)}%
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${getGaugeColor(pct)} ${
+            pct > 90 ? 'animate-pulse' : ''
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -156,6 +200,7 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
                 max={Math.max(peaks.buffer, 10)}
               />
             )}
+            <UtilizationBar reading={currentSnapshot?.utilization} />
           </div>
         );
       })}

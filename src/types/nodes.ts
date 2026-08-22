@@ -2,7 +2,12 @@ import type { Node as RFNode } from '@xyflow/react';
 
 // ─── Enumerations ────────────────────────────────────────────────
 
-/** The 9 supported node types in the simulation topology, in request-flow order. */
+/**
+ * The 15 supported node types in the simulation topology, in request-flow order.
+ *
+ * The nine originally shipped member *values* are byte-identical to schema v1, because
+ * persisted topologies key off these strings — renaming one would orphan saved files.
+ */
 export enum NodeType {
   TrafficGenerator = 'TRAFFIC_GENERATOR',
   ApiGateway = 'API_GATEWAY',
@@ -13,6 +18,12 @@ export enum NodeType {
   Cache = 'CACHE',
   Database = 'DATABASE',
   MessageQueue = 'MESSAGE_QUEUE',
+  AuthService = 'AUTH_SERVICE',
+  AuthzService = 'AUTHZ_SERVICE',
+  WorkerPool = 'WORKER_POOL',
+  DeadLetterQueue = 'DEAD_LETTER_QUEUE',
+  ObjectStore = 'OBJECT_STORE',
+  Scheduler = 'SCHEDULER',
 }
 
 /** Statistical distribution for traffic generation inter-arrival times. */
@@ -54,6 +65,42 @@ export enum BackpressureStrategy {
   RejectNew = 'REJECT_NEW',
 }
 
+/** How an Auth_Service node verifies a credential. */
+export enum VerificationMode {
+  Local = 'LOCAL',
+  Introspection = 'INTROSPECTION',
+}
+
+/** How a Worker_Pool grows the delay between retry attempts. */
+export enum RetryBackoff {
+  Fixed = 'FIXED',
+  Exponential = 'EXPONENTIAL',
+}
+
+/** Whether a Dead_Letter_Queue redrives retained messages on its own. */
+export enum RedriveMode {
+  Manual = 'MANUAL',
+  Automatic = 'AUTOMATIC',
+}
+
+/** What a Scheduler does when a trigger fires while the previous one is still running. */
+export enum OverlapPolicy {
+  Allow = 'ALLOW',
+  Skip = 'SKIP',
+  Queue = 'QUEUE',
+}
+
+/**
+ * Per-node downstream routing policy (Requirement 32). Lives on BaseNodeData, not on config,
+ * because it is cross-cutting: the engine applies it, not the node processor.
+ */
+export enum RoutingPolicy {
+  First = 'FIRST',
+  RoundRobin = 'ROUND_ROBIN',
+  Weighted = 'WEIGHTED',
+  FanOut = 'FAN_OUT',
+}
+
 // ─── Base Node ───────────────────────────────────────────────────
 
 /** Common fields shared by all simulation node types. */
@@ -62,6 +109,14 @@ export interface BaseNodeData {
   nodeType: NodeType;
   label: string;
   position: { x: number; y: number };
+  /**
+   * R32.1 — defaults to First on placement; defaulted to First on schema v1 load (R32.13).
+   *
+   * Deliberately on the base node rather than on each config interface: one engine-side
+   * resolver reads it for all fifteen types, and `UPDATE_CONFIG` (which merges into
+   * `node.config`) cannot silently change routing mid-run.
+   */
+  routingPolicy: RoutingPolicy;
 }
 
 // ─── Per-Type Configuration Interfaces ───────────────────────────
@@ -130,6 +185,74 @@ export interface MessageQueueConfig {
   backpressureStrategy: BackpressureStrategy;
 }
 
+/** Identity verification service — Requirement 23. */
+export interface AuthServiceConfig {
+  verificationMode: VerificationMode;
+  verificationLatencyMeanMs: number;    // 0–60,000
+  verificationLatencyStdDevMs: number;  // 0–30,000
+  concurrencyLimit: number;             // 1–10,000
+  queueDepth: number;                   // 0–10,000
+  tokenCacheHitRatio: number;           // 0.0–1.0, applied only in Introspection mode
+  credentialFailureRate: number;        // 0.0–1.0
+}
+
+/** Policy evaluation service — Requirement 24. */
+export interface AuthzServiceConfig {
+  policyLatencyMeanMs: number;          // 0–60,000
+  policyLatencyStdDevMs: number;        // 0–30,000
+  policyCacheHitRatio: number;          // 0.0–1.0
+  lookupsPerRequest: number;            // 1–50
+  denyRate: number;                     // 0.0–1.0
+  concurrencyLimit: number;             // 1–10,000
+  queueDepth: number;                   // 0–10,000
+}
+
+/** Fixed-concurrency job consumer with a retry policy — Requirement 25. */
+export interface WorkerPoolConfig {
+  concurrency: number;                  // 1–10,000
+  jobProcessingMeanMs: number;          // 0–600,000
+  jobProcessingStdDevMs: number;        // 0–300,000
+  prefetchBufferDepth: number;          // 0–10,000
+  jobFailureRate: number;               // 0.0–1.0
+  maxRetries: number;                   // 0–10
+  retryBackoff: RetryBackoff;
+  retryBaseDelayMs: number;             // 1–300,000
+  jobTimeoutMs: number;                 // 1–600,000
+}
+
+/** Terminal retention for retry-exhausted jobs — Requirement 26. */
+export interface DeadLetterQueueConfig {
+  capacity: number;                     // 1–1,000,000
+  retentionPeriodMs: number;            // 1–2,592,000,000
+  redriveMode: RedriveMode;
+  redriveIntervalMs: number;            // 1–300,000
+  redriveBatchSize: number;             // 1–10,000
+  maxRedriveAttempts: number;           // 0–10
+}
+
+/** Size- and bandwidth-bound object storage — Requirement 27. */
+export interface ObjectStoreConfig {
+  objectSizeMeanKB: number;             // 1–10,485,760
+  objectSizeStdDevKB: number;           // 0–10,485,760
+  throughputCapacityMBps: number;       // 0.1–100,000
+  baseLatencyMeanMs: number;            // 0–60,000
+  baseLatencyStdDevMs: number;          // 0–30,000
+  maxConcurrentTransfers: number;       // 1–100,000
+  transferQueueDepth: number;           // 0–10,000
+  readFraction: number;                 // 0.0–1.0
+  writeLatencyMultiplier: number;       // 1.0–100.0
+}
+
+/** Periodic job trigger — Requirement 28. */
+export interface SchedulerConfig {
+  intervalMs: number;                   // 100–86,400,000
+  jobsPerTrigger: number;               // 1–100,000
+  startOffsetMs: number;                // 0–86,400,000
+  jitterMs: number;                     // 0–86,400,000
+  overlapPolicy: OverlapPolicy;
+  maxDeferredTriggers: number;          // 1–1,000
+}
+
 // ─── Composed Node Types (Discriminated Union) ───────────────────
 
 export interface TrafficGeneratorNode extends BaseNodeData {
@@ -177,7 +300,37 @@ export interface MessageQueueNode extends BaseNodeData {
   config: MessageQueueConfig;
 }
 
-/** Discriminated union of all node types used in the simulation engine. */
+export interface AuthServiceNode extends BaseNodeData {
+  nodeType: NodeType.AuthService;
+  config: AuthServiceConfig;
+}
+
+export interface AuthzServiceNode extends BaseNodeData {
+  nodeType: NodeType.AuthzService;
+  config: AuthzServiceConfig;
+}
+
+export interface WorkerPoolNode extends BaseNodeData {
+  nodeType: NodeType.WorkerPool;
+  config: WorkerPoolConfig;
+}
+
+export interface DeadLetterQueueNode extends BaseNodeData {
+  nodeType: NodeType.DeadLetterQueue;
+  config: DeadLetterQueueConfig;
+}
+
+export interface ObjectStoreNode extends BaseNodeData {
+  nodeType: NodeType.ObjectStore;
+  config: ObjectStoreConfig;
+}
+
+export interface SchedulerNode extends BaseNodeData {
+  nodeType: NodeType.Scheduler;
+  config: SchedulerConfig;
+}
+
+/** Discriminated union of all fifteen node types used in the simulation engine. */
 export type SimulationNode =
   | TrafficGeneratorNode
   | ApiGatewayNode
@@ -187,7 +340,13 @@ export type SimulationNode =
   | AppServerNode
   | CacheNode
   | DatabaseNode
-  | MessageQueueNode;
+  | MessageQueueNode
+  | AuthServiceNode
+  | AuthzServiceNode
+  | WorkerPoolNode
+  | DeadLetterQueueNode
+  | ObjectStoreNode
+  | SchedulerNode;
 
 // ─── React Flow Integration ─────────────────────────────────────
 

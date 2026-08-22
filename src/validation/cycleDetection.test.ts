@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectCycles } from './cycleDetection';
-import { NodeType } from '@/types/nodes';
+import { NodeType, RoutingPolicy } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import { EdgeProtocol } from '@/types/edges';
 import type { EdgeData } from '@/types/edges';
@@ -13,12 +13,13 @@ function makeAppServer(id: string): SimulationNode {
     nodeType: NodeType.AppServer,
     label: id,
     position: { x: 0, y: 0 },
+    routingPolicy: RoutingPolicy.First,
     config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
   };
 }
 
 function makeEdge(source: string, target: string): EdgeData {
-  return { id: `${source}->${target}`, source, target, protocol: EdgeProtocol.Sync };
+  return { id: `${source}->${target}`, source, target, protocol: EdgeProtocol.Sync, weight: 1.0 };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────

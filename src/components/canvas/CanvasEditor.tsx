@@ -20,7 +20,7 @@ import { NodeType } from '@/types/nodes';
 import { createDefaultNodeData } from '@/types/nodeDefaults';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
-import { validateEdgeConnection } from '@/validation';
+import { validateEdgeConnection, getValidProtocols } from '@/validation';
 
 import {
   TrafficGeneratorNode,
@@ -32,6 +32,12 @@ import {
   CacheNode,
   DatabaseNode,
   MessageQueueNode,
+  AuthServiceNode,
+  AuthzServiceNode,
+  WorkerPoolNode,
+  DeadLetterQueueNode,
+  ObjectStoreNode,
+  SchedulerNode,
 } from './nodes';
 import { SyncEdge, AsyncEdge } from './edges';
 import { HealthLegend } from './HealthLegend';
@@ -48,6 +54,12 @@ const nodeTypes: NodeTypes = {
   [NodeType.Cache]: CacheNode,
   [NodeType.Database]: DatabaseNode,
   [NodeType.MessageQueue]: MessageQueueNode,
+  [NodeType.AuthService]: AuthServiceNode,
+  [NodeType.AuthzService]: AuthzServiceNode,
+  [NodeType.WorkerPool]: WorkerPoolNode,
+  [NodeType.DeadLetterQueue]: DeadLetterQueueNode,
+  [NodeType.ObjectStore]: ObjectStoreNode,
+  [NodeType.Scheduler]: SchedulerNode,
 };
 
 // ─── Custom Edge Type Registry ───────────────────────────────────
@@ -107,15 +119,30 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
       // Extract existing edge data for duplicate check
       const existingEdgeData: EdgeData[] = edges.map((e) => e.data as EdgeData);
 
-      const result = validateEdgeConnection(sourceData, targetData, existingEdgeData);
+      // The protocol is decided before validation because R30.13 validates it. Take the
+      // pair's first permitted protocol rather than assuming Sync: an async-only pair
+      // (Message_Queue → App_Server, Scheduler → Worker_Pool) would otherwise be created
+      // as Sync and then rejected by the protocol-mismatch rule.
+      const permitted = getValidProtocols(sourceData.nodeType, targetData.nodeType);
+      const defaultProtocol = permitted[0] ?? EdgeProtocol.Sync;
+
+      // Node lookup for the R30.11 cardinality rejection, which names a third node.
+      const nodesById = new Map<string, SimulationNode>(
+        nodes.map((n) => [n.id, n.data as SimulationNode]),
+      );
+
+      const result = validateEdgeConnection(
+        sourceData,
+        targetData,
+        defaultProtocol,
+        existingEdgeData,
+        nodesById,
+      );
       if (!result.valid) {
         // Could surface this to the user via toast/notification in the future
         console.warn('Connection rejected:', result.reason);
         return;
       }
-
-      // Determine default protocol based on connection rules
-      const defaultProtocol = EdgeProtocol.Sync;
 
       const edgeId = crypto.randomUUID();
       const newEdge: AnalysysEdge = {
@@ -129,6 +156,8 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
           source: connection.source,
           target: connection.target,
           protocol: defaultProtocol,
+          // R32.4 — a new edge carries an equal share until the user reweights it.
+          weight: 1.0,
         },
       };
 

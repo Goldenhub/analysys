@@ -1,4 +1,5 @@
 import type { ApiGatewayConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -75,11 +76,11 @@ export class ApiGatewayProcessor implements NodeProcessor {
     // No chaos state to revert.
   }
 
-  getUtilization(): number {
+  getUtilization(): UtilizationReading {
     // Not capacity-bound; report the observed rejection rate as a stress proxy.
     const total = this.admittedInWindow + this.rejectedInWindow;
-    if (total === 0) return 0;
-    return this.rejectedInWindow / total;
+    if (total === 0) return { kind: 'value', value: 0, idle: true };
+    return { kind: 'value', value: this.rejectedInWindow / total, idle: false };
   }
 
   resetWindowCounters(): void {

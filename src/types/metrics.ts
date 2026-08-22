@@ -20,6 +20,20 @@ export interface LittlesLawMetrics {
   isStable: boolean;
 }
 
+// ─── Utilization ─────────────────────────────────────────────────
+
+/**
+ * A node's Utilization for one metrics window (R29.10–29.13).
+ *
+ * A bare `number` cannot tell an idle node reading `0.0` apart from a node whose
+ * bounded resource is zero or absent, so the two cases are separate variants.
+ */
+export type UtilizationReading =
+  /** `idle` is true when the bound is above zero but the node saw no arrivals this window. */
+  | { kind: 'value'; value: number; idle: boolean }
+  /** `reason` is plain language and names the zero or missing bounded resource. */
+  | { kind: 'not-applicable'; reason: string };
+
 /** Point-in-time metrics snapshot for a single node. */
 export interface NodeMetricsSnapshot {
   nodeId: string;
@@ -30,7 +44,7 @@ export interface NodeMetricsSnapshot {
   queueDepth: number;
   activeConnections: number;
   bufferOccupancy: number;
-  utilization: number;
+  utilization: UtilizationReading;
   littlesLaw: LittlesLawMetrics;
   healthStatus: 'green' | 'yellow' | 'red';
 }

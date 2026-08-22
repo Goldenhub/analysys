@@ -3114,6 +3114,2611 @@
         "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
         "timestamp": 1787263991564
       }
+    ],
+    "273. Extend the existing `NodeType` enum with `AuthService`, `AuthzService`, `WorkerPool`, `DeadLetterQueue`, `ObjectStore`, and `Scheduler`, leaving the nine shipped member values byte-identical so persisted topologies keep loading.": [
+      {
+        "executionId": "ff91ae64-b76c-4360-b34b-08ce61538864",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787405289775
+      },
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413298045
+      },
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413758998
+      },
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413971696
+      }
+    ],
+    "274. Add the `VerificationMode`, `RetryBackoff`, `RedriveMode`, and `OverlapPolicy` enums with the string values named in the design.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413298665
+      },
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413978740
+      },
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414014804
+      }
+    ],
+    "275. Add the `RoutingPolicy` enum (`First`, `RoundRobin`, `Weighted`, `FanOut`) and a required `routingPolicy` field on `BaseNodeData` rather than on each config interface, so one engine-side resolver reads it for all fifteen types and `UPDATE_CONFIG`'s config merge cannot change routing mid-run.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413299167
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414183241
+      }
+    ],
+    "276. Add the six config interfaces `AuthServiceConfig`, `AuthzServiceConfig`, `WorkerPoolConfig`, `DeadLetterQueueConfig`, `ObjectStoreConfig`, and `SchedulerConfig` with the exact field names and range comments from the design's Configuration Interfaces block.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413299639
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414191770
+      }
+    ],
+    "277. Add the six composed `…Node extends BaseNodeData` interfaces and widen the `SimulationNode` discriminated union to fifteen members.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413300049
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414199085
+      }
+    ],
+    "278. Add `weight: number` to `EdgeData` and document in that file that the edge array's serialized order is the stored index the routing policies of Requirement 32 are defined over, so persistence must preserve it.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413300509
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414202941
+      }
+    ],
+    "279. Create `src/types/groups.ts` exporting `SubsystemGroup` (`id`, `name`, `memberNodeIds`, `collapsed`) and re-export it from `src/types/index.ts`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413301155
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414204344
+      }
+    ],
+    "280. Add the `UtilizationReading` discriminated union (`{ kind: 'value'; value; idle }` and `{ kind: 'not-applicable'; reason }`) so an idle `0.0` is distinguishable from an absent or zero bound.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413301571
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414205436
+      }
+    ],
+    "281. Change `NodeMetricsSnapshot.utilization` from `number` to `UtilizationReading` — a breaking change for the three consumers below, all of which must be updated in this phase.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413302253
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414207785
+      }
+    ],
+    "282. Update `MetricsSummary.tsx` to branch on the reading's discriminant, rendering the plain-language reason in place of a percentage where the reading is `not-applicable`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413302930
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414209311
+      }
+    ],
+    "283. Update `QueueGauge.tsx` to branch on the discriminant and render no bar where the reading is `not-applicable`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413303333
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414211207
+      }
+    ],
+    "284. Update `ActivityPanel` in `NodeConfigPanel.tsx` to read the discriminant instead of comparing `snapshot.utilization === 0`, keeping the existing idle annotation for `{ kind: 'value', idle: true }` and showing the reason for `not-applicable`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413303966
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414253029
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414435687
+      }
+    ],
+    "285. Change `deriveHealthStatus` in `MetricsCollector.ts` to accept a `UtilizationReading`, deriving health from the existing thresholds for a numeric reading and from the error rate alone for a `not-applicable` reading.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413304579
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414442872
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414667755
+      }
+    ],
+    "286. Add six `createDefaultNodeData` cases using the design's defaults table (Auth_Service Local 3 ms ± 1 concurrency 64; Authz_Service 4 ms ± 1.5 one lookup; Worker_Pool concurrency 8, 200 ms ± 50, Exponential 1,000 ms base; Dead_Letter_Queue capacity 10,000 Manual; Object_Store 256 KB ± 64 at 100 MB/s; Scheduler 60,000 ms interval, 50 jobs, Skip).": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413304943
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414233619
+      }
+    ],
+    "287. Set `routingPolicy: RoutingPolicy.First` on every node `createDefaultNodeData` returns, and set `weight: 1.0` at every edge-creation site (`topologyStore.addEdge` and `CanvasEditor.onConnect`).": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413305297
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414852363
+      }
+    ],
+    "288. Write a unit test asserting every default `createDefaultNodeData` produces passes `validateNodeConfig` for all fifteen types, and that the canvas drop handler and the palette keyboard path both route through it so their defaults cannot drift.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413305677
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414905249
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787415039123
+      }
+    ],
+    "289. Add the six per-type validators (`validateAuthServiceConfig` through `validateSchedulerConfig`) checking each parameter against its range from the design's interface comments.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413305945
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414853839
+      }
+    ],
+    "290. Add six `case` arms to `validateNodeConfig` dispatching to those validators.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413306459
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414854958
+      }
+    ],
+    "291. Add six clamping branches to `normalizeConfig` covering every numeric parameter of the new types, including the `ObjectStoreConfig.transferQueueDepth` and `SchedulerConfig.maxDeferredTriggers` fields that the design calls out as easy to miss.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413306807
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414857354
+      }
+    ],
+    "292. Change `normalizeConfig` to return `{ node, warnings: MigrationWarning[] }` naming the node label, parameter, imported value, and applied bound for each clamp instead of clamping silently as it does today, and update every call site.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413307053
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414860032
+      }
+    ],
+    "293. Make the validators reject non-numeric, empty, and non-finite values with a message naming the parameter, and confirm the config panel leaves the stored configuration at its previous value on rejection.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413307372
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414861637
+      }
+    ],
+    "294. Extend `configValidation.test.ts` with both-bound and degenerate cases per new type: hit ratio 0.0 and 1.0, `maxRetries` 0, `queueDepth` 0, `jitterMs` above `intervalMs`, `objectSizeMeanKB` at 1 and at 10,485,760.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413307633
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414864926
+      }
+    ],
+    "295. Add the six new `CONNECTION_RULES` entries exactly as the design's Connection Rules block specifies, with `ObjectStore` holding empty `allowedTargets` as a terminal node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413308051
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414866160
+      }
+    ],
+    "296. Widen the four pre-existing entries that gain targets: `TrafficGenerator` → `AuthService`; `ApiGateway` → `AuthService`, `AuthzService`; `AppServer` → `AuthService`, `AuthzService`, `ObjectStore`; `MessageQueue` → `WorkerPool`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413308451
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414867961
+      }
+    ],
+    "297. Add the `PROTOCOL_OVERRIDES` per-pair table and make `getValidProtocols` consult it before the source type's flat `allowedProtocols`, since Requirements 30.7 and 30.8 pin protocol per pair rather than per source type.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413308796
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414869349
+      }
+    ],
+    "298. Widen `validateEdgeConnection` to `(source, target, protocol, existingEdges, nodesById)` and add the protocol-mismatch rule whose rejection names the source type, the target type, and the protocol permitted for that pair.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413309102
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414871375
+      }
+    ],
+    "299. Add the Worker_Pool → Dead_Letter_Queue cardinality rule: at most one such outgoing edge per Worker_Pool, several distinct Worker_Pools to the same Dead_Letter_Queue permitted, with the rejection naming the pool's label and the label of the DLQ its existing edge targets.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413309594
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414873583
+      }
+    ],
+    "300. Update every `validateEdgeConnection` call site for the widened signature, including `CanvasEditor.onConnect` and the import path.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413310024
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414874999
+      }
+    ],
+    "301. Apply the same validator during topology import and reject the whole file on the first violating edge, leaving the Canvas edge set and node set unmodified.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413310284
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414876744
+      }
+    ],
+    "302. Extend the `makeNode` fixture switch in `edgeValidation.test.ts` with a config per new type and add cases for the pair table, the protocol overrides, the DLQ cardinality rule, and the exact rejection message text.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413310534
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414878936
+      }
+    ],
+    "303. Widen `RequestStatus` with `Unauthenticated`, `Forbidden`, `RetryExhausted`, and `DeadLettered`, and export `TERMINAL_STATUSES` (the nine, excluding `InFlight`) and the `FailureClass` enum with `Success` in no class.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413310944
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414213724
+      }
+    ],
+    "304. Add the twelve new `SimEventType` members (`SubRequestSettled`, `VerificationComplete`, `PolicyEvaluated`, `JobAdmit`, `JobAttemptComplete`, `JobRetryReady`, `JobTimeout`, `DlqRedrive`, `TransferComplete`, `SchedulerTrigger`, `NodeDisabled`, `NodeRestored`).": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413311225
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414215144
+      }
+    ],
+    "305. Add `terminalCounts` (per window) and `cumulativeTerminalCounts` (never reset) to `NodeRuntimeState`, keeping `totalProcessed`, `totalDropped`, and `totalTimedOut` because `CircuitBreakerProcessor.downstreamErrorRate` and `deriveHealthStatus` read them.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413311578
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414881012
+      }
+    ],
+    "306. Extend `SimRequest` with `fanOutDepth`, `emittedByNodeId`, and the branch and parent fields (`parentRequestId`, `dispatchedAtNodeId`, `dispatchedAtMs`, `settleOnAccept`, `isDiscarded`, `pendingBranchIds`, `maxBranchSettleMs`, `branchPolicy`).": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413312101
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414883310
+      }
+    ],
+    "307. Widen `NodeProcessor` so `getUtilization()` returns `UtilizationReading`, add the optional `onMetricsWindowBoundary`, `onNodeDisabled`, and `onNodeRestored` hooks, and add `resolveTargets(nodeId, request)` to `ProcessorContext`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413312418
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787414884853
+      }
+    ],
+    "308. Work through every site in this subsection before ending the phase: the type checker is the work list here, and leaving any site unhandled leaves the build red across a phase boundary. Do not silence a site with a `default:` clause — that discards the enumeration for the next node type added.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413312696
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787415049864
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418624669
+      }
+    ],
+    "309. Add six `case` arms to `createProcessor` in `engine.ts` returning skeleton processors that accept a request, record arrival and departure, forward along the resolved target, and return a `not-applicable` utilization reading, with real behavior landing in Phase 16.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413312980
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418625681
+      }
+    ],
+    "310. Add six entries to `NODE_TYPE_LABELS` in `NodeConfigPanel.tsx`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413313668
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418626252
+      }
+    ],
+    "311. Add six `case` arms to `NodeTypeIcon` in `NodeConfigPanel.tsx`, each returning a visually distinct SVG.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413313961
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418626993
+      }
+    ],
+    "312. Add six entries to `UTILIZATION_NOTES` in `NodeConfigPanel.tsx`, each naming what the bounded resource is for that type per the design's Utilization mapping, and a note for `Scheduler` stating it holds no bounded resource.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413314303
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418628111
+      }
+    ],
+    "313. Create `AuthServiceNode.tsx`, `AuthzServiceNode.tsx`, `WorkerPoolNode.tsx`, `DeadLetterQueueNode.tsx`, `ObjectStoreNode.tsx`, and `SchedulerNode.tsx` in `src/components/canvas/nodes/` with handles, health ring, and a type-appropriate headline figure, and register all six in the `nodeTypes` map in `CanvasEditor.tsx`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413314741
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418629617
+      }
+    ],
+    "314. Regroup `PALETTE_CATEGORIES` in `NodePalette.tsx` into the five groups Sources, Admission, Compute, Data, Messaging with all fifteen items assigned to exactly one group, each with a distinct icon and label, and every group and item reachable by keyboard alone.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413315147
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418630408
+      }
+    ],
+    "315. Add six entries to `VALIDATION_RULES` in `NodeConfigPanel.tsx` covering every numeric parameter of the new types — this record is keyed `Record<string, …>` and is not exhaustiveness-checked, so the compiler will not flag it.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413315534
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418631128
+      }
+    ],
+    "316. Create `AuthServiceForm.tsx`, `AuthzServiceForm.tsx`, `WorkerPoolForm.tsx`, `DeadLetterQueueForm.tsx`, `ObjectStoreForm.tsx`, and `SchedulerForm.tsx` under `src/components/config/forms/`, each rendering an editable control per parameter with its valid range shown, and wire all six into `NodeConfigPanel`'s `nodeData.nodeType === …` form dispatch chain — that chain is a guard sequence, not a `switch`, so it will not fail to compile when the union grows.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413316204
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418633445
+      }
+    ],
+    "317. Run `npm run build` and `npm run test` and confirm zero type errors, zero lint errors, and a green suite, then grep the touched switches to confirm none acquired a `default:` clause.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413316633
+      },
+      {
+        "executionId": "1122a552-b796-4ea8-b438-4a02c3f74b72",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787418634394
+      }
+    ],
+    "318. Implement `resolveTargets(nodeId, request)` returning every edge to dispatch along — one edge for First, Round_Robin, and Weighted, and every outgoing edge for Fan_Out below the depth cap — and expose it on `ProcessorContext`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413317047
+      }
+    ],
+    "319. Implement the First policy as the outgoing edge of lowest stored index, relying on `buildAdjacency` already preserving serialized edge order, and add a test that a save/load round trip does not change which edge a node forwards along.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413317863
+      }
+    ],
+    "320. Implement Round_Robin with an engine-owned `roundRobinCursors: Map<string, number>` initialised to index 0 in the constructor and in `reset()`, advanced by exactly one per forwarding decision, wrapping after the highest index, and deliberately untouched by `pause()` and `resume()`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413318374
+      }
+    ],
+    "321. Implement Weighted selection with exactly one PRNG draw per forwarding decision compared against cumulative normalised weights accumulated in ascending stored index order, leaving every configured weight stored unchanged so normalisation is idempotent.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413318763
+      }
+    ],
+    "322. Implement the zero-or-non-finite weight-sum fallback to uniform `1/outDegree` plus a normalisation warning naming the node's user-assigned label, so no decision divides by zero and no request is terminated for want of a weight.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413319400
+      }
+    ],
+    "323. Replace every hard-coded `edges[0]!.target` forwarding decision in the nine shipped processors with `context.resolveTargets`, so routing state cannot diverge per processor.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413319859
+      }
+    ],
+    "324. Create `src/components/config/RoutingPolicyField.tsx` offering the policy select on every node type permitting two or more outgoing edges plus a per-edge weight input, showing each normalised weight to 2 decimal places alongside its configured value.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413320190
+      }
+    ],
+    "325. Write unit tests for routing: First stability across persistence, the Round_Robin cycle and its reset-and-pause behaviour, weighted selection at a fixed seed, weight-sum-zero fallback, and normalisation idempotence.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413320611
+      }
+    ],
+    "326. Define `SubRequestPolicy` with the three values `FanOut`, `AuthIntrospection`, and `AuthzLookup`, and implement one shared dispatch-and-settle mechanism used by all three rather than a bespoke path per node type.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413321096
+      }
+    ],
+    "327. Implement branch dispatch: one branch per resolved edge at a single simulated timestamp, each branch a full `SimRequest` with `path = [dispatchNodeId]`, `hopCount` copied from the parent, and `fanOutDepth` set to the parent's depth plus 1.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413321629
+      }
+    ],
+    "328. Count every node a branch subsequently visits as one hop against the shared `maxHops` budget, so a fan-out inside a cycle still terminates `LOOP_DETECTED`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413322013
+      }
+    ],
+    "329. Implement the branch response path: a successful branch runs the existing reverse walk over its own `path`, and on reaching index 0 it emits `SubRequestSettled` at the dispatch node instead of `ResponseComplete`, which structurally prevents a branch from traversing upstream of the dispatch node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413322624
+      }
+    ],
+    "330. Implement `settleOnAccept` for branches dispatched along an Asynchronous edge, settling inside `MessageQueueProcessor.onRequestArrived` at the instant the message is buffered or rejected so the parent does not wait for a consumer to drain the queue.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413323051
+      }
+    ],
+    "331. Implement the `SubRequestSettled` handler: accumulate `maxBranchSettleMs`, remove the branch from `pendingBranchIds`, and on the last settle add that maximum — and nothing else — to the parent's accumulated latency before resuming it.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413323461
+      }
+    ],
+    "332. Implement the failure mapping per `branchPolicy` (Fan_Out propagates the branch's status with the branch target's identifier, AuthIntrospection maps to `Unauthenticated`, AuthzLookup propagates the status plus the lookup target's identifier), mark every unsettled sibling `isDiscarded` under no terminal status, and break same-timestamp ties toward the branch on the lowest stored edge index.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413324058
+      }
+    ],
+    "333. Implement the depth cap: a request arriving at a Fan_Out node already at `fanOutDepth` 4 is forwarded along the lowest stored index alone, dispatches no branch, and produces a `fan-out-depth-limit` event log entry naming the node and the request.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413324385
+      }
+    ],
+    "334. Guard one: branch creation never increments `inFlightCount`, and the parent stays counted exactly once for the whole interval its branches are unsettled.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413324723
+      }
+    ],
+    "335. Guard two: in `handleRequestRoute`'s failure path, call `markRequestDone` only for a request with no `parentRequestId`, and schedule `SubRequestSettled` for a branch instead of decrementing.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413325205
+      }
+    ],
+    "336. Guard three: route a branch's termination through `metricsCollector.recordBranchTermination` for per-node aggregates only, and a parent's through the existing `recordCompletion` for system-wide plus per-node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413325581
+      }
+    ],
+    "337. Write a test asserting a Fan_Out parent and all its branches contribute exactly one system-wide termination and that the time-weighted active-request figure counts each end-to-end request once.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413326046
+      }
+    ],
+    "338. Route every terminal assignment through one engine helper that records the status and the node identifier together and asserts the request was `In_Flight`, replacing the scattered direct `request.status = …` writes.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413326530
+      }
+    ],
+    "339. Implement `unmarkRequestDone(requestId)` as the inverse of `markRequestDone`, deleting from `countedAsComplete`, updating the in-flight weighted sum, and incrementing `inFlightCount`, for use by Dead_Letter_Queue Redrive.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413326946
+      }
+    ],
+    "340. Maintain `terminalCounts` per window and `cumulativeTerminalCounts` across the run, resetting only the former at each window boundary alongside the existing counters.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413327306
+      }
+    ],
+    "341. Report the count of requests and Jobs still `In_Flight` on entering `Complete` as the run's unfinished count, excluded from every cumulative terminal count and from the completion-percentage denominators.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413328207
+      }
+    ],
+    "342. Implement the three `FailureClass` rates in terminations per second and the total error rate as the window's non-Success terminations over all nine statuses in that same window.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413328876
+      }
+    ],
+    "343. Create `src/components/telemetry/TerminalStatusTable.tsx` reporting each of the nine statuses with its cumulative count, its rate in terminations per second, and its percentage of terminated requests, each with a unit.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413329370
+      }
+    ],
+    "344. Report each such percentage as not applicable with a plain-language explanation while the sum of the nine cumulative counts is zero, rather than as `0%`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413329782
+      }
+    ],
+    "345. Extend the `METRICS_BATCH` per-node payload with `terminalCounts` and `cumulativeTerminalCounts` and update `simulationStore`'s message handler.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413330074
+      }
+    ],
+    "346. Write a test that the nine cumulative counts sum to the number of requests and Jobs that have left the system at every metrics snapshot of a small run, not only at the end.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413330348
+      }
+    ],
+    "347. Write a determinism test asserting two runs at the same topology, configuration, and seed produce byte-identical `SimulationSummary` and identical per-node terminal counts with routing policies and fan-out in play.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413330796
+      }
+    ],
+    "348. Extract the `NodeProcessor` interface and `UtilizationReading` helpers into `src/simulation/processors/NodeProcessor.ts` per the design's file structure, re-exporting from `simulation/types.ts` so existing imports keep working.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413331115
+      }
+    ],
+    "349. **AuthServiceProcessor.ts**: implement the slot-and-queue admission path — admit while `slots.size < concurrencyLimit`, else queue in arrival order up to `queueDepth` adding each queued request's wait to its accumulated latency, else terminate `Dropped` with no verification latency added.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413331437
+      }
+    ],
+    "350. Draw exactly one verification latency sample per admitted request, treat a value below 0 ms as 0 ms, add it whether or not the request is later terminated, and schedule `VerificationComplete`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413331780
+      }
+    ],
+    "351. Implement Local mode as completing verification with no downstream call, and Introspection mode as one token-cache test that on a miss dispatches exactly one sub-request under `SubRequestPolicy.AuthIntrospection`, keeps the verification slot occupied until it settles, counts it as one hop, and terminates `NO_ROUTE` where the node has no outgoing edge.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413332111
+      }
+    ],
+    "352. Apply the credential failure test after verification (and after a successful introspection settle), terminating `Unauthenticated` at that node, releasing the slot, and admitting the longest-waiting queued request; hold the PRNG draw order at verification latency, then token cache test, then credential test.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413332437
+      }
+    ],
+    "353. **AuthzServiceProcessor.ts**: implement the same slot-and-queue shape as Auth_Service, holding the slot occupied for the whole interval including any awaited lookups.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413332881
+      }
+    ],
+    "354. Add one policy evaluation latency sample per admitted request clamped at 0 ms, and the policy cache hit test recorded as a cache hit when it succeeds.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413333183
+      }
+    ],
+    "355. On a cache miss with at least one outgoing edge, dispatch exactly `lookupsPerRequest` sub-requests at one simulated timestamp under `SubRequestPolicy.AuthzLookup`, resume only when all have settled, and add the greatest settle interval to the parent.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413333640
+      }
+    ],
+    "356. On a cache miss with no outgoing edge, record a lookup-unavailable evaluation counted separately from cache hits, and apply the deny test only after every lookup has settled successfully so a denied request has already paid the policy and lookup latency.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413333944
+      }
+    ],
+    "357. Report the per-window amplification ratio as lookup calls issued over requests admitted, as not applicable rather than zero when no request was admitted in the window.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413334400
+      }
+    ],
+    "358. **WorkerPoolProcessor.ts**: define `WorkerPoolState` with the three disjoint Job populations `executing`, `prefetch`, and `retryWaiting`, plus the `attempts` and `epoch` maps.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413334696
+      }
+    ],
+    "359. Implement admission order: first any `retryWaiting` Job whose `readyAt` has elapsed in ascending `readyAt`, then `prefetch` in ascending enqueue time, bounded by `concurrency`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413335121
+      }
+    ],
+    "360. Hold retry-waiting Jobs outside `prefetch` so they count against neither `prefetchBufferDepth` nor the Job_Backlog, and add each elapsed retry delay to that Job's accumulated latency.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413335440
+      }
+    ],
+    "361. Append arriving Jobs to the `prefetch` tail while concurrency is full, up to `prefetchBufferDepth`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413335796
+      }
+    ],
+    "362. On admission, draw a processing time independently per attempt clamped at 0 ms, occupy one slot, and schedule both `JobAttemptComplete` and `JobTimeout` carrying that attempt's `epoch`, with the timeout measured from slot occupancy and excluding prefetch wait and retry delay.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413336149
+      }
+    ],
+    "363. Implement the epoch check at handling time so whichever of `JobAttemptComplete` and `JobTimeout` fires first increments the epoch and the loser is discarded as stale, keeping the min-heap untouched.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413336623
+      }
+    ],
+    "364. Draw one failure value per attempt against `jobFailureRate`, and on failure below `maxRetries + 1` attempts **release the concurrency slot first**, then schedule `JobRetryReady` — releasing before the delay is what lets a pool with a large retry budget still make progress.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413337211
+      }
+    ],
+    "365. Compute the backoff delay as exactly `retryBaseDelayMs` for Fixed with no growth, and `retryBaseDelayMs * 2^(n-1)` capped at 300,000 ms for Exponential, with no jitter in either case.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413337710
+      }
+    ],
+    "366. On retry exhaustion, route the Job along the outgoing edge to a Dead_Letter_Queue carrying its total attempt count and this node's identifier where one exists, else terminate `Retry_Exhausted` and record an error at this node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413338485
+      }
+    ],
+    "367. Report Job completion rate, concurrency utilization, Job_Backlog as upstream buffered Jobs plus `prefetch.length` excluding `executing`, Backlog_Age reported as 0 ms while the backlog is empty, retry rate, retry-exhaustion rate, and either a Drain_Time projection or a plain \"not draining\" statement rather than a negative or infinite figure.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413338871
+      }
+    ],
+    "368. Add the `BackpressureAwareConsumer` interface with `admissionCapacity(): number` and implement it on `WorkerPoolProcessor` as the room left across `executing` and `prefetch`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413339446
+      }
+    ],
+    "369. Revise `onConsumerPoll` to clamp its batch by the downstream consumer's `admissionCapacity()` where the consumer implements the interface and by `Number.POSITIVE_INFINITY` otherwise, leaving the undelivered remainder in the buffer bounded by that queue's configured capacity.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413339828
+      }
+    ],
+    "370. Reschedule the consumer poll whenever the buffer is non-empty even when the computed batch size was 0, so consumption resumes when the pool drains, and leave the existing `consumerScheduled` latch to handle the empty-buffer case.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413340258
+      }
+    ],
+    "371. **DeadLetterQueueProcessor.ts**: define `RetainedMessage` and retain arriving Jobs in append order with their `retentionStartMs`, `exhaustedAtNodeId`, cumulative `attemptCount`, and `redriveAttempts`, recording the arrival as `Dead_Lettered` in error accounting.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413340596
+      }
+    ],
+    "372. Implement overflow at capacity by discarding index 0 of the append-ordered retained set — which is the earliest `retentionStartMs` — and logging a dead-letter-overflow event naming the node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413340924
+      }
+    ],
+    "373. Implement retention expiry inside `onMetricsWindowBoundary`, called from `handleMetricsSnapshot` before the per-window counter reset, so a message cannot expire unobserved on access.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413341453
+      }
+    ],
+    "374. Implement Automatic redrive on the redrive interval and Manual redrive from the Chaos_Panel control, routing up to `redriveBatchSize` retained messages whose `redriveAttempts` is below `maxRedriveAttempts` in ascending retention start order, incrementing each and removing it from the retained set at the instant it is routed so an in-flight redrive is subject to neither expiry nor overflow.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413341847
+      }
+    ],
+    "375. On redrive, clear the Job's `Dead_Lettered` status, decrement that node's cumulative `Dead_Lettered` count, and call `engine.unmarkRequestDone` to return the Job to `In_Flight` so the nine cumulative counts still sum correctly.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413342290
+      }
+    ],
+    "376. Reset a redriven Job's retry attempt count to zero on arrival at a Worker_Pool while carrying `redriveAttempts` forward, and on re-retention at the same DLQ carry `redriveAttempts` forward unchanged with a fresh `retentionStartMs`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413342743
+      }
+    ],
+    "377. Report retained count, fill fraction, dead-letter arrival rate, oldest-message age, retained count grouped by the upstream node identifier where exhaustion occurred, cumulative redrives, and cumulative discards separated by overflow and by expiry.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413343133
+      }
+    ],
+    "378. **ObjectStoreProcessor.ts**: define `ActiveTransfer` tracking `remainingWorkKB`, `actualSizeKB`, `lastUpdateMs`, and `epoch`, and draw per request in the fixed order read/write classification, object size, base latency.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413343763
+      }
+    ],
+    "379. Clamp the sampled object size to the inclusive range 1 to 10,485,760 KB before it is used in any latency computation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413344247
+      }
+    ],
+    "380. Encode the write multiplier as scaled remaining *work* (`sizeKB × multiplier` for a write) rather than as a post-hoc multiplication on a computed duration, so the multiplier stays exact under repricing while the sum of active bandwidth shares still equals the configured capacity.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413344796
+      }
+    ],
+    "381. Implement `reprice(now)` in three steps — charge elapsed progress against each active transfer, re-divide `throughputCapacityMBps` equally among active transfers, then reschedule each `TransferComplete` from remaining work and the new share with a fresh epoch — and call it whenever a transfer begins or completes.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413345273
+      }
+    ],
+    "382. Add base latency plus transfer time to each request, using 1 MB = 1,024 KB and 1 second = 1,000 ms, with the base latency clamped at 0 ms and left unscaled by the write multiplier.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413346088
+      }
+    ],
+    "383. Hold arriving requests in the transfer queue in arrival order while `maxConcurrentTransfers` is full, adding each wait to accumulated latency, and terminate `Dropped` beyond `transferQueueDepth` recording the latency accumulated before reaching this node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413346532
+      }
+    ],
+    "384. Report the aggregate transfer rate from `actualSizeKB` rather than scaled work so a write-heavy window does not over-report bytes moved, plus the rate as a fraction of capacity, active transfers, queued requests, mean transfer time, drop rate, and read and write counts, and name bandwidth as the limiting resource in the Activity view at or above 0.85 of capacity.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413347155
+      }
+    ],
+    "385. **SchedulerProcessor.ts**: separate the schedule from the fire time — `scheduledTime(n) = startOffsetMs + n * intervalMs` never adjusted by anything, and `fireTime(n) = scheduledTime(n) + uniform[0, min(jitterMs, intervalMs)]` — so jitter can never accumulate as drift.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413348093
+      }
+    ],
+    "386. Draw trigger `n+1`'s jitter offset and schedule its `SchedulerTrigger` event when trigger `n` is handled, a fixed draw position that keeps the fire-time sequence reproducible.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413348481
+      }
+    ],
+    "387. Emit exactly `jobsPerTrigger` Jobs at the fire timestamp, routing each along the node's resolved targets, and set `emittedByNodeId` on every emitted Job.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413349040
+      }
+    ],
+    "388. Track `outstanding` Jobs per Scheduler node via an engine notification when one of its Jobs reaches a terminal status, and treat the node as a source requiring no incoming edge that terminates emitted Jobs `NO_ROUTE` immediately when it has no outgoing edge.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413349483
+      }
+    ],
+    "389. Implement the three overlap policies: Allow emits regardless, Skip emits nothing and logs a skipped-trigger event, and Queue appends one entry per deferred trigger in ascending trigger index up to `maxDeferredTriggers`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413349912
+      }
+    ],
+    "390. Under Queue, emit exactly the earliest deferred entry when `outstanding` becomes empty, remove that one entry, retain the rest, and on a trigger firing at `maxDeferredTriggers` count a skipped trigger and log a deferred-trigger-overflow event naming the node and fire time.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413350414
+      }
+    ],
+    "391. On entering `Complete`, retain the count of outstanding Jobs as the node's unfinished Job count, discard every remaining deferred entry without emitting it, report both figures with the run's final metrics, and widen the existing `isSource` branch in `ActivityPanel` so a Scheduler reports latency percentiles and Little's Law figures as not applicable.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413350969
+      }
+    ],
+    "392. Report the type-specific per-node figures of Requirements 23.9, 24.11, 25.11, 26.9, 27.10, and 28.9 through the `METRICS_BATCH` snapshot fields the design lists, each with its unit surfaced in the Activity view.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413351361
+      }
+    ],
+    "393. Write the Requirement 29.5 smoke test for each of the six new types: one node at default configuration wired to a default Traffic_Generator or Scheduler, run 60 simulated seconds with `disablePacing: true`, and assert no validation error, no engine error, and at least one request or Job reaching a terminal status at that node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413351656
+      }
+    ],
+    "394. Run the full suite and confirm the nine shipped processors' existing tests still pass unchanged after the `resolveTargets` and `UtilizationReading` migrations.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413352098
+      }
+    ],
+    "395. Add `subsystemGroups: SubsystemGroup[]` to `topologyStore` with the actions `createGroup`, `renameGroup`, `setGroupCollapsed`, `addNodesToGroup`, `removeNodesFromGroup`, `deleteGroup`, and `dragGroup`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413352672
+      }
+    ],
+    "396. Create `src/validation/groupValidation.ts` enforcing the partition invariants — at most 20 groups, 2 to 50 members each, membership disjoint across groups, one level deep — re-checked on every mutation with the whole operation rejected on violation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413353135
+      }
+    ],
+    "397. Reject a group creation naming the violated limit together with the labels of any selected nodes already in a group, leaving every existing group and every node position unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413353784
+      }
+    ],
+    "398. Validate group names as 1 to 40 characters after trimming and case-insensitively unique, with an inline error naming the violated constraint and the stored name left at its previous value on rejection.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413354168
+      }
+    ],
+    "399. Add a membership sweep to the existing `removeNode` so deleting a node drops it from its group, and delete a group left with fewer than 2 members while every remaining node and edge stays on the Canvas at its stored position.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413354637
+      }
+    ],
+    "400. Implement `deleteGroup` and `removeNodesFromGroup` so every affected node and edge is retained at its stored position whether the group was collapsed or expanded.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413355196
+      }
+    ],
+    "401. Implement group import normalisation rather than rejection: truncate a name past 40 characters, suffix a duplicate name, drop absent and duplicated member identifiers, keep the first 50 in stored order, drop a group left with fewer than 2, and record a normalisation warning naming the group, the violation, and the applied change.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413355655
+      }
+    ],
+    "402. Implement `useCollapsedTopologyView.ts` mapping the canonical topology plus groups onto the node and edge arrays React Flow renders, deliberately not using React Flow `parentId`/`extent: 'parent'` so member positions stay absolute and collapse/expand and group deletion remain position-preserving no-ops.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413356066
+      }
+    ],
+    "403. For each collapsed group emit one `SUBSYSTEM_GROUP` node at the members' bounding-box centre, omit every member node, and omit every edge whose source and target are both members.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413356579
+      }
+    ],
+    "404. Rewrite each boundary edge's contained endpoint to the group node and merge boundary edges sharing group, external node, and direction into one edge keyed `grp:{groupId}:{in|out}:{externalNodeId}` carrying `underlyingEdgeIds`, `underlyingCount`, and `memberLabels`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413357003
+      }
+    ],
+    "405. Create `SubsystemGroupNode.tsx` as the collapsed group element and register it in the `nodeTypes` map, and `MergedBoundaryEdge.tsx` displaying the underlying-edge count and listing each merged member's label and protocol on hover or activation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413357759
+      }
+    ],
+    "406. Implement `dragGroup` so a drag on a collapsed group applies the displacement to every member's stored position, leaving relative positions unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413358403
+      }
+    ],
+    "407. Create `GroupToolbar.tsx` offering create, rename, collapse, expand, add-to-group, remove-from-group, and delete, all operable by keyboard alone and permitted in the Idle, Running, Paused, and Complete simulation states.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413358903
+      }
+    ],
+    "408. Confirm `getTopologySnapshot()` is unchanged and sends no group information on `INIT`, and write a test that two runs of the same topology and seed produce identical metrics across differing group sets and collapsed states.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413359579
+      }
+    ],
+    "409. Display on each collapsed group the summed member throughput, the summed member error count, and the least healthy member status under the order red, then yellow, then green, each with its unit, excluding members with no available status.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413359894
+      }
+    ],
+    "410. Report a collapsed group's health as not applicable with a plain-language explanation while no member has an available status.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413360320
+      }
+    ],
+    "411. Create `src/components/telemetry/SubsystemBreakdown.tsx` reporting per group the summed throughput, the summed error count by terminal status, the highest member Utilization among numeric readings, and the label of the member holding it — computed on the main thread from the latest `METRICS_BATCH`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413360915
+      }
+    ],
+    "412. Report a group's highest Utilization as not applicable with no number and no label while every member reads `not-applicable`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413361336
+      }
+    ],
+    "413. Set `CURRENT_SCHEMA_VERSION = 2` and define `SerializedTopologyV2` carrying nodes with `routingPolicy` and every Requirement 23–28 parameter, edges with `weight` in stored order, and `subsystemGroups`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413361743
+      }
+    ],
+    "414. Write a record at version 2 whenever it holds a node of one of the six new types, a routing policy other than `First`, an edge weight, or a Subsystem_Group.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413362255
+      }
+    ],
+    "415. Define `MigrationWarning` and implement `migrateV1ToV2` as a pure function returning the new record plus the warnings to surface, replacing the current no-op `migrateIfNeeded`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413362664
+      }
+    ],
+    "416. In `migrateV1ToV2`, set every node's `routingPolicy` to `First`, every edge `weight` to 1.0, `subsystemGroups` to empty, and every absent Requirement 23–28 parameter — including `transferQueueDepth` and `maxDeferredTriggers` — to its `createDefaultNodeData` value, with one warning per applied default naming the label, field, and value, and complete the import with no error.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413363215
+      }
+    ],
+    "417. Apply the same absent-field defaulting to a version 2 record missing a routing policy, an edge weight, the group set, or a Requirement 23–28 parameter, so an absent field of this set is defaulted rather than treated as a validation failure.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413363619
+      }
+    ],
+    "418. Reject an import whose `schemaVersion` is above 2, naming the record's version and the required version, and one whose `schemaVersion` is absent, non-integer, or below 1, naming that field and the value found, leaving the Canvas and every stored topology unmodified in both cases.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413364465
+      }
+    ],
+    "419. Load a version 1 record from localStorage by migrating the **in-memory** topology only, leaving the stored record at version 1 with its original field values and writing version 2 on the next save invoked for it, so opening a v2 build is not destructive to a v1 record.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413364984
+      }
+    ],
+    "420. Include every Subsystem_Group name, member node identifier list, and collapsed state in save, load, export, and import.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413365414
+      }
+    ],
+    "421. Write a round-trip test asserting exporting a loaded version 2 record produces a record equal to the imported one across positions, configs, routing policies, protocols, weights, and groups.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413365917
+      }
+    ],
+    "422. Replace the hard-coded `VALID_NODE_TYPES` array — which currently lists only six of the nine shipped types and would reject every new type — with `Object.values(NodeType)`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413366532
+      }
+    ],
+    "423. Raise `CURRENT_SCHEMA_VERSION` to 2 in the `.analysys.json` validator and extend `AnalysysFileSchema` with `subsystemGroups` and the version 2 node and edge shapes.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413366952
+      }
+    ],
+    "424. Wire `migrateSchema` to `migrateV1ToV2` and surface its warnings through the existing import toast rather than discarding them.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413367603
+      }
+    ],
+    "425. Replace `getStorageUsage`'s `key.length + value.length` UTF-16 measurement with `new TextEncoder().encode(serialized).length`, which the current form under-reports for multi-byte content.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413368018
+      }
+    ],
+    "426. Complete a save above 4,194,304 bytes and retain a loadable record while displaying a warning naming the serialized size in bytes and that threshold — this is a warning, not a failure.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413368454
+      }
+    ],
+    "427. Extend `localStorage.test.ts` with version 2 serialize/deserialize, the v1 to v2 migration and its warning set, the above-2 and malformed version rejections, and the UTF-8 byte-length measurement.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413368970
+      }
+    ],
+    "428. Create `analysisAggregates.ts` accumulating the per-node, per-window aggregates the analysis layer needs, so no rule ever reads a per-request record.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413369403
+      }
+    ],
+    "429. Accumulate `timeInSystemAtNodeMs` as the summed time-in-system that requests and Jobs terminating in this window accumulated at this node — the Latency_Share numerator.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413370010
+      }
+    ],
+    "430. Accumulate `pathTimeInSystemMs` as the summed time-in-system those **same** requests and Jobs accumulated across their whole recorded path — the Latency_Share denominator, which is what makes the share weighted for a node lying on several paths.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413370449
+      }
+    ],
+    "431. Accumulate `terminatedThroughNodeCount` as terminating requests and Jobs whose recorded path, or the path of any branch dispatched for them, held this node, folding branch paths in at the instant the terminal status is assigned while the parent still holds its lineage.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413371230
+      }
+    ],
+    "432. Emit `monitoredDepth` per node as Job_Backlog for a Worker_Pool, buffered messages for a Message_Queue, reported queue depth for every other type that reports one, and `null` otherwise, alongside `monitoredDepthBound`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413371605
+      }
+    ],
+    "433. Compute `monitoredDepthBound` as the node's prefetch buffer depth plus the configured capacity of every Message_Queue holding an edge into it for a Worker_Pool, the configured max capacity for a Message_Queue, and the configured max queue depth for every other type.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413372020
+      }
+    ],
+    "434. Emit `arrivalCount` and `departureCount` per window, counting a departure for each request or Job forwarded downstream, completed at the node, or terminated at the node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413372502
+      }
+    ],
+    "435. Emit the type-specific optional fields `concurrencyOccupied`, `concurrencyBound`, `jobBacklog`, `backlogAgeMs`, `retainedByUpstreamNode`, `transferRateMBps`, `forwardedByEdge`, and `branchesDispatched`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413372985
+      }
+    ],
+    "436. Record each window's actual `durationMs` so a rate can be weighted by it, and mark a window with `durationMs <= 0` unavailable rather than zero — the engine emits a final snapshot before `emitComplete()` on both exit paths and that window is usually shorter than `metricsIntervalMs`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413373465
+      }
+    ],
+    "437. Create `RunCumulativeAccumulator.ts` holding whole-run aggregates alongside the existing sliding 5,000 ms `completedRequests` window, so a baseline is not silently a snapshot of the last five seconds.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413373946
+      }
+    ],
+    "438. Write a test asserting the aggregates are window-scoped, reset at each boundary, and reproduce a hand-computed Latency_Share and Blast_Radius for a three-node topology.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413374416
+      }
+    ],
+    "439. Define `FindingCategory` with the eight values in the declaration order the design pins as both the Requirement 35.8 tie-break order and the Requirement 43.2 group order, plus `Severity` and `Confidence`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413374823
+      }
+    ],
+    "440. Define `EvidenceEntry`, `RecommendedAction`, `StructuralAction`, and `Finding` with the field bounds the design states, and enforce exactly one `primary` evidence entry per Finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413375286
+      }
+    ],
+    "441. Create `src/utils/round6.ts` implementing half-up rounding at 6 decimal places with explicit handling of negatives and an assertion that the result is finite.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413375835
+      }
+    ],
+    "442. Implement `FindingBuilder` passing every numeric value through `round6` at construction — not at display — so two independently computed Finding sets compare equal under exact numeric comparison.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413376176
+      }
+    ],
+    "443. Derive the stable identifier as `${ruleId}:${category}:${sortedSubjectNodeIds.join(',')}` so it survives a label edit, recomputation within a run, and repeated runs of the same inputs.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413376491
+      }
+    ],
+    "444. Key the result map on that identifier so \"exactly one Finding\" is enforced structurally rather than by each rule remembering to check.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413376987
+      }
+    ],
+    "445. Enforce units in `FindingBuilder`: 1 to 20 characters, `fraction` for a dimensionless 0.0–1.0 ratio and `percent` for a value scaled to 100, and derive confidence from the lowest completed-request count among subject nodes with the High/Medium/Low boundaries and the Steady_State condition the design states.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413377692
+      }
+    ],
+    "446. Implement a ring buffer retaining the 16 most recent metrics windows plus cumulative run totals, fed from `METRICS_BATCH`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413378384
+      }
+    ],
+    "447. Exclude zero-duration windows from the completed-window count so the \"3 completed windows\" gate is not satisfied by a degenerate final snapshot.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413378841
+      }
+    ],
+    "448. Implement `Steady_State` detection per node: arrival rate varying under 10% between adjacent windows across at least 3 consecutive windows with queue-depth net change within ±5% of the mean depth.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413379720
+      }
+    ],
+    "449. Implement `AnalysisContext` exposing `windows`, `cumulative`, `topology`, `labelOf` with the shortened-identifier fallback, `eventLog`, and the optional `serviceObjective`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413380148
+      }
+    ],
+    "450. Implement the `AnalysisRule` interface with `id`, `category`, `requiredMetrics`, and an `evaluate(ctx): Generator<void, Finding[], void>` — a generator rather than `async`/`await` so a rule yields at a point of its own choosing instead of at every `await`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413380852
+      }
+    ],
+    "451. Implement `recompute` iterating `RULE_REGISTRY`, with `SLICE_BUDGET_MS = 33` and `TOTAL_BUDGET_MS = 500`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413381253
+      }
+    ],
+    "452. Implement `yieldToFrame` as a `MessageChannel` port hop rather than `setTimeout(0)`, which browsers clamp to roughly 4 ms after nested timeouts and would consume about 12% of the 500 ms budget across a full pass's yields.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413381894
+      }
+    ],
+    "453. On reaching 500 ms, stop at the end of the slice in progress, retain and keep displaying the previously completed Finding set, never show a partial set, and report the count and identifiers of the rules that did not complete plus the window boundary at which it stopped.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413382528
+      }
+    ],
+    "454. Record suppression as a first-class outcome `{ ruleId, metricName, affectedNodeLabels[] }` when a required metric is `not-applicable` or absent, emitting no Finding for the affected nodes while every other rule runs unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413382911
+      }
+    ],
+    "455. Drive exactly one recomputation per completed metrics window boundary while Running, none between boundaries, and exactly one more on entering `Complete` over the final analysis window.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413384562
+      }
+    ],
+    "456. Display no Finding below 3 completed windows and state the completed count against the 3 required, keeping that state distinguishable from a completed analysis that produced no Finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413385263
+      }
+    ],
+    "457. Create `analysisStore` holding the current Finding set, the suppression list, sweep results, and comparison results, and subscribe the scheduler to `METRICS_BATCH` window boundaries.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413386598
+      }
+    ],
+    "458. Retain an imported Finding set until a subsequent run produces a recomputed set, performing no recomputation of any imported Finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413387361
+      }
+    ],
+    "459. Label a displayed imported set with the PRNG seed, simulated duration, and offered load recorded in its report.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413388466
+      }
+    ],
+    "460. Implement JSON export carrying a report schema version, every displayed Finding with every field, the topology, every node configuration, the seed, the simulated duration, and the offered load.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413389047
+      }
+    ],
+    "461. Implement a Markdown export intended for reading, and accept only the JSON format for import.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413392235
+      }
+    ],
+    "462. Implement JSON import displaying every carried Finding with field values equal to the exported values, in the Requirement 35.8 display order.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413393881
+      }
+    ],
+    "463. Reject an import carrying an unsupported report schema version, omitting a required Finding field, or carrying an out-of-set category, severity, or confidence, naming the required version and each omitted field or unrecognised value, and leave the currently displayed Findings unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413395352
+      }
+    ],
+    "464. Write a round-trip test asserting export then import yields a Finding set equal to the original.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413397589
+      }
+    ],
+    "465. Implement `analysisUtilization` as the arithmetic mean of a node's per-window numeric utilization over the 3 most recently completed windows, and `latencyShare` as `timeInSystemAtNodeMs / pathTimeInSystemMs × 100` reported as not applicable while the divisor is 0 ms.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413402651
+      }
+    ],
+    "466. Implement the ranking total order — descending analysis Utilization, values within 0.001 tie-broken by descending Latency_Share, then descending throughput, then ascending node identifier — and expose it in the panel.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413409088
+      }
+    ],
+    "467. Implement `bottleneckRankRule` designating exactly one node per recomputation (highest analysis Utilization at or above 0.85, else greatest Latency_Share), naming the bounding configuration parameter and its configured value with unit, carrying the six evidence entries the design lists including which selection rule fired, and stating that reducing that node's contribution to 0 ms reduces end-to-end p99 by at most its Latency_Share percent.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413424324
+      }
+    ],
+    "468. Implement eligibility as a numeric utilization reading plus at least 1 arrival in the window, keeping a node eligible at 0 throughput, listing every excluded node with its reason, and setting confidence Low with the completed-request count stated where the designated node recorded fewer than 30 completions.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413431587
+      }
+    ],
+    "469. Implement `bottleneckCoLimitingRule` for other eligible nodes within 0.05 of a saturated Bottleneck, and `bottleneckNoConstraintRule` emitting one Info Finding where every applicable node is below 0.60 with no Instability.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413437813
+      }
+    ],
+    "470. Implement `bottleneckNoneEligibleRule` emitting one Info Finding naming the count excluded for a not-applicable utilization and the count excluded for zero arrivals, and write tests for all four rules including the single-designation and tie-break behaviour.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413442038
+      }
+    ],
+    "471. Implement `saturationRule` for a node at or above 0.85 in each of the 3 most recent windows, reporting sustained Utilization as the mean over the **maximal** run of consecutive windows at or above 0.85 ending at the most recent one, which may be longer than 3.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413444550
+      }
+    ],
+    "472. Implement `instabilityDepthGrowthRule` inspecting 5 windows: monitored depth increasing at each of the 4 most recent boundaries **and** the newest value exceeding the oldest by at least 20% of the oldest — the 20% floor is what stops a slow sawtooth being reported as unbounded growth.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413446697
+      }
+    ],
+    "473. Compute the growth rate and the projected time to the monitored depth bound, stating the projection holds while that growth rate continues, and report the projection as not applicable with a plain-language reason where the growth rate is at or below 0 items/s or no bound is available.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413448290
+      }
+    ],
+    "474. Implement the precedence rule: where a node satisfies both Saturation and Instability in one recomputation, emit only the Instability Finding with the sustained Utilization folded into its evidence.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413449305
+      }
+    ],
+    "475. Implement `instabilityLittlesLawRule` for a node exceeding 5% deviation in each of the 3 most recent windows, suppressing every `Capacity` Finding for that node, reporting which analysis was suppressed and for which node, and continuing to report per-node and system Headroom annotated as measured outside Steady_State.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413450904
+      }
+    ],
+    "476. Write tests for the run-length reporting, the 20% floor boundary, the not-applicable projection, and the Saturation-versus-Instability precedence.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413452416
+      }
+    ],
+    "477. Implement `dlqGrowthRule` in `src/analysis/rules/reliability.ts` for a Dead_Letter_Queue whose retained count rose at each of the 3 most recent boundaries, with the per-upstream-node attribution as evidence and a tradeoff naming the added slot occupancy at that upstream node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413453365
+      }
+    ],
+    "478. Implement `workerPoolConcurrencyRule` in `src/analysis/rules/capacity.ts` computing required concurrency as arrival rate times mean processing time in seconds rounded up, naming the configured concurrency and the 10,000 maximum where the computed value exceeds it, gated on at least 1 completed attempt in the window span.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413455035
+      }
+    ],
+    "479. Implement `schedulerCollisionRule` in `src/analysis/rules/configuration.ts` for pairs of Scheduler nodes with 2 or more consecutive coinciding trigger indices within 1,000 simulated ms, reading trigger fire times from the event log.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413456892
+      }
+    ],
+    "480. Implement `admissionDominatesRule` in `reliability.ts` requiring the admission rate to exceed the capacity-or-reliability rate by at least 20% in each of 3 windows with at least 30 non-Success terminations across them, so no rule fires from an empty denominator.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413458137
+      }
+    ],
+    "481. Write tests for each rule's minimum-sample gate, confirming suppression rather than a Finding computed from zero observations.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413459995
+      }
+    ],
+    "482. Report per-node Headroom as `(1 - analysisUtilization) * 100` with the bounding parameter name and its configured value and unit.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413461095
+      }
+    ],
+    "483. Report Headroom as not applicable with a plain-language reason for a node whose utilization reading is `not-applicable` or which recorded 0 arrivals.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413462393
+      }
+    ],
+    "484. Report system Headroom as `(0.85 / U - 1) * 100` percent and `L * (0.85 / U - 1)` RPS, naming the label and analysis Utilization of the node holding `U`, with `L` the offered load over the analysis window.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413462903
+      }
+    ],
+    "485. Report system Headroom as 0 percent and 0 RPS at or above 0.85 naming the holding node, and as not applicable naming which precondition failed where fewer than 3 windows completed, no node is eligible, `U` is 0.0, or offered load is 0 RPS.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413464154
+      }
+    ],
+    "486. State alongside every numeric system Headroom figure that it assumes proportional growth of the highest-utilization node and that no other node saturates sooner, and that a Capacity_Sweep produces a measured Sustainable_Load in its place.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413465964
+      }
+    ],
+    "487. Create `src/analysis/rules/index.ts` exporting `RULE_REGISTRY` in the design's stated order, with each rule declaring its `requiredMetrics`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413468144
+      }
+    ],
+    "488. Make each rule yield every N nodes so a rule iterating 80 nodes never occupies the main thread for more than 33 consecutive milliseconds.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413469427
+      }
+    ],
+    "489. Write a test asserting no rule reads a single window and every rule carries a minimum sample count, so a one-window spike or a one-window zero cannot emit a Finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413470807
+      }
+    ],
+    "490. Define `SweepConfig`, `SweepStepRequest`, and `SweepStepResult`, and populate each sweep parameter with a default inside its stated range including a 10,000 ms warm-up.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413472118
+      }
+    ],
+    "491. Implement per-step offered load as `startRps + n × (endRps − startRps) / (stepCount − 1)` rounded to whole RPS with exactly one half rounding up, raising a step by 1 RPS where rounding makes it equal its predecessor.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413473085
+      }
+    ],
+    "492. Reject up front a range that cannot yield `stepCount` distinct whole-RPS values, naming the requested count and the highest workable one, and reject an out-of-range, non-numeric, empty, or non-finite parameter or an ending load at or below the starting load with an inline error naming the parameter and its bounds.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413474057
+      }
+    ],
+    "493. Implement the per-generator split as `round(S × ownRps / B)` clamped to at least 1 RPS with the residual assigned to the generator holding the highest configured RPS (ties by ascending identifier), leaving distribution, spike multiplier, and spike duration untouched — computed on the main thread so the rule has one testable implementation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413475442
+      }
+    ],
+    "494. Clamp a per-node value above 100,000 RPS with a normalisation warning naming the generator label, step index, computed value, and applied bound, report the step's applied offered load alongside its requested load, and reject a sweep with no Traffic_Generator or a configured RPS sum of 0.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413476253
+      }
+    ],
+    "495. Add `SWEEP_STEP` and `SWEEP_CANCEL` to `MainToWorkerMessage` and `SWEEP_STEP_COMPLETE` to `WorkerToMainMessage` with the payload shapes the design's Extended Worker Communication Protocol lists.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413477170
+      }
+    ],
+    "496. Create `MeasurementIntervalAccumulator.ts` starting to record end-to-end latency samples and terminal statuses when the virtual clock passes `warmUpMs`, since p99 over that interval cannot be reconstructed by averaging window percentiles.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413478888
+      }
+    ],
+    "497. Execute one run per step in ascending offered load, clearing all state and returning the clock to t=0 between steps, holding seed, topology, speed multiplier, routing policies, edge weights, and every configuration other than generator RPS constant.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413479993
+      }
+    ],
+    "498. Hold every Scheduler parameter constant, exclude Scheduler-emitted Jobs from each step's requested and applied offered load, and report each step's Scheduler-emitted Job count separately so Scheduler load is a constant additive background across steps.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413480976
+      }
+    ],
+    "499. Restore every node position, configuration, generator RPS, routing policy, edge weight, and Subsystem_Group to its sweep-start value on completion or cancellation, so a sweep changes the Canvas in no respect.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413482140
+      }
+    ],
+    "500. Disable Start, Pause, Resume, and chaos controls and make the config panel read-only while a sweep runs, offer a cancel control, and require confirmation naming that a Running or Paused run will be stopped and its metrics discarded before starting.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413483243
+      }
+    ],
+    "501. On cancellation, retain and report every step that completed its full simulated duration, discard the in-progress step's metrics, report the sweep as cancelled naming the 1-based in-progress index, and determine the Knee_Point and Sustainable_Load from the retained steps alone.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413485083
+      }
+    ],
+    "502. Evaluate the Service_Objective over the measurement interval alone, treating a step as satisfied while its p99 is at or below the configured maximum and its total error rate over that interval is at or below the configured maximum, and as `not-evaluated` with a plain-language explanation where the interval recorded no terminations, excluded from the Knee_Point and Sustainable_Load determinations.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413486184
+      }
+    ],
+    "503. Report the Knee_Point as the lowest violating evaluated step and Sustainable_Load as the highest satisfying evaluated step below it; report Sustainable_Load as below the starting load where every step below the knee violated or was not evaluated; report it as at or above the ending load with no knee where every evaluated step satisfied.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413487336
+      }
+    ],
+    "504. Report non-monotonic results rather than smoothing them: where a step above the Knee_Point satisfied the objective, report the count and offered load of each such step and state that the measured results are not monotonic in offered load.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413490702
+      }
+    ],
+    "505. Implement `sweepKneeRule` in `capacity.ts` naming the node that reached Saturation earliest during the Knee_Point step with its bounding parameter and configured value, and where no node saturated, naming the node holding the highest analysis Utilization plus which Service_Objective condition was violated with its observed value and configured limit.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413495946
+      }
+    ],
+    "506. Implement the reachability analysis over the directed graph alone, ignoring edge protocol, weight, routing policy, and Subsystem_Group state, treating every out-degree-0 node as terminal irrespective of type and every Traffic_Generator and Scheduler as a source, and producing results whether or not a run has completed.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413501200
+      }
+    ],
+    "507. Compute each source's baseline reachable terminal set, then for each candidate node re-run a BFS in the graph with that node and every incident edge removed, designating a SPOF where at least one source goes from 1 or more reachable terminals to 0 — a per-source test, stricter than global disconnection.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413506638
+      }
+    ],
+    "508. Yield every 8 candidates so main-thread occupancy stays at or below 33 consecutive milliseconds; the roughly 90k edge visits at the 80-node envelope need no bitset or dominator-tree optimisation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413514282
+      }
+    ],
+    "509. Implement `spofRule` emitting one Finding per designated node naming every source whose reachable terminal set becomes empty, with fan-in count, losing-source count, and topology source count as evidence.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413519428
+      }
+    ],
+    "510. Compute fan-in as the count of distinct nodes holding an edge into the subject, and set severity Critical at 3 or more and Warning at 2 or fewer.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413523725
+      }
+    ],
+    "511. Populate the recommended action as a `StructuralAction` naming the node, its type, one of the two structural changes, and the node and edge counts it adds, with a tradeoff naming those added nodes against the 200-node canvas limit and the metric the change degrades.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413526515
+      }
+    ],
+    "512. Read Blast_Radius from `terminatedThroughNodeCount / systemTerminatedCount × 100` as the Finding's primary evidence, and where no completed run is retained omit the entry entirely, state Blast_Radius is not applicable because no run has completed, promote the losing-source count to primary, and set confidence Low.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413529960
+      }
+    ],
+    "513. Extend `ChaosEventPayload.chaosType` with `DISABLE_NODE` and `REDRIVE_DLQ`, and add a targeted branch to `injectChaos` ahead of the existing node-type-matching loop, since both are addressed to a single node identifier.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413531421
+      }
+    ],
+    "514. Add `unreachableUntilMs: number | null` to `NodeRuntimeState` and terminate each arriving request `Timeout` against that node while it is set, forwarding nowhere, before delegating to the processor.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413533025
+      }
+    ],
+    "515. Implement `onNodeDisabled` on every processor holding occupancy, returning the request identifiers held in bounded resources, queues, prefetch buffers, and transfer queues for the engine to terminate through the single terminal-assignment helper, then hold every bounded resource at 0 occupancy.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413534303
+      }
+    ],
+    "516. Exempt a Dead_Letter_Queue: retain every held message without termination and perform no Redrive while unreachable.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413535800
+      }
+    ],
+    "517. Reject re-applying the control to an already-unreachable node, leaving its duration and scheduled restoration unchanged, holding no deferred failure, and naming the node's label and remaining duration.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413537464
+      }
+    ],
+    "518. Implement `onNodeRestored` restoring reachability with every bounded resource at 0 occupancy, log a recovery event naming the label and simulated time, and emit `NODE_STATE_CHANGE` on both transitions.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413538494
+      }
+    ],
+    "519. Add the failure-simulation control to `ChaosPanel.tsx` accepting any of the fifteen node types and a duration of 100 to 600,000 simulated ms while Running without a pause, and the Manual DLQ redrive control per Dead_Letter_Queue node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413539903
+      }
+    ],
+    "520. Compare the pre-failure window — the most recent window completing at or before the failure instant — against every window lying **wholly** within the failure interval, excluding partial overlaps at both ends.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413541042
+      }
+    ],
+    "521. Report the change in success rate and in end-to-end p99 as a signed absolute difference and a signed percentage of the pre-failure value, as not applicable where the pre-failure value is 0, and both as not applicable stating the interval contained no complete window where none lies wholly inside — the common case for a failure shorter than `metricsIntervalMs`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413542076
+      }
+    ],
+    "522. State in the panel that every source retains a path to a reachable terminal under any single removal where no node is designated, listing every node excluded as a source and every source reaching 0 terminals before any removal.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413543140
+      }
+    ],
+    "523. Define `BaselineRun` at schema version 2 carrying name, creation timestamp, seed, simulated duration, total offered load, optional Service_Objective, the version 2 topology, and the whole-run and per-node aggregates.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413544038
+      }
+    ],
+    "524. Write a record only from the `Complete` state, taking every value from the run's final cumulative metrics over its full simulated duration via `RunCumulativeAccumulator` rather than from a window or a mean across windows.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413545005
+      }
+    ],
+    "525. Retain at most 5 records under the localStorage key `analysys_baseline_runs`, list each by name and creation timestamp, and offer a per-record delete leaving every other record unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413546217
+      }
+    ],
+    "526. Validate the submitted name as 1 to 40 characters after trimming and case-insensitively unique, and reject a write at the 5-record limit with an error naming the violated constraint and the stored names, leaving every record and the current run's metrics unchanged.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413547171
+      }
+    ],
+    "527. On application load, restore every stored record at version 2 holding every required field, exclude any record at another version or missing a field with a warning naming it and the problem, and leave every stored record unmodified — a forward-incompatible baseline is hidden, never deleted.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413548524
+      }
+    ],
+    "528. Implement baseline reuse restoring the topology, positions, configurations, routing policies, protocols, weights, and groups with their collapsed states to the Canvas, leaving the stored record unchanged and requiring confirmation while unsaved changes exist.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413549504
+      }
+    ],
+    "529. Create `src/components/analysis/BaselineManager.tsx` offering retain, list, delete, and reuse, operable by keyboard alone.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413550055
+      }
+    ],
+    "530. Accept exactly two selections from the stored baselines and the most recently completed run, designate them A and B, compute every signed difference as B minus A in one place, and report no result with a message where both selections name the same run.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413550898
+      }
+    ],
+    "531. Report for p50, p90, p99, total throughput, total error rate, and each of the nine terminal status rates: the A value, the B value, the signed absolute difference in that metric's unit, and the signed percentage difference over `|A|` to 2 decimal places.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413551714
+      }
+    ],
+    "532. Report per node present in both runs the mean per-window Utilization, throughput as Success terminations over simulated seconds, error rate over the full duration, and mean queue depth, each for A and B with the signed difference.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413552763
+      }
+    ],
+    "533. Implement node matching as same identifier with same type, falling back to same type and same case-insensitive label where the identifier appears in one run only and exactly one candidate exists per run — the fallback exists because a rebuilt topology gets fresh UUIDs, and everything ambiguous is listed as not present.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413553439
+      }
+    ],
+    "534. List every node not present in both runs with the run holding it, and every configuration parameter differing between the runs for a matched node with the parameter and both values.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413554319
+      }
+    ],
+    "535. Label a comparison a Controlled_Comparison at identical seed, identical duration, and offered loads within 0.01 RPS, else label it uncontrolled naming each differing attribute with its value in each run, and still report every result; then implement `comparisonObjectiveRule` and `comparisonUtilizationRule` in `src/analysis/rules/comparison.ts`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413555208
+      }
+    ],
+    "536. Add a control to the `TelemetryDashboard` header that opens `AnalysisPanel.tsx` alongside the Canvas, leaving the Canvas rendered with its pan position, zoom level, and node selection unchanged, reachable by pointer and by keyboard alone.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413556240
+      }
+    ],
+    "537. Group Findings by category, order category groups by their position in the eight-value declaration order, order Findings within a group by the severity then descending primary evidence magnitude then category position then ascending identifier total order, and contribute no group for a category holding no Finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413557587
+      }
+    ],
+    "538. Create `FindingCard.tsx` displaying the severity text label, subject node labels or the system-wide scope label, constraint statement, recommended action, tradeoff statement, confidence, and the inclusive analysis window bounds in simulated ms.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413558407
+      }
+    ],
+    "539. Identify each subject node by its user-assigned label with a shortened-identifier fallback where the node is absent from the topology.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413559013
+      }
+    ],
+    "540. Implement `activateFinding`: expand every collapsed group containing a present subject node, set the selection to exactly those nodes, and fit the view to their bounding box.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413559836
+      }
+    ],
+    "541. Where no zoom level at or above 0.25 frames every subject node, set zoom to 0.25, centre on the bounding-box midpoint, and display the count of subject nodes lying outside the viewport in nodes.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413561306
+      }
+    ],
+    "542. Leave the Canvas selection, pan, and zoom untouched for a Finding with an empty or fully absent subject set, showing the system-wide scope label or the shortened identifiers with a statement that those nodes are absent from the current topology.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413562100
+      }
+    ],
+    "543. Present every Finding of a recomputed set up to the 200-Finding maximum within 500 ms of that recomputation completing.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413563357
+      }
+    ],
+    "544. Place the Finding list in the tab order, move focus through the display order on Down and Up, activate on Enter and Space, and leave the list on Tab and Shift+Tab.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413564830
+      }
+    ],
+    "545. Return keyboard focus to the control that opened the panel on Escape.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413567323
+      }
+    ],
+    "546. Render every severity as one of the three text labels at 4.5:1 or better contrast so severity is determinable without colour, matching the approach `HealthLegend` already takes.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413568470
+      }
+    ],
+    "547. Add an announced-identifier set per run to the existing `LiveAnnouncer` assertive region so a newly appearing Critical Finding announces exactly once per run, at most one announcement per metrics window, naming the count plus the category and subject label of the first in display order.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413569916
+      }
+    ],
+    "548. Meet the remaining contrast and semantics targets: 3:1 for large and bold text, 3:1 for non-text status and focus indicators, and a programmatic name and role on every interactive control in the panel.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413570673
+      }
+    ],
+    "549. Create `ComparisonTable.tsx` with each data cell programmatically associated with both its row and column header, a programmatic name naming the two compared runs, and every header and cell reachable by keyboard alone.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413571777
+      }
+    ],
+    "550. Create `SweepResultsTable.tsx` reporting per step the 1-based index, requested and applied offered load, achieved throughput, p50/p90/p99, total error rate, each of the nine terminal status counts, the measurement interval bounds, and the satisfied/violated/not-evaluated verdict, each with its unit.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413573559
+      }
+    ],
+    "551. Create `HeadroomList.tsx` rendering per-node and system Headroom including the not-applicable readings and the projection caveat.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413574824
+      }
+    ],
+    "552. Create `SpofList.tsx` rendering SPOF Findings, the exclusion list with reasons, and the no-SPOF statement.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413576260
+      }
+    ],
+    "553. Display the analysis-completed-with-no-Finding state with the analysis window bounds, keeping every panel control keyboard-operable, distinguishable from the fewer-than-3-windows state.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413577296
+      }
+    ],
+    "554. Display the suppression list naming each suppressed rule identifier, the missing or not-applicable metric, and each affected node label, and the budget-exhaustion report naming the incomplete rules.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413578151
+      }
+    ],
+    "555. Create `CapacitySweepPanel.tsx` with the parameter form, inline validation messages, and a start control.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413579785
+      }
+    ],
+    "556. Display while a sweep runs the 1-based in-progress step index, the total step count, that step's requested offered load, its elapsed simulated time, and the reported results of every completed step.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413581920
+      }
+    ],
+    "557. Add the always-visible plain-language descriptions to the new chaos controls matching the existing panel's convention, and log every new chaos event with its simulated timestamp.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413582714
+      }
+    ],
+    "558. Write component tests for the panel: keyboard-only traversal of the Finding list, focus return on Escape, comparison table header association, and exactly one assertive announcement per Critical Finding identifier per run.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413585872
+      }
+    ],
+    "559. Extend `PresetTopology` into `ReferencePreset` adding `schemaVersion: 2`, `subsystemGroups`, `seed`, `simulatedDurationMs`, `speedMultiplier`, `totalOfferedRps`, `expectedBottleneckNodeId`, and `expectedDominantTerminalStatus`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413587507
+      }
+    ],
+    "560. **authenticatedWebApi.json**: Traffic_Generator → API_Gateway → Rate_Limiter → Auth_Service (Introspection, with an edge to the Cache) → Authz_Service → Load_Balancer → 2 or more App_Servers → Cache, Database, and Object_Store, with every node reachable from the generator along a directed path.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413589354
+      }
+    ],
+    "561. **asyncJobPlatform.json**: App_Server → Message_Queue → Worker_Pool → Dead_Letter_Queue plus Database and Object_Store, with the pool's job failure rate at 0.05 or above and 1 to 3 max retries so a run at the stored seed records at least one Retry_Exhaustion and retains at least one dead-lettered message.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413591529
+      }
+    ],
+    "562. **scheduledBatchWithLiveTraffic.json**: a Scheduler and a Traffic_Generator each holding a directed path to the same Database, with interval and start offset set so 3 or more triggers fire within the stored duration.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413593368
+      }
+    ],
+    "563. Give each preset 12 to 80 nodes and 3 to 20 Subsystem_Groups of 2 to 50 members each with every node in at most one group, and construct every edge from a pair and protocol permitted by the connection rules so loading produces no violation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413595754
+      }
+    ],
+    "564. Set each preset's stored simulated duration and metrics interval so their product spans at least 3 completed metrics windows — the interval is caller-supplied, so no preset may assume a fixed window length.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413600003
+      }
+    ],
+    "565. Author node positions so every rendered node's bounding box is separated from every other by 16 or more logical pixels on the x axis or the y axis at 100% zoom.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413602646
+      }
+    ],
+    "566. Register the three presets in `PresetSelector.tsx` under a group label distinguishing them from the failure-mode presets, display each preset's expected Bottleneck label, expected dominant terminal status, stored duration in seconds, and stored offered load on selection, and auto-start with the stored seed, duration, speed multiplier, and chaos timeline after the existing unsaved-changes confirmation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413605788
+      }
+    ],
+    "567. Add `fast-check` as a dev dependency at a pinned version — it is not currently in `package.json`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413614869
+      }
+    ],
+    "568. Implement `arbTopology()` building a valid graph over the fifteen types **by construction** rather than by filtering: pick a source, then extend only along pairs permitted by `CONNECTION_RULES` and `PROTOCOL_OVERRIDES`, parameterised to force Fan_Out nodes at varying depth, a Worker_Pool with a Dead_Letter_Queue, and several Traffic_Generators.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413624426
+      }
+    ],
+    "569. Implement `arbConfig(nodeType)` drawing each parameter across its Requirement 23–28 range including both bounds, with explicit weight on the degenerate values the requirements call out (hit ratio 0.0 and 1.0, `maxRetries` 0, `queueDepth` 0, jitter above interval) so those edge cases need no separate example test.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413633174
+      }
+    ],
+    "570. Implement `arbSubsystemGroups(nodes)` producing a random partition of a node subset into 0 to 20 groups of 2 to 50 members, and share one engine test fixture that sets `disablePacing: true` so no test builds its own config object.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413643288
+      }
+    ],
+    "571. Property 7 (CP-1) analysis determinism: two runs at one seed produce Finding sets of equal size comparing equal field-for-field after `round6` and presenting in the same display order.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413652361
+      }
+    ],
+    "572. Property 8 (CP-2) Analysis_Report round trip through `report.ts` export and import, in memory with no simulation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413658576
+      }
+    ],
+    "573. Property 9 (CP-3) topology serialization round trip at schema version 2 across new node types, routing policies, edge weights, and Subsystem_Groups.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413661472
+      }
+    ],
+    "574. Property 10 (CP-4) schema v1 behavioural equivalence: final metrics equal before and after migration at the same seed.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413664494
+      }
+    ],
+    "575. Property 11 (CP-5) terminal status partition, asserted at **every** metrics snapshot of a generated run rather than only at the end.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413667028
+      }
+    ],
+    "576. Property 12 (CP-6) grouping invariance: one run per generated group set over the same topology and seed, asserting metric equality.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413668867
+      }
+    ],
+    "577. Property 13 (CP-7) resource conservation for the new types, asserted at every metrics snapshot.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413670817
+      }
+    ],
+    "578. Property 14 (CP-8) retry budget bound: total attempts at most `maxRetries + 1`, with the Job terminating `Retry_Exhausted` or arriving at a Dead_Letter_Queue.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413673127
+      }
+    ],
+    "579. Property 15 (CP-9) weight normalisation idempotence and unit sum — a pure-function test, no engine.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413676710
+      }
+    ],
+    "580. Property 16 (CP-10) fan-out latency is the maximum, over generated branch latencies mixing Sync and Async edges.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413678632
+      }
+    ],
+    "581. Property 17 (CP-11) evidence completeness over Finding sets built through `FindingBuilder` and over the Findings of every engine-backed property run.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413680834
+      }
+    ],
+    "582. Property 18 (CP-12) sweep offered loads strictly increasing, against `CapacitySweepController` with a stubbed Worker plus a direct test of the pure RPS split.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413682190
+      }
+    ],
+    "583. Property 19 (CP-13) SPOF soundness, checked against an independent brute-force reachability oracle so the naive implementation validates the sliced one.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413683657
+      }
+    ],
+    "584. Property 20 (CP-14) comparison antisymmetry over two generated `BaselineRun` records compared in both orders.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413685358
+      }
+    ],
+    "585. Property 21 (CP-15) Scheduler emission count under the Allow policy — a pure-function test, no engine.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413687115
+      }
+    ],
+    "586. Property 22 (CP-16) Object_Store bandwidth bound and share sum, asserted at every metrics snapshot.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413688190
+      }
+    ],
+    "587. Property 23 (CP-17) fan-out depth bound of 0 to 4 with the depth-4 single-edge forward, asserted at every metrics snapshot.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413689174
+      }
+    ],
+    "588. Property 24 (CP-18) Round_Robin selection determinism including the cycle order, the reset position, and cursor survival across a pause and resume.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413690795
+      }
+    ],
+    "589. Property 25 (CP-19) Scheduler schedule holds no drift: scheduled times independent of jitter, skips, and deferrals, with non-decreasing fire times.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413692812
+      }
+    ],
+    "590. Property 26 (CP-20) Subsystem_Group membership is a partition after every store mutation and after import.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413695376
+      }
+    ],
+    "591. Property 27 (CP-21) Finding identifier invariance across label edits, recomputations, and repeated runs, with at most one Finding per identifier per result.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413699239
+      }
+    ],
+    "592. Example tests for the scenarios that are not properties: a Scheduler's first trigger at t=0 with zero offset, the exact Skip and Queue overlap transitions, the deferred-trigger-overflow log entry, and the Redrive decrement of a `Dead_Lettered` count.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413703266
+      }
+    ],
+    "593. Example tests asserting the exact rejection message text for each connection rule of Requirement 30 including the protocol mismatch and the Worker_Pool to Dead_Letter_Queue cardinality violation.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413705910
+      }
+    ],
+    "594. Integration test asserting each of the three reference presets, run at its stored seed, duration, speed multiplier, offered load, and chaos timeline, produces a Bottleneck Finding naming its stored expected Bottleneck node.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413708570
+      }
+    ],
+    "595. Integration test asserting each reference preset makes its stored expected dominant terminal status the largest of the eight non-Success cumulative counts.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413710045
+      }
+    ],
+    "596. Integration test asserting a reference preset load presents a first frame containing every node and edge within 2,000 ms, and that export then import restores every position, configuration, policy, protocol, weight, and group.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413712826
+      }
+    ],
+    "597. Extend the component test suite for the six new config forms, the regrouped fifteen-item palette, the group toolbar, and the terminal status table.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413714944
+      }
+    ],
+    "598. Benchmark engine throughput at 80 nodes drawn from all fifteen types and 200 edges, asserting 1,000 or more events per wall-clock second with `disablePacing: true`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413717312
+      }
+    ],
+    "599. Benchmark full Finding recomputation, asserting 500 ms or less as the maximum over 10 consecutive recomputations within a single run.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413720535
+      }
+    ],
+    "600. Benchmark the longest main-thread slice by instrumenting `AnalysisScheduler` directly rather than sampling frame times, asserting 33 ms or less per slice — this measures what the requirement states.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413722965
+      }
+    ],
+    "601. Benchmark the single-point-of-failure analysis, asserting 500 ms or less from invocation to Finding availability and 33 ms or less of consecutive main-thread occupancy.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413727150
+      }
+    ],
+    "602. Benchmark an 8-step sweep at 60,000 ms per step and the 50x multiplier, asserting every step completes and reports within 90 wall-clock seconds.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413728908
+      }
+    ],
+    "603. Run `npm run build` and confirm a clean type-check and production build with the Worker still code-split into its own chunk.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413731048
+      }
+    ],
+    "604. Run `npm run lint` and `npm run format:check` and resolve every finding.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413733364
+      }
+    ],
+    "605. Run `npm run test` and confirm the full suite passes, including the property tests at their configured `numRuns`.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413734860
+      }
+    ],
+    "606. Verify the CI workflow still passes on Node 22 — the matrix in `.github/workflows/ci.yml` pins Node 22, and `fast-check` plus the new benchmarks must run there without a local-only assumption.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413736442
+      }
+    ],
+    "607. Confirm the bundle size budget still holds with the analysis layer and the three reference presets added, and warn in the build output rather than failing if the preset JSON pushes the serialized size toward the localStorage threshold.": [
+      {
+        "executionId": "dbcb7ce6-d133-407c-8183-e5450853b21c",
+        "chatSessionId": "sess_32aa87ee-9571-4b6c-af2c-40775232f42c",
+        "timestamp": 1787413738294
+      }
     ]
   }
 }

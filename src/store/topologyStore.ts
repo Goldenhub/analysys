@@ -122,7 +122,14 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
   addEdge: (edge) =>
     set((state) => ({
       ...pushHistory(state),
-      edges: [...state.edges, edge],
+      // R32.4 — an edge arriving without a weight (an older caller, or a v1 payload)
+      // gets an equal share, so the Weighted policy never sees an undefined weight.
+      edges: [
+        ...state.edges,
+        edge.data
+          ? { ...edge, data: { ...edge.data, weight: edge.data.weight ?? 1.0 } }
+          : edge,
+      ],
     })),
 
   removeEdge: (edgeId) =>

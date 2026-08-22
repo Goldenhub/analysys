@@ -7,12 +7,24 @@ import {
   EvictionPolicy,
   LBAlgorithm,
   BackpressureStrategy,
+  RoutingPolicy,
 } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import type { SimulationEngineConfig } from '@/types/messages';
-import type { MetricsBatchPayload } from '@/types/metrics';
+import type { MetricsBatchPayload, UtilizationReading } from '@/types/metrics';
+
+/**
+ * Utilization is a discriminated reading. Every assertion below is about the numeric
+ * variant, so unwrap it loudly rather than coercing a not-applicable reading to a number.
+ */
+function numericUtilization(reading: UtilizationReading): number {
+  if (reading.kind !== 'value') {
+    throw new Error(`expected a numeric utilization reading, got: ${reading.reason}`);
+  }
+  return reading.value;
+}
 
 function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
   const nodes: SimulationNode[] = [
@@ -21,6 +33,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.TrafficGenerator,
       label: 'Generator',
       position: { x: 0, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         rps: 100,
         distribution: Distribution.Uniform,
@@ -33,6 +46,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.AppServer,
       label: 'App Server',
       position: { x: 200, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         workerThreadPoolSize: 10,
         requestQueueDepth: 100,
@@ -45,6 +59,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.Database,
       label: 'Database',
       position: { x: 400, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         connectionPoolSize: 20,
         queryLatencyMeanMs: 10,
@@ -56,8 +71,8 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
   ];
 
   const edges: EdgeData[] = [
-    { id: 'e1', source: 'gen-1', target: 'app-1', protocol: EdgeProtocol.Sync },
-    { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+    { id: 'e1', source: 'gen-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
   ];
 
   return { nodes, edges };
@@ -175,6 +190,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Orphan Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           rps: 50,
           distribution: Distribution.Uniform,
@@ -212,6 +228,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen 1',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
       },
       {
@@ -219,6 +236,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.LoadBalancer,
         label: 'LB',
         position: { x: 100, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 1000, evictionThreshold: 3 },
       },
       {
@@ -226,6 +244,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.AppServer,
         label: 'App 1',
         position: { x: 200, y: -50 },
+        routingPolicy: RoutingPolicy.First,
         config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
       },
       {
@@ -233,6 +252,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.AppServer,
         label: 'App 2',
         position: { x: 200, y: 50 },
+        routingPolicy: RoutingPolicy.First,
         config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
       },
       {
@@ -240,16 +260,17 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { connectionPoolSize: 50, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'lb-1', target: 'app-1', protocol: EdgeProtocol.Sync },
-      { id: 'e3', source: 'lb-1', target: 'app-2', protocol: EdgeProtocol.Sync },
-      { id: 'e4', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync },
-      { id: 'e5', source: 'app-2', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'lb-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e3', source: 'lb-1', target: 'app-2', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e4', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e5', source: 'app-2', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -280,6 +301,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
       },
       {
@@ -287,6 +309,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Cache,
         label: 'Cache',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { hitRatio: 0.95, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
       },
       {
@@ -294,13 +317,14 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -336,6 +360,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
       },
       {
@@ -343,6 +368,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Cache,
         label: 'Cache',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { hitRatio: 0.95, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
       },
       {
@@ -350,13 +376,14 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -370,7 +397,7 @@ describe('SimulationEngine', () => {
     engine.setCallbacks({
       onMetricsBatch: (b) => {
         const cache = b.nodes.find((n) => n.nodeId === 'cache-1');
-        if (cache) cacheUtilization.push(cache.utilization);
+        if (cache) cacheUtilization.push(numericUtilization(cache.utilization));
       },
     });
 
@@ -400,6 +427,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 20, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
       },
       {
@@ -407,6 +435,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Cache,
         label: 'Cache',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { hitRatio: 0.9, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
       },
       {
@@ -414,13 +443,14 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -476,6 +506,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
       },
       {
@@ -483,6 +514,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.MessageQueue,
         label: 'Queue',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           consumerBatchSize: 50,
           bufferCapacity: 1000,
@@ -495,6 +527,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.AppServer,
         label: 'Consumer App',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           workerThreadPoolSize: 20,
           requestQueueDepth: 200,
@@ -505,8 +538,8 @@ describe('SimulationEngine', () => {
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async },
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -554,6 +587,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
       },
       {
@@ -561,6 +595,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.MessageQueue,
         label: 'Tiny Queue',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           consumerBatchSize: 2,
           bufferCapacity: 5,
@@ -573,6 +608,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.AppServer,
         label: 'Consumer App',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           workerThreadPoolSize: 5,
           requestQueueDepth: 20,
@@ -583,8 +619,8 @@ describe('SimulationEngine', () => {
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async },
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -628,6 +664,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
       },
       {
@@ -635,6 +672,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.CircuitBreaker,
         label: 'Breaker',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { errorThreshold: 0.5, openDurationMs: 2000, probeCount: 3 },
       },
       {
@@ -642,13 +680,14 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'cb-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'cb-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'cb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cb-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const chaosDurationMs = 4000;
@@ -663,7 +702,12 @@ describe('SimulationEngine', () => {
     engine.setCallbacks({
       onMetricsBatch: (b) => {
         const cb = b.nodes.find((n) => n.nodeId === 'cb-1');
-        if (cb) breakerUtilization.push({ t: b.simulatedTimeMs, utilization: cb.utilization });
+        if (cb) {
+          breakerUtilization.push({
+            t: b.simulatedTimeMs,
+            utilization: numericUtilization(cb.utilization),
+          });
+        }
       },
     });
 

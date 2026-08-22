@@ -1,5 +1,6 @@
 import type { MessageQueueConfig } from '@/types/nodes';
 import { BackpressureStrategy } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -163,8 +164,12 @@ export class MessageQueueProcessor implements NodeProcessor {
     // No-op
   }
 
-  getUtilization(): number {
-    if (this.config.bufferCapacity === 0) return 0;
-    return this.buffer.length / this.config.bufferCapacity;
+  getUtilization(): UtilizationReading {
+    const value =
+      this.config.bufferCapacity === 0 ? 0 : this.buffer.length / this.config.bufferCapacity;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // there is no per-window arrival counter here, so a queue whose consumer keeps pace reads
+    // as idle just like one that saw no traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

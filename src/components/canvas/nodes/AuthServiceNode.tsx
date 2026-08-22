@@ -1,0 +1,68 @@
+import { Handle, Position, type NodeProps } from '@xyflow/react';
+import type { AnalysysNode } from '@/types/nodes';
+import type { AuthServiceConfig } from '@/types/nodes';
+import { NodeType } from '@/types/nodes';
+import { useSimulationStore } from '@/store/simulationStore';
+import { useTopologyStore } from '@/store/topologyStore';
+import { ChaosStatusBadge } from './ChaosStatusBadge';
+
+const healthColors = {
+  green: 'border-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]',
+  yellow: 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]',
+  red: 'border-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]',
+} as const;
+
+export function AuthServiceNode({ id, data }: NodeProps<AnalysysNode>) {
+  const nodeStatus = useSimulationStore((s) => s.nodeStatuses.get(id));
+  const edges = useTopologyStore((s) => s.edges);
+  const isDisconnected = !edges.some((e) => e.source === id || e.target === id);
+
+  const config = data.config as AuthServiceConfig;
+  const healthClass = nodeStatus ? healthColors[nodeStatus] : 'border-amber-600';
+  const healthLabel = nodeStatus ?? 'nominal';
+
+  return (
+    <div
+      className={`relative w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
+        isDisconnected ? 'opacity-50 border-dashed' : ''
+      }`}
+      aria-label={`Auth Service: ${data.label}, health: ${healthLabel}`}
+    >
+      <ChaosStatusBadge nodeId={id} nodeType={NodeType.AuthService} />
+      <div className="flex items-center gap-2">
+        <svg
+          className="h-5 w-5 shrink-0 text-amber-400"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+        </svg>
+        <span className="truncate text-xs font-medium text-gray-200">
+          {data.label}
+        </span>
+      </div>
+
+      <div className="mt-1.5 flex items-center justify-between">
+        <span className="text-[10px] text-gray-400">Concurrency</span>
+        <span className="text-xs font-semibold text-amber-300">
+          {config.concurrencyLimit}
+        </span>
+      </div>
+
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !border-2 !border-amber-400 !bg-gray-900"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-2.5 !w-2.5 !border-2 !border-amber-400 !bg-gray-900"
+      />
+    </div>
+  );
+}

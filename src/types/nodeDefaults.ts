@@ -6,6 +6,11 @@ import {
   EvictionPolicy,
   DatabaseType,
   BackpressureStrategy,
+  VerificationMode,
+  RetryBackoff,
+  RedriveMode,
+  OverlapPolicy,
+  RoutingPolicy,
 } from './nodes';
 
 // ─── Default Configurations Per Node Type ────────────────────────
@@ -20,7 +25,8 @@ export function createDefaultNodeData(
   position: { x: number; y: number },
 ): SimulationNode {
   const id = crypto.randomUUID();
-  const base = { id, position };
+  // R32.1 — every newly placed node routes with First until the user changes it.
+  const base = { id, position, routingPolicy: RoutingPolicy.First };
 
   switch (nodeType) {
     case NodeType.TrafficGenerator:
@@ -124,6 +130,98 @@ export function createDefaultNodeData(
           bufferCapacity: 10000,
           backpressureThresholdPct: 80,
           backpressureStrategy: BackpressureStrategy.RejectNew,
+        },
+      };
+    case NodeType.AuthService:
+      return {
+        ...base,
+        nodeType: NodeType.AuthService,
+        label: 'Auth Service',
+        config: {
+          verificationMode: VerificationMode.Local,
+          verificationLatencyMeanMs: 3,
+          verificationLatencyStdDevMs: 1,
+          concurrencyLimit: 64,
+          queueDepth: 100,
+          tokenCacheHitRatio: 0.9,
+          credentialFailureRate: 0.01,
+        },
+      };
+    case NodeType.AuthzService:
+      return {
+        ...base,
+        nodeType: NodeType.AuthzService,
+        label: 'Authz Service',
+        config: {
+          policyLatencyMeanMs: 4,
+          policyLatencyStdDevMs: 1.5,
+          policyCacheHitRatio: 0.9,
+          lookupsPerRequest: 1,
+          denyRate: 0.01,
+          concurrencyLimit: 64,
+          queueDepth: 100,
+        },
+      };
+    case NodeType.WorkerPool:
+      return {
+        ...base,
+        nodeType: NodeType.WorkerPool,
+        label: 'Worker Pool',
+        config: {
+          concurrency: 8,
+          jobProcessingMeanMs: 200,
+          jobProcessingStdDevMs: 50,
+          prefetchBufferDepth: 100,
+          jobFailureRate: 0.02,
+          maxRetries: 3,
+          retryBackoff: RetryBackoff.Exponential,
+          retryBaseDelayMs: 1000,
+          jobTimeoutMs: 30000,
+        },
+      };
+    case NodeType.DeadLetterQueue:
+      return {
+        ...base,
+        nodeType: NodeType.DeadLetterQueue,
+        label: 'Dead Letter Queue',
+        config: {
+          capacity: 10000,
+          retentionPeriodMs: 86400000,
+          redriveMode: RedriveMode.Manual,
+          redriveIntervalMs: 60000,
+          redriveBatchSize: 10,
+          maxRedriveAttempts: 3,
+        },
+      };
+    case NodeType.ObjectStore:
+      return {
+        ...base,
+        nodeType: NodeType.ObjectStore,
+        label: 'Object Store',
+        config: {
+          objectSizeMeanKB: 256,
+          objectSizeStdDevKB: 64,
+          throughputCapacityMBps: 100,
+          baseLatencyMeanMs: 10,
+          baseLatencyStdDevMs: 3,
+          maxConcurrentTransfers: 64,
+          transferQueueDepth: 100,
+          readFraction: 0.8,
+          writeLatencyMultiplier: 1.5,
+        },
+      };
+    case NodeType.Scheduler:
+      return {
+        ...base,
+        nodeType: NodeType.Scheduler,
+        label: 'Scheduler',
+        config: {
+          intervalMs: 60000,
+          jobsPerTrigger: 50,
+          startOffsetMs: 0,
+          jitterMs: 0,
+          overlapPolicy: OverlapPolicy.Skip,
+          maxDeferredTriggers: 10,
         },
       };
   }

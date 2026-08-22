@@ -1,4 +1,8 @@
-import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
+import type {
+  MetricsBatchPayload,
+  NodeMetricsSnapshot,
+  UtilizationReading,
+} from '@/types/metrics';
 import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -22,6 +26,21 @@ function healthBadge(status: 'green' | 'yellow' | 'red'): string {
     case 'yellow': return '🟡';
     case 'red': return '🔴';
   }
+}
+
+/**
+ * A percentage only means something where the node has a bounded resource. Where it does
+ * not, the reason takes the cell instead of a misleading 0%.
+ */
+function UtilizationCell({ reading }: { reading: UtilizationReading }) {
+  if (reading.kind === 'not-applicable') {
+    return <span className="text-gray-500">{reading.reason}</span>;
+  }
+  return (
+    <>
+      {(reading.value * 100).toFixed(0)} <span className="text-gray-500">%</span>
+    </>
+  );
 }
 
 // ─── Metric Card ─────────────────────────────────────────────────
@@ -161,7 +180,7 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
                     {node.activeConnections} <span className="text-gray-500">active</span>
                   </td>
                   <td className="px-3 py-1.5 text-gray-200">
-                    {(node.utilization * 100).toFixed(0)} <span className="text-gray-500">%</span>
+                    <UtilizationCell reading={node.utilization} />
                   </td>
                 </tr>
               ))}

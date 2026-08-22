@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { MarkerType } from '@xyflow/react';
 import { useTopologyStore } from './topologyStore';
+import { validateEdgeConnection } from '@/validation';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 
@@ -96,6 +97,46 @@ function validateSchema(obj: unknown): { valid: boolean; errors: string[] } {
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Runs the canvas edge validator over an imported edge set (R30.16).
+ *
+ * Returns the message for the first violating edge, or `null` when every edge is
+ * permitted. Edges are fed to the validator one at a time against the edges already
+ * accepted, so a duplicate or a second Worker_Pool → Dead_Letter_Queue edge *within the
+ * file* is caught the same way it would be on the canvas. Reporting only the first
+ * violation is deliberate: the whole file is rejected either way, and naming one edge is
+ * more actionable than a list.
+ */
+function findFirstInvalidEdge(
+  nodes: SimulationNode[],
+  edges: EdgeData[],
+): string | null {
+  const nodesById = new Map<string, SimulationNode>(nodes.map((n) => [n.id, n]));
+  const accepted: EdgeData[] = [];
+
+  for (const edge of edges) {
+    const source = nodesById.get(edge.source);
+    const target = nodesById.get(edge.target);
+    if (!source || !target) {
+      return `Edge "${edge.id}" references a node that is not in this file.`;
+    }
+
+    const result = validateEdgeConnection(
+      source,
+      target,
+      edge.protocol,
+      accepted,
+      nodesById,
+    );
+    if (!result.valid) {
+      return `Edge from "${source.label}" to "${target.label}" is not permitted: ${result.reason}`;
+    }
+    accepted.push(edge);
+  }
+
+  return null;
 }
 
 function migrateIfNeeded(data: SerializedTopology): SerializedTopology {
@@ -241,6 +282,14 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
       }
 
       const migrated = migrateIfNeeded(serialized);
+
+      // R30.16 — reject the whole file on the first violating edge. This runs before
+      // `loadTopology`, so the Canvas node set and edge set are left untouched.
+      const edgeViolation = findFirstInvalidEdge(migrated.nodes, migrated.edges);
+      if (edgeViolation) {
+        throw new Error(`Import validation failed:\n${edgeViolation}`);
+      }
+
       const rfNodes = simulationNodesToRFNodes(migrated.nodes);
       const rfEdges = edgeDataToRFEdges(migrated.edges);
 

@@ -1,5 +1,6 @@
 import type { TrafficGeneratorConfig } from '@/types/nodes';
 import { Distribution } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType } from '../types';
 
@@ -33,8 +34,12 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
     this.spikeActive = false;
   }
 
-  getUtilization(): number {
-    return 0; // Generators don't have utilization
+  getUtilization(): UtilizationReading {
+    // Generators don't have utilization. The Activity view already short-circuits source
+    // nodes with its own "not capacity-bound" note, so this stays the numeric variant to
+    // keep the reading identical to what the panel rendered before.
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation.
+    return { kind: 'value', value: 0, idle: true };
   }
 
   /** Compute inter-arrival time in ms */

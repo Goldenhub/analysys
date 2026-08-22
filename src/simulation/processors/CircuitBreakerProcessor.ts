@@ -1,5 +1,6 @@
 import type { CircuitBreakerConfig } from '@/types/nodes';
 import { CircuitState } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -163,14 +164,18 @@ export class CircuitBreakerProcessor implements NodeProcessor {
     // See onChaosApplied.
   }
 
-  getUtilization(): number {
+  getUtilization(): UtilizationReading {
+    // The reading is the breaker's position in its state machine, not a resource fraction.
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // the breaker holds no per-window arrival counter, so a Closed breaker reads as idle
+    // whether or not it forwarded traffic. Refine once an arrival count exists.
     switch (this.circuitState) {
       case CircuitState.Closed:
-        return 0;
+        return { kind: 'value', value: 0, idle: true };
       case CircuitState.HalfOpen:
-        return 0.5;
+        return { kind: 'value', value: 0.5, idle: false };
       case CircuitState.Open:
-        return 1;
+        return { kind: 'value', value: 1, idle: false };
     }
   }
 }

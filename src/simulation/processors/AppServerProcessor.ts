@@ -1,4 +1,5 @@
 import type { AppServerConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext, NodeRuntimeState } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -125,8 +126,14 @@ export class AppServerProcessor implements NodeProcessor {
     // No-op
   }
 
-  getUtilization(): number {
-    if (this.config.workerThreadPoolSize === 0) return 0;
-    return this.activeWorkers / this.config.workerThreadPoolSize;
+  getUtilization(): UtilizationReading {
+    const value =
+      this.config.workerThreadPoolSize === 0
+        ? 0
+        : this.activeWorkers / this.config.workerThreadPoolSize;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // the pool holds no per-window arrival counter, so a pool with every worker momentarily
+    // free reads the same as one that saw no traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

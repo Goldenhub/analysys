@@ -9,7 +9,7 @@ import type {
   SimEvent,
   SimRequest,
 } from '../types';
-import { SimEventType, RequestStatus } from '../types';
+import { SimEventType, RequestStatus, emptyTerminalCounts } from '../types';
 import { ApiGatewayProcessor } from './ApiGatewayProcessor';
 import { RateLimiterProcessor } from './RateLimiterProcessor';
 import { CircuitBreakerProcessor } from './CircuitBreakerProcessor';
@@ -21,8 +21,20 @@ const inertProcessor: NodeProcessor = {
   onRequestArrived: () => {},
   onChaosApplied: () => {},
   onChaosReverted: () => {},
-  getUtilization: () => 0,
+  getUtilization: () => ({ kind: 'value', value: 0, idle: true }),
 };
+
+/**
+ * Utilization is a discriminated reading. These tests all assert on the numeric variant,
+ * so unwrap it loudly rather than coercing a not-applicable reading to a number.
+ */
+function utilizationValue(processor: NodeProcessor): number {
+  const reading = processor.getUtilization();
+  if (reading.kind !== 'value') {
+    throw new Error(`expected a numeric utilization reading, got: ${reading.reason}`);
+  }
+  return reading.value;
+}
 
 function makeNodeState(nodeId: string, overrides: Partial<NodeRuntimeState> = {}): NodeRuntimeState {
   return {
@@ -35,6 +47,8 @@ function makeNodeState(nodeId: string, overrides: Partial<NodeRuntimeState> = {}
     totalDropped: 0,
     totalTimedOut: 0,
     latencySamples: [],
+    terminalCounts: emptyTerminalCounts(),
+    cumulativeTerminalCounts: emptyTerminalCounts(),
     ...overrides,
   };
 }
@@ -93,6 +107,8 @@ class Harness implements ProcessorContext {
       maxHops: 20,
       path: ['gen-1', nodeId],
       accumulatedLatencyMs: 0,
+      fanOutDepth: 0,
+      emittedByNodeId: 'gen-1',
     };
     const event: SimEvent = {
       id: this.eventCounter++,
@@ -122,6 +138,11 @@ class Harness implements ProcessorContext {
 
   getOutgoingEdges(nodeId: string): EdgeData[] {
     return this.edges[nodeId] ?? [];
+  }
+
+  resolveTargets(nodeId: string, _request: SimRequest): EdgeData[] {
+    const edges = this.getOutgoingEdges(nodeId);
+    return edges.slice(0, 1);
   }
 
   getNodeConfig(): undefined {
@@ -159,7 +180,7 @@ class Harness implements ProcessorContext {
 }
 
 function edge(source: string, target: string): EdgeData {
-  return { id: `${source}-${target}`, source, target, protocol: EdgeProtocol.Sync };
+  return { id: `${source}-${target}`, source, target, protocol: EdgeProtocol.Sync, weight: 1.0 };
 }
 
 // ─── Rate Limiter ────────────────────────────────────────────────
@@ -218,11 +239,11 @@ describe('RateLimiterProcessor', () => {
     const harness = new Harness({ edges: { 'rl-1': [edge('rl-1', 'app-1')] } });
     const processor = new RateLimiterProcessor({ bucketCapacity: 10, refillRatePerSec: 1 });
 
-    expect(processor.getUtilization()).toBe(0);
+    expect(utilizationValue(processor)).toBe(0);
     for (let i = 0; i < 10; i++) {
       harness.deliver(processor, 'rl-1', 0, `req-${i}`);
     }
-    expect(processor.getUtilization()).toBe(1);
+    expect(utilizationValue(processor)).toBe(1);
   });
 });
 
@@ -266,7 +287,7 @@ describe('CircuitBreakerProcessor', () => {
     const state = harness.nodeState('cb-1');
     expect(state.totalProcessed).toBe(1);
     expect(state.latencySamples).toHaveLength(1);
-    expect(processor.getUtilization()).toBe(0);
+    expect(utilizationValue(processor)).toBe(0);
   });
 
   it('trips Open when the downstream error rate exceeds the threshold', () => {
@@ -280,7 +301,7 @@ describe('CircuitBreakerProcessor', () => {
     expect(processor.getCircuitState()).toBe(CircuitState.Open);
     expect(request.status).toBe(RequestStatus.Dropped);
     expect(harness.nodeState('cb-1').totalDropped).toBe(1);
-    expect(processor.getUtilization()).toBe(1);
+    expect(utilizationValue(processor)).toBe(1);
   });
 
   it('does not trip when downstream observations are below the minimum', () => {
@@ -324,7 +345,7 @@ describe('CircuitBreakerProcessor', () => {
     expect(processor.getCircuitState()).toBe(CircuitState.HalfOpen);
     expect(probe.status).toBe(RequestStatus.InFlight);
     expect(harness.routesTo('db-1')).toHaveLength(1);
-    expect(processor.getUtilization()).toBe(0.5);
+    expect(utilizationValue(processor)).toBe(0.5);
   });
 
   it('returns to Closed when probes find a healthy downstream', () => {
@@ -354,7 +375,7 @@ describe('CircuitBreakerProcessor', () => {
 
     expect(processor.getCircuitState()).toBe(CircuitState.Closed);
     expect(request.status).toBe(RequestStatus.InFlight);
-    expect(processor.getUtilization()).toBe(0);
+    expect(utilizationValue(processor)).toBe(0);
   });
 
   it('re-opens from HalfOpen when the downstream is still failing', () => {
@@ -415,7 +436,7 @@ describe('ApiGatewayProcessor', () => {
     expect(state.totalDropped).toBe(10);
     expect(state.totalProcessed).toBe(10);
     expect(harness.routesTo('app-1')).toHaveLength(0);
-    expect(processor.getUtilization()).toBe(1);
+    expect(utilizationValue(processor)).toBe(1);
   });
 
   it('admits every request at rejectionRate 0.0', () => {
@@ -434,7 +455,7 @@ describe('ApiGatewayProcessor', () => {
     expect(state.totalDropped).toBe(0);
     expect(state.totalProcessed).toBe(10);
     expect(harness.routesTo('app-1')).toHaveLength(10);
-    expect(processor.getUtilization()).toBe(0);
+    expect(utilizationValue(processor)).toBe(0);
   });
 
   it('resets window counters so utilization is per-window', () => {
@@ -442,9 +463,9 @@ describe('ApiGatewayProcessor', () => {
     const processor = new ApiGatewayProcessor({ ...GATEWAY_CONFIG, rejectionRate: 1 });
 
     harness.deliver(processor, 'gw-1', 0, 'req-0');
-    expect(processor.getUtilization()).toBe(1);
+    expect(utilizationValue(processor)).toBe(1);
 
     processor.resetWindowCounters();
-    expect(processor.getUtilization()).toBe(0);
+    expect(utilizationValue(processor)).toBe(0);
   });
 });

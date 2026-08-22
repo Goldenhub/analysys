@@ -1,5 +1,9 @@
 import type { SimulationNode } from '@/types/nodes';
-import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
+import type {
+  MetricsBatchPayload,
+  NodeMetricsSnapshot,
+  UtilizationReading,
+} from '@/types/metrics';
 import type { NodeRuntimeState, SimRequest } from '../types';
 import { RequestStatus } from '../types';
 import { NodeMetricsAccumulator } from './NodeMetricsAccumulator';
@@ -87,12 +91,22 @@ export class MetricsCollector {
     return (state.totalDropped + state.totalTimedOut) / total;
   }
 
+  /**
+   * R29.14 — a numeric reading contributes to health through the existing thresholds.
+   * R29.15 — where Utilization is not applicable, health derives from the error rate alone,
+   * so a node with no bounded resource is not silently reported green while erroring.
+   */
   private deriveHealthStatus(
-    utilization: number,
+    utilization: UtilizationReading,
     errorRate: number,
   ): 'green' | 'yellow' | 'red' {
-    if (utilization > 0.9 || errorRate >= 0.05) return 'red';
-    if (utilization > 0.7 || errorRate > 0) return 'yellow';
+    if (utilization.kind === 'not-applicable') {
+      if (errorRate >= 0.05) return 'red';
+      if (errorRate > 0) return 'yellow';
+      return 'green';
+    }
+    if (utilization.value > 0.9 || errorRate >= 0.05) return 'red';
+    if (utilization.value > 0.7 || errorRate > 0) return 'yellow';
     return 'green';
   }
 

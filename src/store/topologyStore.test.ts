@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useTopologyStore } from './topologyStore';
-import { NodeType } from '../types/nodes';
+import { NodeType, RoutingPolicy } from '../types/nodes';
 import { EdgeProtocol } from '../types/edges';
 import type { AnalysysNode } from '../types/nodes';
 import type { AnalysysEdge } from '../types/edges';
@@ -17,6 +17,7 @@ function createTestNode(id: string, overrides?: Partial<AnalysysNode>): Analysys
       nodeType: NodeType.AppServer,
       label: `Node ${id}`,
       position: { x: 100, y: 200 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         workerThreadPoolSize: 10,
         requestQueueDepth: 100,
@@ -38,6 +39,7 @@ function createTestEdge(id: string, source: string, target: string): AnalysysEdg
       source,
       target,
       protocol: EdgeProtocol.Sync,
+      weight: 1.0,
     },
   } as AnalysysEdge;
 }

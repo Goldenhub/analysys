@@ -1,5 +1,6 @@
 import type { LoadBalancerConfig } from '@/types/nodes';
 import { LBAlgorithm } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType } from '../types';
 
@@ -90,15 +91,18 @@ export class LoadBalancerProcessor implements NodeProcessor {
     this.targetHealthy.clear();
   }
 
-  getUtilization(): number {
+  getUtilization(): UtilizationReading {
     // The LB has no capacity constraint of its own; report the fraction of
     // known targets that are unhealthy as a stress proxy.
     const total = this.targetHealthy.size;
-    if (total === 0) return 0;
     let unhealthy = 0;
     for (const healthy of this.targetHealthy.values()) {
       if (!healthy) unhealthy++;
     }
-    return unhealthy / total;
+    const value = total === 0 ? 0 : unhealthy / total;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // there is no per-window arrival counter here, so all-healthy targets read as idle
+    // regardless of traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

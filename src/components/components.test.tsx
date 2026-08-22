@@ -8,7 +8,7 @@ import { QueueGauge } from './telemetry/QueueGauge';
 import { MetricsSummary } from './telemetry/MetricsSummary';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
-import { NodeType } from '@/types/nodes';
+import { NodeType, RoutingPolicy } from '@/types/nodes';
 import type { AnalysysNode } from '@/types/nodes';
 import type { SimEventLogEntry } from '@/types/messages';
 import type { MetricsBatchPayload, NodeMetricsSnapshot } from '@/types/metrics';
@@ -34,9 +34,9 @@ describe('NodePalette', () => {
     render(<NodePalette />);
 
     expect(screen.getByText('Sources')).toBeDefined();
-    expect(screen.getByText('Edge & Resilience')).toBeDefined();
+    expect(screen.getByText('Admission')).toBeDefined();
     expect(screen.getByText('Compute')).toBeDefined();
-    expect(screen.getByText('Storage')).toBeDefined();
+    expect(screen.getByText('Data')).toBeDefined();
     expect(screen.getByText('Messaging')).toBeDefined();
   });
 });
@@ -87,7 +87,7 @@ describe('QueueGauge', () => {
       queueDepth,
       activeConnections: 0,
       bufferOccupancy: 0,
-      utilization: 0.5,
+      utilization: { kind: 'value', value: 0.5, idle: false },
       littlesLaw: { nodeId, L: 1, lambda: 1, W: 1, deviation: 0, isStable: true },
       healthStatus: 'green',
     };
@@ -148,6 +148,7 @@ describe('MetricsSummary node identification', () => {
         nodeType: NodeType.AppServer,
         label,
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           workerThreadPoolSize: 10,
           requestQueueDepth: 100,
@@ -172,7 +173,7 @@ describe('MetricsSummary node identification', () => {
           queueDepth: 3,
           activeConnections: 5,
           bufferOccupancy: 0,
-          utilization: 0.5,
+          utilization: { kind: 'value', value: 0.5, idle: false },
           littlesLaw: { nodeId, L: 2, lambda: 1, W: 2000, deviation: 0.01, isStable: true },
           healthStatus: 'green',
         },
@@ -254,6 +255,7 @@ describe('NodeConfigPanel activity tab', () => {
         nodeType,
         label: 'Node Under Test',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config,
       },
     } as unknown as AnalysysNode;
@@ -271,7 +273,7 @@ describe('NodeConfigPanel activity tab', () => {
       queueDepth: 0,
       activeConnections: 0,
       bufferOccupancy: 0,
-      utilization: 0,
+      utilization: { kind: 'value', value: 0, idle: true },
       littlesLaw: { nodeId: NODE_ID, L: 0, lambda: 0, W: 0, deviation: 0, isStable: true },
       healthStatus: 'green',
       ...overrides,
@@ -357,7 +359,7 @@ describe('NodeConfigPanel activity tab', () => {
       throughput: 20,
       queueDepth: 7,
       activeConnections: 4,
-      utilization: 1,
+      utilization: { kind: 'value', value: 1, idle: false },
       latencyPercentiles: { p50: 0.2, p90: 0.2, p99: 0.2 },
     });
     renderActivityTab();
@@ -392,6 +394,7 @@ describe('NodeConfigPanel circuit breaker configuration', () => {
         nodeType: NodeType.CircuitBreaker,
         label: 'Payments Breaker',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 },
       },
     } as unknown as AnalysysNode;

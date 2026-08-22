@@ -6,7 +6,7 @@ import type { MetricsBatchPayload } from '@/types/metrics';
 import { MinHeap } from './eventQueue';
 import { SeededRNG } from './prng';
 import type { SimEvent, SimRequest, NodeRuntimeState, ProcessorContext, NodeProcessor } from './types';
-import { SimEventType, SimState, RequestStatus } from './types';
+import { SimEventType, SimState, RequestStatus, emptyTerminalCounts } from './types';
 import { TrafficGeneratorProcessor } from './processors/TrafficGeneratorProcessor';
 import { ApiGatewayProcessor } from './processors/ApiGatewayProcessor';
 import { RateLimiterProcessor } from './processors/RateLimiterProcessor';
@@ -17,6 +17,12 @@ import { CacheProcessor } from './processors/CacheProcessor';
 import { DatabaseProcessor } from './processors/DatabaseProcessor';
 import { MessageQueueProcessor } from './processors/MessageQueueProcessor';
 import { MetricsCollector } from './metrics/MetricsCollector';
+import { AuthServiceSkeletonProcessor } from './processors/AuthServiceSkeletonProcessor';
+import { AuthzServiceSkeletonProcessor } from './processors/AuthzServiceSkeletonProcessor';
+import { WorkerPoolSkeletonProcessor } from './processors/WorkerPoolSkeletonProcessor';
+import { DeadLetterQueueSkeletonProcessor } from './processors/DeadLetterQueueSkeletonProcessor';
+import { ObjectStoreSkeletonProcessor } from './processors/ObjectStoreSkeletonProcessor';
+import { SchedulerSkeletonProcessor } from './processors/SchedulerSkeletonProcessor';
 
 export class SimulationEngine {
   private eventQueue: MinHeap<SimEvent>;
@@ -273,6 +279,9 @@ export class SimulationEngine {
       maxHops: this.config.maxHopsPerRequest,
       path: [event.nodeId],
       accumulatedLatencyMs: 0,
+      // R32.7 — a request emitted by a source node holds a fan-out depth of 0.
+      fanOutDepth: 0,
+      emittedByNodeId: event.nodeId,
     };
     this.requests.set(requestId, request);
     this.updateInFlightWeightedSum();
@@ -568,6 +577,9 @@ export class SimulationEngine {
       state.totalDropped = 0;
       state.totalTimedOut = 0;
       state.latencySamples = [];
+      // R31.4 — the per-window partition resets with the counters above.
+      // `cumulativeTerminalCounts` is deliberately left alone (R31.3).
+      state.terminalCounts = emptyTerminalCounts();
       state.processor.resetWindowCounters?.();
     }
 
@@ -632,6 +644,8 @@ export class SimulationEngine {
         totalDropped: 0,
         totalTimedOut: 0,
         latencySamples: [],
+        terminalCounts: emptyTerminalCounts(),
+        cumulativeTerminalCounts: emptyTerminalCounts(),
       });
     }
   }
@@ -656,6 +670,18 @@ export class SimulationEngine {
         return new DatabaseProcessor(node.config);
       case NodeType.MessageQueue:
         return new MessageQueueProcessor(node.config);
+      case NodeType.AuthService:
+        return new AuthServiceSkeletonProcessor(node.config);
+      case NodeType.AuthzService:
+        return new AuthzServiceSkeletonProcessor(node.config);
+      case NodeType.WorkerPool:
+        return new WorkerPoolSkeletonProcessor(node.config);
+      case NodeType.DeadLetterQueue:
+        return new DeadLetterQueueSkeletonProcessor(node.config);
+      case NodeType.ObjectStore:
+        return new ObjectStoreSkeletonProcessor(node.config);
+      case NodeType.Scheduler:
+        return new SchedulerSkeletonProcessor(node.config);
     }
   }
 
@@ -708,10 +734,26 @@ export class SimulationEngine {
     return this.adjacency.get(nodeId) ?? [];
   }
 
+  /**
+   * Provisional: returns the First-policy result for every node, so behaviour is
+   * unchanged from the hard-coded `edges[0]` forwarding the nine processors do today.
+   *
+   * TODO(task 318): implement the full Requirement 32 policy resolution — Round_Robin
+   * cursors, one weighted PRNG draw against cumulative normalised weights, and every
+   * outgoing edge for Fan_Out below the depth cap — and read `request` to do it. Task 323
+   * then migrates the nine processors off `edges[0]!.target` onto this.
+   */
+  private resolveTargets(nodeId: string): EdgeData[] {
+    // `buildAdjacency` preserves serialized edge order, so index 0 is the outgoing edge
+    // of lowest stored index (R32.2).
+    return this.getOutgoingEdges(nodeId).slice(0, 1);
+  }
+
   private getProcessorContext(): ProcessorContext {
     return {
       scheduleEvent: (partial) => this.scheduleEvent(partial),
       getOutgoingEdges: (nodeId) => this.getOutgoingEdges(nodeId),
+      resolveTargets: (nodeId, _request) => this.resolveTargets(nodeId),
       getNodeConfig: (nodeId) => this.nodeConfigs.get(nodeId),
       getNodeState: (nodeId) => this.nodeStates.get(nodeId),
       getRNG: () => this.rng,

@@ -1,4 +1,5 @@
 import type { RateLimiterConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -84,9 +85,12 @@ export class RateLimiterProcessor implements NodeProcessor {
     // No chaos state to revert.
   }
 
-  getUtilization(): number {
+  getUtilization(): UtilizationReading {
     // Fraction of the bucket drained — 1 means the next request is rejected.
     const used = 1 - this.tokens / this.config.bucketCapacity;
-    return Math.max(0, Math.min(1, used));
+    const value = Math.max(0, Math.min(1, used));
+    // TODO(task 392): no per-window arrival counter here, so a full bucket reads as idle
+    // whether or not the limiter saw traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

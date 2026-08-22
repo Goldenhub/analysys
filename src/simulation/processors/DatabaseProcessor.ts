@@ -1,4 +1,5 @@
 import type { DatabaseConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -132,8 +133,14 @@ export class DatabaseProcessor implements NodeProcessor {
     this.isDown = false;
   }
 
-  getUtilization(): number {
-    if (this.config.connectionPoolSize === 0) return 0;
-    return this.activeConnections / this.config.connectionPoolSize;
+  getUtilization(): UtilizationReading {
+    const value =
+      this.config.connectionPoolSize === 0
+        ? 0
+        : this.activeConnections / this.config.connectionPoolSize;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // there is no per-window arrival counter here, so a pool with every connection free reads
+    // as idle regardless of traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }
