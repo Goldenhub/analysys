@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { useSimulationStore } from '@/store/simulationStore';
+import { useAnalysisPanelStore } from '@/store/analysisPanelStore';
 import { LatencyChart } from './LatencyChart';
 import { ThroughputChart } from './ThroughputChart';
 import { QueueGauge } from './QueueGauge';
@@ -21,6 +22,8 @@ export function TelemetryDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [panelHeight, setPanelHeight] = useState(DEFAULT_HEIGHT);
   const [viewMode, setViewMode] = useState<'charts' | 'summary'>('charts');
+  const analysisPanelOpen = useAnalysisPanelStore((s) => s.isOpen);
+  const toggleAnalysisPanel = useAnalysisPanelStore((s) => s.toggle);
   const isDragging = useRef(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
@@ -108,6 +111,21 @@ export function TelemetryDashboard() {
               Summary
             </button>
           </div>
+          {/* Analysis Panel Toggle (Task 536) */}
+          <button
+            onClick={toggleAnalysisPanel}
+            className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors border ${
+              analysisPanelOpen
+                ? 'bg-indigo-600 text-white border-indigo-500'
+                : 'border-gray-700 bg-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+            }`}
+            aria-label={analysisPanelOpen ? 'Close analysis panel' : 'Open analysis panel'}
+            aria-expanded={analysisPanelOpen}
+            aria-controls="analysis-panel"
+          >
+            <BarChart3 size={12} />
+            <span>Analysis</span>
+          </button>
         </div>
         <button
           onClick={() => setCollapsed((c) => !c)}

@@ -923,38 +923,38 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 25.1 Analysis Panel (`src/components/analysis/`)
 
-- [~] 536. Add a control to the `TelemetryDashboard` header that opens `AnalysisPanel.tsx` alongside the Canvas, leaving the Canvas rendered with its pan position, zoom level, and node selection unchanged, reachable by pointer and by keyboard alone.
-- [~] 537. Group Findings by category, order category groups by their position in the eight-value declaration order, order Findings within a group by the severity then descending primary evidence magnitude then category position then ascending identifier total order, and contribute no group for a category holding no Finding.
-- [~] 538. Create `FindingCard.tsx` displaying the severity text label, subject node labels or the system-wide scope label, constraint statement, recommended action, tradeoff statement, confidence, and the inclusive analysis window bounds in simulated ms.
-- [~] 539. Identify each subject node by its user-assigned label with a shortened-identifier fallback where the node is absent from the topology.
-- [~] 540. Implement `activateFinding`: expand every collapsed group containing a present subject node, set the selection to exactly those nodes, and fit the view to their bounding box.
-- [~] 541. Where no zoom level at or above 0.25 frames every subject node, set zoom to 0.25, centre on the bounding-box midpoint, and display the count of subject nodes lying outside the viewport in nodes.
-- [~] 542. Leave the Canvas selection, pan, and zoom untouched for a Finding with an empty or fully absent subject set, showing the system-wide scope label or the shortened identifiers with a statement that those nodes are absent from the current topology.
-- [~] 543. Present every Finding of a recomputed set up to the 200-Finding maximum within 500 ms of that recomputation completing.
+- [x] 536. Add a control to the `TelemetryDashboard` header that opens `AnalysisPanel.tsx` alongside the Canvas, leaving the Canvas rendered with its pan position, zoom level, and node selection unchanged, reachable by pointer and by keyboard alone.
+- [x] 537. Group Findings by category, order category groups by their position in the eight-value declaration order, order Findings within a group by the severity then descending primary evidence magnitude then category position then ascending identifier total order, and contribute no group for a category holding no Finding.
+- [x] 538. Create `FindingCard.tsx` displaying the severity text label, subject node labels or the system-wide scope label, constraint statement, recommended action, tradeoff statement, confidence, and the inclusive analysis window bounds in simulated ms.
+- [x] 539. Identify each subject node by its user-assigned label with a shortened-identifier fallback where the node is absent from the topology.
+- [x] 540. Implement `activateFinding`: expand every collapsed group containing a present subject node, set the selection to exactly those nodes, and fit the view to their bounding box.
+- [x] 541. Where no zoom level at or above 0.25 frames every subject node, set zoom to 0.25, centre on the bounding-box midpoint, and display the count of subject nodes lying outside the viewport in nodes.
+- [x] 542. Leave the Canvas selection, pan, and zoom untouched for a Finding with an empty or fully absent subject set, showing the system-wide scope label or the shortened identifiers with a statement that those nodes are absent from the current topology.
+- [x] 543. Present every Finding of a recomputed set up to the 200-Finding maximum within 500 ms of that recomputation completing.
 
 ### 25.2 Analysis Panel Accessibility
 
-- [~] 544. Place the Finding list in the tab order, move focus through the display order on Down and Up, activate on Enter and Space, and leave the list on Tab and Shift+Tab.
-- [~] 545. Return keyboard focus to the control that opened the panel on Escape.
-- [~] 546. Render every severity as one of the three text labels at 4.5:1 or better contrast so severity is determinable without colour, matching the approach `HealthLegend` already takes.
-- [~] 547. Add an announced-identifier set per run to the existing `LiveAnnouncer` assertive region so a newly appearing Critical Finding announces exactly once per run, at most one announcement per metrics window, naming the count plus the category and subject label of the first in display order.
-- [~] 548. Meet the remaining contrast and semantics targets: 3:1 for large and bold text, 3:1 for non-text status and focus indicators, and a programmatic name and role on every interactive control in the panel.
+- [x] 544. Place the Finding list in the tab order, move focus through the display order on Down and Up, activate on Enter and Space, and leave the list on Tab and Shift+Tab.
+- [x] 545. Return keyboard focus to the control that opened the panel on Escape.
+- [x] 546. Render every severity as one of the three text labels at 4.5:1 or better contrast so severity is determinable without colour, matching the approach `HealthLegend` already takes.
+- [x] 547. Add an announced-identifier set per run to the existing `LiveAnnouncer` assertive region so a newly appearing Critical Finding announces exactly once per run, at most one announcement per metrics window, naming the count plus the category and subject label of the first in display order.
+- [x] 548. Meet the remaining contrast and semantics targets: 3:1 for large and bold text, 3:1 for non-text status and focus indicators, and a programmatic name and role on every interactive control in the panel.
 
 ### 25.3 Supporting Analysis Surfaces
 
-- [~] 549. Create `ComparisonTable.tsx` with each data cell programmatically associated with both its row and column header, a programmatic name naming the two compared runs, and every header and cell reachable by keyboard alone.
-- [~] 550. Create `SweepResultsTable.tsx` reporting per step the 1-based index, requested and applied offered load, achieved throughput, p50/p90/p99, total error rate, each of the nine terminal status counts, the measurement interval bounds, and the satisfied/violated/not-evaluated verdict, each with its unit.
-- [~] 551. Create `HeadroomList.tsx` rendering per-node and system Headroom including the not-applicable readings and the projection caveat.
-- [~] 552. Create `SpofList.tsx` rendering SPOF Findings, the exclusion list with reasons, and the no-SPOF statement.
-- [~] 553. Display the analysis-completed-with-no-Finding state with the analysis window bounds, keeping every panel control keyboard-operable, distinguishable from the fewer-than-3-windows state.
-- [~] 554. Display the suppression list naming each suppressed rule identifier, the missing or not-applicable metric, and each affected node label, and the budget-exhaustion report naming the incomplete rules.
+- [x] 549. Create `ComparisonTable.tsx` with each data cell programmatically associated with both its row and column header, a programmatic name naming the two compared runs, and every header and cell reachable by keyboard alone.
+- [x] 550. Create `SweepResultsTable.tsx` reporting per step the 1-based index, requested and applied offered load, achieved throughput, p50/p90/p99, total error rate, each of the nine terminal status counts, the measurement interval bounds, and the satisfied/violated/not-evaluated verdict, each with its unit.
+- [x] 551. Create `HeadroomList.tsx` rendering per-node and system Headroom including the not-applicable readings and the projection caveat.
+- [x] 552. Create `SpofList.tsx` rendering SPOF Findings, the exclusion list with reasons, and the no-SPOF statement.
+- [x] 553. Display the analysis-completed-with-no-Finding state with the analysis window bounds, keeping every panel control keyboard-operable, distinguishable from the fewer-than-3-windows state.
+- [x] 554. Display the suppression list naming each suppressed rule identifier, the missing or not-applicable metric, and each affected node label, and the budget-exhaustion report naming the incomplete rules.
 
 ### 25.4 Sweep and Chaos Controls
 
-- [~] 555. Create `CapacitySweepPanel.tsx` with the parameter form, inline validation messages, and a start control.
-- [~] 556. Display while a sweep runs the 1-based in-progress step index, the total step count, that step's requested offered load, its elapsed simulated time, and the reported results of every completed step.
-- [~] 557. Add the always-visible plain-language descriptions to the new chaos controls matching the existing panel's convention, and log every new chaos event with its simulated timestamp.
-- [~] 558. Write component tests for the panel: keyboard-only traversal of the Finding list, focus return on Escape, comparison table header association, and exactly one assertive announcement per Critical Finding identifier per run.
+- [x] 555. Create `CapacitySweepPanel.tsx` with the parameter form, inline validation messages, and a start control.
+- [x] 556. Display while a sweep runs the 1-based in-progress step index, the total step count, that step's requested offered load, its elapsed simulated time, and the reported results of every completed step.
+- [x] 557. Add the always-visible plain-language descriptions to the new chaos controls matching the existing panel's convention, and log every new chaos event with its simulated timestamp.
+- [x] 558. Write component tests for the panel: keyboard-only traversal of the Finding list, focus return on Escape, comparison table header association, and exactly one assertive announcement per Critical Finding identifier per run.
 
 ---
 
