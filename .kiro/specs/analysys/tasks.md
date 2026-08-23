@@ -962,14 +962,14 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 26.1 Preset Records (`src/presets/`)
 
-- [~] 559. Extend `PresetTopology` into `ReferencePreset` adding `schemaVersion: 2`, `subsystemGroups`, `seed`, `simulatedDurationMs`, `speedMultiplier`, `totalOfferedRps`, `expectedBottleneckNodeId`, and `expectedDominantTerminalStatus`.
-- [~] 560. **authenticatedWebApi.json**: Traffic_Generator → API_Gateway → Rate_Limiter → Auth_Service (Introspection, with an edge to the Cache) → Authz_Service → Load_Balancer → 2 or more App_Servers → Cache, Database, and Object_Store, with every node reachable from the generator along a directed path.
-- [~] 561. **asyncJobPlatform.json**: App_Server → Message_Queue → Worker_Pool → Dead_Letter_Queue plus Database and Object_Store, with the pool's job failure rate at 0.05 or above and 1 to 3 max retries so a run at the stored seed records at least one Retry_Exhaustion and retains at least one dead-lettered message.
-- [~] 562. **scheduledBatchWithLiveTraffic.json**: a Scheduler and a Traffic_Generator each holding a directed path to the same Database, with interval and start offset set so 3 or more triggers fire within the stored duration.
-- [~] 563. Give each preset 12 to 80 nodes and 3 to 20 Subsystem_Groups of 2 to 50 members each with every node in at most one group, and construct every edge from a pair and protocol permitted by the connection rules so loading produces no violation.
-- [~] 564. Set each preset's stored simulated duration and metrics interval so their product spans at least 3 completed metrics windows — the interval is caller-supplied, so no preset may assume a fixed window length.
-- [~] 565. Author node positions so every rendered node's bounding box is separated from every other by 16 or more logical pixels on the x axis or the y axis at 100% zoom.
-- [~] 566. Register the three presets in `PresetSelector.tsx` under a group label distinguishing them from the failure-mode presets, display each preset's expected Bottleneck label, expected dominant terminal status, stored duration in seconds, and stored offered load on selection, and auto-start with the stored seed, duration, speed multiplier, and chaos timeline after the existing unsaved-changes confirmation.
+- [x] 559. Extend `PresetTopology` into `ReferencePreset` adding `schemaVersion: 2`, `subsystemGroups`, `seed`, `simulatedDurationMs`, `speedMultiplier`, `totalOfferedRps`, `expectedBottleneckNodeId`, and `expectedDominantTerminalStatus`.
+- [x] 560. **authenticatedWebApi.json**: Traffic_Generator → API_Gateway → Rate_Limiter → Auth_Service (Introspection, with an edge to the Cache) → Authz_Service → Load_Balancer → 2 or more App_Servers → Cache, Database, and Object_Store, with every node reachable from the generator along a directed path.
+- [x] 561. **asyncJobPlatform.json**: App_Server → Message_Queue → Worker_Pool → Dead_Letter_Queue plus Database and Object_Store, with the pool's job failure rate at 0.05 or above and 1 to 3 max retries so a run at the stored seed records at least one Retry_Exhaustion and retains at least one dead-lettered message.
+- [x] 562. **scheduledBatchWithLiveTraffic.json**: a Scheduler and a Traffic_Generator each holding a directed path to the same Database, with interval and start offset set so 3 or more triggers fire within the stored duration.
+- [x] 563. Give each preset 12 to 80 nodes and 3 to 20 Subsystem_Groups of 2 to 50 members each with every node in at most one group, and construct every edge from a pair and protocol permitted by the connection rules so loading produces no violation.
+- [x] 564. Set each preset's stored simulated duration and metrics interval so their product spans at least 3 completed metrics windows — the interval is caller-supplied, so no preset may assume a fixed window length.
+- [x] 565. Author node positions so every rendered node's bounding box is separated from every other by 16 or more logical pixels on the x axis or the y axis at 100% zoom.
+- [x] 566. Register the three presets in `PresetSelector.tsx` under a group label distinguishing them from the failure-mode presets, display each preset's expected Bottleneck label, expected dominant terminal status, stored duration in seconds, and stored offered load on selection, and auto-start with the stored seed, duration, speed multiplier, and chaos timeline after the existing unsaved-changes confirmation.
 
 ---
 

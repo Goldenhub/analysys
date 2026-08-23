@@ -1,6 +1,12 @@
 import { useState, useCallback } from 'react';
 import { MarkerType } from '@xyflow/react';
-import { presets, type PresetTopology, type ChaosTimelineEntry } from '@/presets';
+import {
+  failureModePresets,
+  referencePresets,
+  isReferencePreset,
+  type PresetTopology,
+  type ChaosTimelineEntry,
+} from '@/presets';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { usePersistenceStore } from '@/store/persistenceStore';
@@ -89,26 +95,38 @@ export function PresetSelector() {
       // Load topology
       const rfNodes = simulationNodesToRFNodes(preset.topology.nodes);
       const rfEdges = edgeDataToRFEdges(preset.topology.edges);
-      loadTopology(rfNodes, rfEdges);
 
-      // Auto-start simulation with chaos timeline
+      // Reference presets include subsystem groups
+      if (isReferencePreset(preset)) {
+        loadTopology(rfNodes, rfEdges, preset.subsystemGroups);
+      } else {
+        loadTopology(rfNodes, rfEdges);
+      }
+
+      // Auto-start simulation
       initWorker();
       const { getTopologySnapshot } = useTopologyStore.getState();
       const snapshot = getTopologySnapshot();
+
+      // Reference presets use their stored seed, duration, and speed multiplier
+      const isRef = isReferencePreset(preset);
+      const seed = isRef ? preset.seed : Date.now();
+      const speedMultiplier = isRef ? preset.speedMultiplier : 1;
+      const maxSimulatedTimeMs = isRef ? preset.simulatedDurationMs : 120000;
 
       sendToWorker({
         type: 'INIT',
         payload: {
           topology: snapshot,
-          seed: Date.now(),
-          speedMultiplier: 1,
-          maxSimulatedTimeMs: 120000,
+          seed,
+          speedMultiplier,
+          maxSimulatedTimeMs,
           metricsIntervalMs: DEFAULT_METRICS_INTERVAL_MS,
           maxHopsPerRequest: DEFAULT_MAX_HOPS_PER_REQUEST,
         },
       });
 
-      sendToWorker({ type: 'START', payload: { speedMultiplier: 1 } });
+      sendToWorker({ type: 'START', payload: { speedMultiplier } });
       setSimState(SimState.Running);
 
       // Schedule chaos events
@@ -148,15 +166,15 @@ export function PresetSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
-          {/* Built-in Presets */}
+        <div className="absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
+          {/* Failure-Mode Presets */}
           <div className="border-b border-gray-700 px-3 py-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-              Demo Scenarios
+              Failure-Mode Scenarios
             </span>
           </div>
           <ul role="listbox" className="max-h-60 overflow-y-auto">
-            {presets.map((preset) => (
+            {failureModePresets.map((preset) => (
               <li key={preset.name}>
                 <button
                   className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
@@ -167,6 +185,36 @@ export function PresetSelector() {
                   </span>
                   <span className="block text-xs text-gray-500 mt-0.5">
                     {preset.description}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Reference Architecture Presets */}
+          <div className="border-t border-gray-700 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              Reference Architectures
+            </span>
+          </div>
+          <ul role="listbox" className="max-h-80 overflow-y-auto">
+            {referencePresets.map((preset) => (
+              <li key={preset.name}>
+                <button
+                  className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
+                  onClick={() => loadPreset(preset)}
+                >
+                  <span className="block text-sm font-medium text-gray-200">
+                    {preset.name}
+                  </span>
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    {preset.description}
+                  </span>
+                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400">
+                    <span>Bottleneck: {preset.topology.nodes.find((n) => n.id === preset.expectedBottleneckNodeId)?.label ?? preset.expectedBottleneckNodeId}</span>
+                    <span>Status: {preset.expectedDominantTerminalStatus}</span>
+                    <span>Duration: {preset.simulatedDurationMs / 1000}s</span>
+                    <span>Load: {preset.totalOfferedRps} RPS</span>
                   </span>
                 </button>
               </li>

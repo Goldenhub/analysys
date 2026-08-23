@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 2,
+  "name": "Scheduled Batch With Live Traffic",
+  "description": "A scheduler firing batch jobs alongside live API traffic, both contending for the same database. Expected bottleneck: the Database under mixed batch + live load.",
+  "createdAt": "2024-06-01T00:00:00.000Z",
+  "seed": 20240603,
+  "simulatedDurationMs": 60000,
+  "speedMultiplier": 10,
+  "totalOfferedRps": 600,
+  "expectedBottleneckNodeId": "db-1",
+  "expectedDominantTerminalStatus": "TIMEOUT",
+  "subsystemGroups": [
+    {
+      "id": "grp-live-traffic",
+      "name": "Live Traffic Path",
+      "memberNodeIds": ["tg-1", "api-gw-1", "rl-1", "lb-1", "app-1", "app-2"],
+      "collapsed": false
+    },
+    {
+      "id": "grp-batch-path",
+      "name": "Batch Processing Path",
+      "memberNodeIds": ["sched-1", "mq-1", "wp-1", "dlq-1"],
+      "collapsed": false
+    },
+    {
+      "id": "grp-shared-storage",
+      "name": "Shared Storage",
+      "memberNodeIds": ["db-1", "cache-1", "obj-1"],
+      "collapsed": false
+    }
+  ],
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "Live Traffic",
+        "position": { "x": 0, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "rps": 600,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "api-gw-1",
+        "nodeType": "API_GATEWAY",
+        "label": "API Gateway",
+        "position": { "x": 200, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "authLatencyMeanMs": 2,
+          "authLatencyStdDevMs": 1,
+          "rejectionRate": 0.01
+        }
+      },
+      {
+        "id": "rl-1",
+        "nodeType": "RATE_LIMITER",
+        "label": "Rate Limiter",
+        "position": { "x": 400, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "bucketCapacity": 800,
+          "refillRatePerSec": 700
+        }
+      },
+      {
+        "id": "lb-1",
+        "nodeType": "LOAD_BALANCER",
+        "label": "Load Balancer",
+        "position": { "x": 600, "y": 200 },
+        "routingPolicy": "ROUND_ROBIN",
+        "config": {
+          "algorithm": "ROUND_ROBIN",
+          "healthCheckIntervalMs": 5000,
+          "evictionThreshold": 3
+        }
+      },
+      {
+        "id": "app-1",
+        "nodeType": "APP_SERVER",
+        "label": "API Server 1",
+        "position": { "x": 800, "y": 0 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "workerThreadPoolSize": 24,
+          "requestQueueDepth": 150,
+          "processingTimeMeanMs": 10,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "app-2",
+        "nodeType": "APP_SERVER",
+        "label": "API Server 2",
+        "position": { "x": 800, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "workerThreadPoolSize": 24,
+          "requestQueueDepth": 150,
+          "processingTimeMeanMs": 10,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "sched-1",
+        "nodeType": "SCHEDULER",
+        "label": "Batch Scheduler",
+        "position": { "x": 0, "y": 600 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "intervalMs": 15000,
+          "jobsPerTrigger": 100,
+          "startOffsetMs": 5000,
+          "jitterMs": 1000,
+          "overlapPolicy": "QUEUE",
+          "maxDeferredTriggers": 5
+        }
+      },
+      {
+        "id": "mq-1",
+        "nodeType": "MESSAGE_QUEUE",
+        "label": "Batch Queue",
+        "position": { "x": 400, "y": 600 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "consumerBatchSize": 20,
+          "bufferCapacity": 5000,
+          "backpressureThresholdPct": 80,
+          "backpressureStrategy": "BLOCK_PRODUCER"
+        }
+      },
+      {
+        "id": "wp-1",
+        "nodeType": "WORKER_POOL",
+        "label": "Batch Workers",
+        "position": { "x": 600, "y": 600 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "concurrency": 10,
+          "jobProcessingMeanMs": 40,
+          "jobProcessingStdDevMs": 15,
+          "prefetchBufferDepth": 20,
+          "jobFailureRate": 0.03,
+          "maxRetries": 2,
+          "retryBackoff": "EXPONENTIAL",
+          "retryBaseDelayMs": 300,
+          "jobTimeoutMs": 20000
+        }
+      },
+      {
+        "id": "dlq-1",
+        "nodeType": "DEAD_LETTER_QUEUE",
+        "label": "Dead Letter Queue",
+        "position": { "x": 600, "y": 800 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "capacity": 5000,
+          "retentionPeriodMs": 86400000,
+          "redriveMode": "MANUAL",
+          "redriveIntervalMs": 60000,
+          "redriveBatchSize": 50,
+          "maxRedriveAttempts": 1
+        }
+      },
+      {
+        "id": "cache-1",
+        "nodeType": "CACHE",
+        "label": "Shared Cache",
+        "position": { "x": 1000, "y": 0 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "hitRatio": 0.65,
+          "evictionPolicy": "LRU",
+          "accessLatencyMs": 2
+        }
+      },
+      {
+        "id": "db-1",
+        "nodeType": "DATABASE",
+        "label": "PostgreSQL",
+        "position": { "x": 1000, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "connectionPoolSize": 15,
+          "queryLatencyMeanMs": 18,
+          "queryLatencyStdDevMs": 7,
+          "lockTimeoutMs": 5000,
+          "dbType": "RELATIONAL"
+        }
+      },
+      {
+        "id": "obj-1",
+        "nodeType": "OBJECT_STORE",
+        "label": "File Storage",
+        "position": { "x": 1000, "y": 800 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "objectSizeMeanKB": 128,
+          "objectSizeStdDevKB": 32,
+          "throughputCapacityMBps": 100,
+          "baseLatencyMeanMs": 6,
+          "baseLatencyStdDevMs": 2,
+          "maxConcurrentTransfers": 40,
+          "transferQueueDepth": 80,
+          "readFraction": 0.3,
+          "writeLatencyMultiplier": 1.5
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-tg1-apigw1", "source": "tg-1", "target": "api-gw-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-apigw1-rl1", "source": "api-gw-1", "target": "rl-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-rl1-lb1", "source": "rl-1", "target": "lb-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-lb1-app1", "source": "lb-1", "target": "app-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-lb1-app2", "source": "lb-1", "target": "app-2", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-app1-cache1", "source": "app-1", "target": "cache-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-app2-cache1", "source": "app-2", "target": "cache-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-app1-db1", "source": "app-1", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-app2-db1", "source": "app-2", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-cache1-db1", "source": "cache-1", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-sched1-mq1", "source": "sched-1", "target": "mq-1", "protocol": "ASYNC", "weight": 1.0 },
+      { "id": "e-mq1-wp1", "source": "mq-1", "target": "wp-1", "protocol": "ASYNC", "weight": 1.0 },
+      { "id": "e-wp1-db1", "source": "wp-1", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-wp1-obj1", "source": "wp-1", "target": "obj-1", "protocol": "SYNC", "weight": 1.0 },
+      { "id": "e-wp1-dlq1", "source": "wp-1", "target": "dlq-1", "protocol": "ASYNC", "weight": 1.0 }
+    ]
+  },
+  "chaosTimeline": []
+}
