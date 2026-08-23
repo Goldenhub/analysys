@@ -3,6 +3,7 @@ import type { AnalysisContext } from '@/analysis/AnalysisWindowStore';
 import { FindingBuilder } from '@/analysis/FindingBuilder';
 import type { AnalysisRule } from './index';
 import { getLittlesLawUnstableNodes } from './instability';
+import type { SweepStepResult, KneePointResult } from '@/analysis/CapacitySweepController';
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -133,3 +134,140 @@ export const workerPoolConcurrencyRule: AnalysisRule = {
     return findings;
   },
 };
+
+// ─── Sweep Knee Rule (Task 505) ──────────────────────────────────
+
+/**
+ * Context for the sweepKneeRule: saturation and utilization data from
+ * the Knee_Point step.
+ */
+export interface SweepKneeContext {
+  kneePoint: KneePointResult;
+  kneeStepResult: SweepStepResult;
+  /** Per-node utilization at the knee step (from the step's final analysis window). */
+  nodeUtilizations: Map<string, number>;
+  /** Nodes that reached saturation (utilization ≥ 0.85) during the knee step. */
+  saturatedNodes: Array<{ nodeId: string; utilization: number; boundParam: string; boundValue: number }>;
+  /** Service objective. */
+  objective: { maxP99LatencyMs: number; maxErrorRate: number };
+}
+
+/**
+ * Emit a Capacity Finding naming the node that reached Saturation earliest during
+ * the Knee_Point step, with its bounding parameter and configured value.
+ *
+ * Where no node saturated, names the node holding the highest analysis Utilization
+ * plus which Service_Objective condition was violated with its observed value and
+ * configured limit.
+ */
+export function sweepKneeRule(
+  ctx: AnalysisContext,
+  kneeCtx: SweepKneeContext,
+): Finding | null {
+  const { kneePoint, kneeStepResult, saturatedNodes, nodeUtilizations, objective } = kneeCtx;
+
+  if (saturatedNodes.length > 0) {
+    // Name the node that reached Saturation earliest (highest utilization)
+    const sorted = [...saturatedNodes].sort((a, b) => b.utilization - a.utilization);
+    const saturated = sorted[0]!;
+    const nodeId = saturated.nodeId;
+
+    return FindingBuilder.build({
+      ruleId: 'capacity.sweep-knee',
+      category: 'Capacity',
+      severity: 'Warning',
+      subjectNodeIds: [nodeId],
+      evidence: [
+        {
+          metricName: 'utilization',
+          value: saturated.utilization,
+          unit: 'fraction',
+          scope: nodeId,
+          primary: true,
+        },
+        {
+          metricName: 'kneePointRps',
+          value: kneePoint.offeredRps,
+          unit: 'req/s',
+          scope: nodeId,
+        },
+        {
+          metricName: saturated.boundParam,
+          value: saturated.boundValue,
+          unit: 'configured',
+          scope: nodeId,
+        },
+      ],
+      constraint: `${ctx.labelOf(nodeId)} reached Saturation at ${String(kneePoint.offeredRps)} RPS bounded by ${saturated.boundParam} at ${String(saturated.boundValue)}`,
+      action: {
+        nodeId,
+        parameter: saturated.boundParam,
+        direction: 'increase',
+        targetValue: { value: saturated.boundValue * 2, unit: 'configured' },
+      },
+      tradeoff: `Increasing ${saturated.boundParam} at ${ctx.labelOf(nodeId)} may shift the bottleneck to a downstream node`,
+      lowestCompletedCount: 200,
+      allSubjectsInSteadyState: false,
+      window: kneeStepResult.measurementInterval,
+    });
+  }
+
+  // No node saturated — find highest utilization node and name violated objective condition
+  if (nodeUtilizations.size === 0) return null;
+
+  let highestNodeId = '';
+  let highestUtil = 0;
+  for (const [nodeId, util] of nodeUtilizations) {
+    if (util > highestUtil) {
+      highestUtil = util;
+      highestNodeId = nodeId;
+    }
+  }
+
+  if (!highestNodeId) return null;
+
+  // Determine which condition was violated
+  const p99Violated = kneeStepResult.latency.p99 > objective.maxP99LatencyMs;
+  const errorViolated = kneeStepResult.totalErrorRate > objective.maxErrorRate;
+
+  let violationDesc: string;
+  if (p99Violated && errorViolated) {
+    violationDesc = `p99 latency ${String(kneeStepResult.latency.p99)} ms exceeds limit ${String(objective.maxP99LatencyMs)} ms and error rate ${(kneeStepResult.totalErrorRate * 100).toFixed(2)}% exceeds limit ${(objective.maxErrorRate * 100).toFixed(2)}%`;
+  } else if (p99Violated) {
+    violationDesc = `p99 latency ${String(kneeStepResult.latency.p99)} ms exceeds limit ${String(objective.maxP99LatencyMs)} ms`;
+  } else {
+    violationDesc = `error rate ${(kneeStepResult.totalErrorRate * 100).toFixed(2)}% exceeds limit ${(objective.maxErrorRate * 100).toFixed(2)}%`;
+  }
+
+  return FindingBuilder.build({
+    ruleId: 'capacity.sweep-knee',
+    category: 'Capacity',
+    severity: 'Warning',
+    subjectNodeIds: [highestNodeId],
+    evidence: [
+      {
+        metricName: 'utilization',
+        value: highestUtil,
+        unit: 'fraction',
+        scope: highestNodeId,
+        primary: true,
+      },
+      {
+        metricName: 'kneePointRps',
+        value: kneePoint.offeredRps,
+        unit: 'req/s',
+        scope: highestNodeId,
+      },
+    ],
+    constraint: `${ctx.labelOf(highestNodeId)} holds the highest utilization (${(highestUtil * 100).toFixed(1)}%) at the Knee_Point (${String(kneePoint.offeredRps)} RPS); ${violationDesc}`,
+    action: {
+      nodeId: highestNodeId,
+      parameter: 'capacity',
+      direction: 'increase',
+    },
+    tradeoff: `Increasing capacity at ${ctx.labelOf(highestNodeId)} may improve Service_Objective compliance at the Knee_Point`,
+    lowestCompletedCount: 200,
+    allSubjectsInSteadyState: false,
+    window: kneeStepResult.measurementInterval,
+  });
+}

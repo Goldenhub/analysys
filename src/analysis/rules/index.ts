@@ -79,5 +79,6 @@ export { saturationRule } from './saturation';
 export { instabilityDepthGrowthRule, instabilityLittlesLawRule } from './instability';
 export { dlqGrowthRule, admissionDominatesRule } from './reliability';
 export { workerPoolConcurrencyRule } from './capacity';
+export { sweepKneeRule } from './capacity';
 export { schedulerCollisionRule } from './configuration';
 export { headroomRule } from './headroom';
