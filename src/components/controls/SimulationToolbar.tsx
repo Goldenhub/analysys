@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSimulationStore } from '@/store';
+import { DEFAULT_MAX_HOPS_PER_REQUEST, DEFAULT_METRICS_INTERVAL_MS } from '@/types/messages';
 import { useTopologyStore } from '@/store';
 import { SimState } from '@/simulation/types';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,12 @@ import { Button } from '@/components/ui/button';
 
 function PlayIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M8 5.14v14l11-7-11-7z" />
     </svg>
   );
@@ -16,7 +22,12 @@ function PlayIcon() {
 
 function PauseIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
     </svg>
   );
@@ -24,7 +35,12 @@ function PauseIcon() {
 
 function StopIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M6 6h12v12H6V6z" />
     </svg>
   );
@@ -32,7 +48,16 @@ function StopIcon() {
 
 function RefreshIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+    >
       <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
@@ -43,7 +68,16 @@ function RefreshIcon() {
 
 function HelpIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3.5"
+    >
       <circle cx="12" cy="12" r="10" />
       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -54,6 +88,18 @@ function HelpIcon() {
 // ─── Speed Options ───────────────────────────────────────────────
 
 const SPEED_OPTIONS = [1, 2, 5, 10, 50] as const;
+
+// ─── Duration Options ────────────────────────────────────────────
+
+const DURATION_OPTIONS = [
+  { label: '30s', ms: 30_000 },
+  { label: '1min', ms: 60_000 },
+  { label: '2min', ms: 120_000 },
+  { label: '5min', ms: 300_000 },
+  { label: '10min', ms: 600_000 },
+] as const;
+
+const DEFAULT_DURATION_MS = 120_000; // 2 min
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -106,6 +152,7 @@ export function SimulationToolbar() {
   const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
 
   const [showHelp, setShowHelp] = useState(false);
+  const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
 
   // ─── Button Handlers ─────────────────────────────────────────
 
@@ -118,14 +165,14 @@ export function SimulationToolbar() {
         topology,
         seed: Date.now(),
         speedMultiplier,
-        maxSimulatedTimeMs: 600_000, // 10 min default
-        metricsIntervalMs: 500,
-        maxHopsPerRequest: 20,
+        maxSimulatedTimeMs: durationMs,
+        metricsIntervalMs: DEFAULT_METRICS_INTERVAL_MS,
+        maxHopsPerRequest: DEFAULT_MAX_HOPS_PER_REQUEST,
       },
     });
     sendToWorker({ type: 'START', payload: { speedMultiplier } });
     setSimState(SimState.Running);
-  }, [getTopologySnapshot, initWorker, sendToWorker, speedMultiplier, setSimState]);
+  }, [getTopologySnapshot, initWorker, sendToWorker, speedMultiplier, setSimState, durationMs]);
 
   const handlePause = useCallback(() => {
     sendToWorker({ type: 'PAUSE' });
@@ -286,6 +333,27 @@ export function SimulationToolbar() {
           </option>
         ))}
       </select>
+
+      {/* Duration Selector */}
+      <div className="flex items-center gap-1">
+        <label htmlFor="sim-duration" className="text-[10px] text-gray-500">
+          Duration
+        </label>
+        <select
+          id="sim-duration"
+          value={durationMs}
+          onChange={(e) => setDurationMs(Number(e.target.value))}
+          disabled={simState === SimState.Running || simState === SimState.Paused}
+          className="h-7 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {DURATION_OPTIONS.map((opt) => (
+            <option key={opt.ms} value={opt.ms}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-[10px] text-gray-500">sim</span>
+      </div>
 
       {/* Simulation Time */}
       <span className="font-mono text-xs text-gray-300">

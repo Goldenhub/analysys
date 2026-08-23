@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CanvasEditor } from '@/components/canvas/CanvasEditor';
 import { NodePalette } from '@/components/canvas/NodePalette';
 import { NodeConfigPanel } from '@/components/config/NodeConfigPanel';
@@ -6,6 +6,8 @@ import { SimulationToolbar, ChaosPanel, PersistenceToolbar } from '@/components/
 import { PresetSelector } from '@/components/presets';
 import { TelemetryDashboard } from '@/components/telemetry';
 import { LiveAnnouncer } from '@/components/a11y/LiveAnnouncer';
+import { AnalysisPanel } from '@/components/analysis/AnalysisPanel';
+import { useAnalysisPanelStore } from '@/store/analysisPanelStore';
 
 function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -75,16 +77,22 @@ function App() {
           <div className="ml-auto flex items-center gap-4" tabIndex={5} aria-label="Chaos controls">
             <ChaosPanel />
             {selectedNodeId && (
-              <span className="text-xs text-gray-400">
-                Selected: {selectedNodeId.slice(0, 8)}…
-              </span>
+              <span className="text-xs text-gray-400">Selected: {selectedNodeId.slice(0, 8)}…</span>
             )}
           </div>
         </header>
 
-        {/* Canvas Area (tabIndex 2) */}
-        <main className="relative flex-1" tabIndex={2} aria-label="Topology canvas">
-          <CanvasEditor onNodeSelect={setSelectedNodeId} />
+        {/* Canvas Area (tabIndex 2) — with Analysis Panel alongside */}
+        <main
+          className="relative flex flex-1 overflow-hidden"
+          tabIndex={2}
+          aria-label="Topology canvas"
+        >
+          <div className="flex-1 relative">
+            <CanvasEditor onNodeSelect={setSelectedNodeId} />
+          </div>
+          {/* Analysis Panel (Task 536): renders alongside Canvas, Canvas pan/zoom/selection unchanged */}
+          <AnalysisPanelWrapper />
         </main>
 
         {/* Bottom Dashboard Panel — Telemetry (tabIndex 6) */}
@@ -93,13 +101,22 @@ function App() {
 
       {/* Right Sidebar — Node Configuration Panel (tabIndex 3) */}
       {selectedNodeId && (
-        <NodeConfigPanel
-          selectedNodeId={selectedNodeId}
-          onClose={() => setSelectedNodeId(null)}
-        />
+        <NodeConfigPanel selectedNodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
       )}
     </div>
   );
 }
 
 export default App;
+
+// ─── Analysis Panel Wrapper (Task 536) ───────────────────────────
+
+function AnalysisPanelWrapper() {
+  const isOpen = useAnalysisPanelStore((s) => s.isOpen);
+  const close = useAnalysisPanelStore((s) => s.close);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  if (!isOpen) return null;
+
+  return <AnalysisPanel openerRef={openerRef} onClose={close} />;
+}

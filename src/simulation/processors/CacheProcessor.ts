@@ -1,4 +1,5 @@
 import type { CacheConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -6,17 +7,15 @@ export class CacheProcessor implements NodeProcessor {
   private config: CacheConfig;
   private originalHitRatio: number;
   private chaosActive = false;
+  private hitsInWindow = 0;
+  private missesInWindow = 0;
 
   constructor(config: CacheConfig) {
     this.config = { ...config };
     this.originalHitRatio = config.hitRatio;
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -31,6 +30,7 @@ export class CacheProcessor implements NodeProcessor {
 
     if (isHit) {
       // Cache hit — respond immediately after access latency
+      this.hitsInWindow++;
       state.totalProcessed++;
       state.latencySamples.push(accessTime);
 
@@ -56,7 +56,8 @@ export class CacheProcessor implements NodeProcessor {
       });
     } else {
       // Cache miss — forward to downstream (DB)
-      const edges = context.getOutgoingEdges(event.nodeId);
+      this.missesInWindow++;
+      const edges = context.resolveTargets(event.nodeId, request);
       if (edges.length > 0) {
         const target = edges[0]!.target;
         context.scheduleEvent({
@@ -75,6 +76,7 @@ export class CacheProcessor implements NodeProcessor {
         context.recordDeparture(event.nodeId, request.id, event.timestamp + accessTime);
       }
       state.totalProcessed++;
+      state.latencySamples.push(accessTime);
     }
   }
 
@@ -92,9 +94,24 @@ export class CacheProcessor implements NodeProcessor {
     }
   }
 
-  getUtilization(): number {
-    // Cache utilization isn't directly capacity-bound in this model
-    // Report inverse of hit ratio as a proxy (more misses = more stressed)
-    return 1 - this.config.hitRatio;
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Cache is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
+  getUtilization(): UtilizationReading {
+    // Cache utilization isn't directly capacity-bound in this model.
+    // Report the observed miss rate as a proxy (more misses = more stressed).
+    const total = this.hitsInWindow + this.missesInWindow;
+    if (total === 0) return { kind: 'value', value: 0, idle: true };
+    return { kind: 'value', value: this.missesInWindow / total, idle: false };
+  }
+
+  resetWindowCounters(): void {
+    this.hitsInWindow = 0;
+    this.missesInWindow = 0;
   }
 }

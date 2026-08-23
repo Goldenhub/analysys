@@ -1,4 +1,5 @@
-import { useReducer, useMemo } from 'react';
+/* oxlint-disable react/set-state-in-effect */
+import { useReducer, useMemo, useRef, useEffect } from 'react';
 import {
   AreaChart,
   Area,
@@ -62,9 +63,13 @@ function dataReducer(
 export function ThroughputChart({ metrics }: ThroughputChartProps) {
   const [data, dispatch] = useReducer(dataReducer, []);
   const activeChaosEffects = useSimulationStore((s) => s.activeChaosEffects);
+  const lastTimeRef = useRef<number>(-1);
 
-  // Dispatch new data point when metrics change
-  if (metrics) {
+  useEffect(() => {
+    if (!metrics) return;
+    if (metrics.simulatedTimeMs === lastTimeRef.current) return;
+    lastTimeRef.current = metrics.simulatedTimeMs;
+
     const totalThroughput = metrics.systemWide.totalThroughput;
     const errorRate = metrics.systemWide.totalErrorRate;
     const errorThroughput = totalThroughput * errorRate;
@@ -85,7 +90,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
       errors: Math.round(errorThroughput * 100) / 100,
       chaosAnnotation: activeLabels.length > 0 ? activeLabels.join(', ') : undefined,
     });
-  }
+  }, [metrics, activeChaosEffects]);
 
   // Compute reference lines for chaos start times that fall within our data window
   const chaosReferenceLines = useMemo(() => {
@@ -115,11 +120,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis
-          dataKey="timeLabel"
-          tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="#4b5563"
-        />
+        <XAxis dataKey="timeLabel" tick={{ fill: '#9ca3af', fontSize: 10 }} stroke="#4b5563" />
         <YAxis
           tick={{ fill: '#9ca3af', fontSize: 10 }}
           stroke="#4b5563"

@@ -6,10 +6,7 @@ import type { EdgeData } from '@/types/edges';
  * Returns an array of node ID arrays representing each cycle found.
  * Empty array = acyclic graph.
  */
-export function detectCycles(
-  nodes: SimulationNode[],
-  edges: EdgeData[],
-): string[][] {
+export function detectCycles(nodes: SimulationNode[], edges: EdgeData[]): string[][] {
   // Build adjacency list
   const adjacency = new Map<string, string[]>();
   for (const node of nodes) {

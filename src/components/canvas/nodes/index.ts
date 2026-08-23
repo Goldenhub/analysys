@@ -1,7 +1,16 @@
 export { TrafficGeneratorNode } from './TrafficGeneratorNode';
+export { ApiGatewayNode } from './ApiGatewayNode';
+export { RateLimiterNode } from './RateLimiterNode';
 export { LoadBalancerNode } from './LoadBalancerNode';
+export { CircuitBreakerNode } from './CircuitBreakerNode';
 export { AppServerNode } from './AppServerNode';
 export { CacheNode } from './CacheNode';
 export { DatabaseNode } from './DatabaseNode';
 export { MessageQueueNode } from './MessageQueueNode';
+export { AuthServiceNode } from './AuthServiceNode';
+export { AuthzServiceNode } from './AuthzServiceNode';
+export { WorkerPoolNode } from './WorkerPoolNode';
+export { DeadLetterQueueNode } from './DeadLetterQueueNode';
+export { ObjectStoreNode } from './ObjectStoreNode';
+export { SchedulerNode } from './SchedulerNode';
 export { ChaosStatusBadge } from './ChaosStatusBadge';

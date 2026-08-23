@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { SimEventLogEntry } from '@/types/messages';
+import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -57,16 +58,14 @@ function formatSimTime(ms: number): string {
 
 export function EventLog({ entries }: EventLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const labelFor = useNodeLabels();
   const [autoScroll, setAutoScroll] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [nodeFilter, setNodeFilter] = useState<string>('ALL');
   const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
 
   // Limit to last 500 entries
-  const limitedEntries = useMemo(
-    () => entries.slice(-MAX_ENTRIES),
-    [entries],
-  );
+  const limitedEntries = useMemo(() => entries.slice(-MAX_ENTRIES), [entries]);
 
   // Get unique event types and node IDs for filters
   const eventTypes = useMemo(() => {
@@ -105,8 +104,11 @@ export function EventLog({ entries }: EventLogProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-gray-500">
-        No events yet
+      <div className="flex h-full items-center justify-center px-4 text-center">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Events will appear here during simulation: timeouts, dropped requests, chaos effects, and
+          sampled completions. Click any event to see details.
+        </p>
       </div>
     );
   }
@@ -137,13 +139,11 @@ export function EventLog({ entries }: EventLogProps) {
           <option value="ALL">All Nodes</option>
           {nodeIds.map((id) => (
             <option key={id} value={id}>
-              {id.slice(0, 8)}…
+              {labelFor(id)}
             </option>
           ))}
         </select>
-        <span className="ml-auto text-[10px] text-gray-500">
-          {filteredEntries.length} events
-        </span>
+        <span className="ml-auto text-[10px] text-gray-500">{filteredEntries.length} events</span>
       </div>
 
       {/* Scrollable Log */}
@@ -162,9 +162,7 @@ export function EventLog({ entries }: EventLogProps) {
             <div
               key={entry.id}
               className={`border-b border-gray-800 px-2 py-1 text-[10px] cursor-pointer ${
-                isChaos
-                  ? 'bg-red-950/30 border-red-900/30'
-                  : 'hover:bg-gray-800/50'
+                isChaos ? 'bg-red-950/30 border-red-900/30' : 'hover:bg-gray-800/50'
               } ${isExpanded ? 'bg-gray-800/70' : ''}`}
               onClick={() => setSelectedEntryId(isExpanded ? null : entry.id)}
               role="button"
@@ -181,11 +179,9 @@ export function EventLog({ entries }: EventLogProps) {
                 <span className="shrink-0 font-mono text-gray-500">
                   {formatSimTime(entry.timestamp)}
                 </span>
-                <span className="shrink-0 w-4 text-center">
-                  {EVENT_ICONS[entry.type] ?? '•'}
-                </span>
-                <span className="shrink-0 font-mono text-blue-400">
-                  {entry.nodeId.slice(0, 6)}
+                <span className="shrink-0 w-4 text-center">{EVENT_ICONS[entry.type] ?? '•'}</span>
+                <span className="shrink-0 max-w-[70px] truncate text-blue-400" title={entry.nodeId}>
+                  {labelFor(entry.nodeId)}
                 </span>
                 <span className={isExpanded ? 'text-gray-300' : 'truncate text-gray-300'}>
                   {entry.message}
@@ -203,7 +199,7 @@ export function EventLog({ entries }: EventLogProps) {
                   </div>
                   <div>
                     <span className="text-gray-500">Node: </span>
-                    <span className="font-mono">{entry.nodeId}</span>
+                    <span title={entry.nodeId}>{labelFor(entry.nodeId)}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Message: </span>

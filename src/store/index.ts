@@ -2,3 +2,5 @@
 export { useTopologyStore } from './topologyStore';
 export { useSimulationStore } from './simulationStore';
 export { usePersistenceStore } from './persistenceStore';
+export { useAnalysisStore } from './analysisStore';
+export { useBaselineStore } from './baselineStore';

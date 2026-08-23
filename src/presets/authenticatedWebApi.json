@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 2,
+  "name": "Authenticated Web API",
+  "description": "A complete authenticated web API with rate limiting, auth/authz, load-balanced app servers, caching, database, and object storage. Expected bottleneck: the Database under sustained load.",
+  "createdAt": "2024-06-01T00:00:00.000Z",
+  "seed": 20240601,
+  "simulatedDurationMs": 60000,
+  "speedMultiplier": 10,
+  "totalOfferedRps": 800,
+  "expectedBottleneckNodeId": "db-1",
+  "expectedDominantTerminalStatus": "TIMEOUT",
+  "subsystemGroups": [
+    {
+      "id": "grp-ingress",
+      "name": "Ingress",
+      "memberNodeIds": ["tg-1", "api-gw-1", "rl-1"],
+      "collapsed": false
+    },
+    {
+      "id": "grp-auth",
+      "name": "Authentication & Authorization",
+      "memberNodeIds": ["auth-1", "authz-1", "cache-auth-1"],
+      "collapsed": false
+    },
+    {
+      "id": "grp-compute",
+      "name": "Compute",
+      "memberNodeIds": ["lb-1", "app-1", "app-2", "app-3"],
+      "collapsed": false
+    },
+    {
+      "id": "grp-storage",
+      "name": "Storage",
+      "memberNodeIds": ["cache-1", "db-1", "obj-1"],
+      "collapsed": false
+    }
+  ],
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "API Clients",
+        "position": { "x": 0, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "rps": 800,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "api-gw-1",
+        "nodeType": "API_GATEWAY",
+        "label": "API Gateway",
+        "position": { "x": 200, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "authLatencyMeanMs": 2,
+          "authLatencyStdDevMs": 1,
+          "rejectionRate": 0.02
+        }
+      },
+      {
+        "id": "rl-1",
+        "nodeType": "RATE_LIMITER",
+        "label": "Rate Limiter",
+        "position": { "x": 400, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "bucketCapacity": 1000,
+          "refillRatePerSec": 900
+        }
+      },
+      {
+        "id": "auth-1",
+        "nodeType": "AUTH_SERVICE",
+        "label": "Auth Service",
+        "position": { "x": 600, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "verificationMode": "INTROSPECTION",
+          "verificationLatencyMeanMs": 5,
+          "verificationLatencyStdDevMs": 2,
+          "concurrencyLimit": 500,
+          "queueDepth": 200,
+          "tokenCacheHitRatio": 0.8,
+          "credentialFailureRate": 0.03
+        }
+      },
+      {
+        "id": "cache-auth-1",
+        "nodeType": "CACHE",
+        "label": "Token Cache",
+        "position": { "x": 800, "y": 0 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "hitRatio": 0.8,
+          "evictionPolicy": "TTL",
+          "accessLatencyMs": 1
+        }
+      },
+      {
+        "id": "authz-1",
+        "nodeType": "AUTHZ_SERVICE",
+        "label": "Authz Service",
+        "position": { "x": 600, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "policyLatencyMeanMs": 3,
+          "policyLatencyStdDevMs": 1,
+          "policyCacheHitRatio": 0.7,
+          "lookupsPerRequest": 2,
+          "denyRate": 0.05,
+          "concurrencyLimit": 500,
+          "queueDepth": 200
+        }
+      },
+      {
+        "id": "lb-1",
+        "nodeType": "LOAD_BALANCER",
+        "label": "Load Balancer",
+        "position": { "x": 800, "y": 400 },
+        "routingPolicy": "ROUND_ROBIN",
+        "config": {
+          "algorithm": "ROUND_ROBIN",
+          "healthCheckIntervalMs": 5000,
+          "evictionThreshold": 3
+        }
+      },
+      {
+        "id": "app-1",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 1",
+        "position": { "x": 1000, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "workerThreadPoolSize": 32,
+          "requestQueueDepth": 150,
+          "processingTimeMeanMs": 12,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "app-2",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 2",
+        "position": { "x": 1000, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "workerThreadPoolSize": 32,
+          "requestQueueDepth": 150,
+          "processingTimeMeanMs": 12,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "app-3",
+        "nodeType": "APP_SERVER",
+        "label": "App Server 3",
+        "position": { "x": 1000, "y": 600 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "workerThreadPoolSize": 32,
+          "requestQueueDepth": 150,
+          "processingTimeMeanMs": 12,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "cache-1",
+        "nodeType": "CACHE",
+        "label": "Redis Cache",
+        "position": { "x": 1200, "y": 200 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "hitRatio": 0.6,
+          "evictionPolicy": "LRU",
+          "accessLatencyMs": 2
+        }
+      },
+      {
+        "id": "db-1",
+        "nodeType": "DATABASE",
+        "label": "PostgreSQL",
+        "position": { "x": 1400, "y": 400 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "connectionPoolSize": 20,
+          "queryLatencyMeanMs": 15,
+          "queryLatencyStdDevMs": 6,
+          "lockTimeoutMs": 5000,
+          "dbType": "RELATIONAL"
+        }
+      },
+      {
+        "id": "obj-1",
+        "nodeType": "OBJECT_STORE",
+        "label": "Object Store",
+        "position": { "x": 1200, "y": 600 },
+        "routingPolicy": "FIRST",
+        "config": {
+          "objectSizeMeanKB": 256,
+          "objectSizeStdDevKB": 64,
+          "throughputCapacityMBps": 100,
+          "baseLatencyMeanMs": 10,
+          "baseLatencyStdDevMs": 3,
+          "maxConcurrentTransfers": 100,
+          "transferQueueDepth": 50,
+          "readFraction": 0.8,
+          "writeLatencyMultiplier": 1.5
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-tg1-apigw1",
+        "source": "tg-1",
+        "target": "api-gw-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-apigw1-rl1",
+        "source": "api-gw-1",
+        "target": "rl-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      { "id": "e-rl1-lb1", "source": "rl-1", "target": "lb-1", "protocol": "SYNC", "weight": 1.0 },
+      {
+        "id": "e-apigw1-auth1",
+        "source": "api-gw-1",
+        "target": "auth-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-auth1-cacheauth1",
+        "source": "auth-1",
+        "target": "cache-auth-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-apigw1-authz1",
+        "source": "api-gw-1",
+        "target": "authz-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app1",
+        "source": "lb-1",
+        "target": "app-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app2",
+        "source": "lb-1",
+        "target": "app-2",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app3",
+        "source": "lb-1",
+        "target": "app-3",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-cache1",
+        "source": "app-1",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-cache1",
+        "source": "app-2",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-cache1",
+        "source": "app-3",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-db1",
+        "source": "app-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-db1",
+        "source": "app-2",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-db1",
+        "source": "app-3",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-obj1",
+        "source": "app-1",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-obj1",
+        "source": "app-2",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-obj1",
+        "source": "app-3",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-cache1-db1",
+        "source": "cache-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      }
+    ]
+  },
+  "chaosTimeline": []
+}

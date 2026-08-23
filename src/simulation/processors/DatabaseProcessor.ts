@@ -1,4 +1,5 @@
 import type { DatabaseConfig } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
@@ -11,11 +12,7 @@ export class DatabaseProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -92,11 +89,7 @@ export class DatabaseProcessor implements NodeProcessor {
   /**
    * Called by engine when RequestProcess completes at this DB node.
    */
-  onProcessComplete(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onProcessComplete(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -105,9 +98,8 @@ export class DatabaseProcessor implements NodeProcessor {
     state.totalProcessed++;
     state.latencySamples.push(request.accumulatedLatencyMs);
 
-    // DB is terminal — mark request complete
+    // DB is terminal — mark request as successful (response traversal handles completedAt)
     request.status = RequestStatus.Success;
-    request.completedAt = event.timestamp;
     context.recordDeparture(event.nodeId, request.id, event.timestamp);
 
     // Dequeue waiting request if any
@@ -133,8 +125,26 @@ export class DatabaseProcessor implements NodeProcessor {
     this.isDown = false;
   }
 
-  getUtilization(): number {
-    if (this.config.connectionPoolSize === 0) return 0;
-    return this.activeConnections / this.config.connectionPoolSize;
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // Database holds active connections; the engine manages queuedRequests
+    this.activeConnections = 0;
+    this.isDown = true;
+    return [];
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.activeConnections = 0;
+    this.isDown = false;
+  }
+
+  getUtilization(): UtilizationReading {
+    const value =
+      this.config.connectionPoolSize === 0
+        ? 0
+        : this.activeConnections / this.config.connectionPoolSize;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // there is no per-window arrival counter here, so a pool with every connection free reads
+    // as idle regardless of traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

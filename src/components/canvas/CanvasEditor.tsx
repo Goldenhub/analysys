@@ -15,40 +15,58 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useTopologyStore } from '@/store/topologyStore';
-import { WelcomeOverlay } from './WelcomeOverlay';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
-import {
-  NodeType,
-  Distribution,
-  LBAlgorithm,
-  EvictionPolicy,
-  DatabaseType,
-  BackpressureStrategy,
-} from '@/types/nodes';
+import { NodeType } from '@/types/nodes';
+import { createDefaultNodeData } from '@/types/nodeDefaults';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
-import { validateEdgeConnection } from '@/validation';
+import { validateEdgeConnection, getValidProtocols } from '@/validation';
 
 import {
   TrafficGeneratorNode,
+  ApiGatewayNode,
+  RateLimiterNode,
   LoadBalancerNode,
+  CircuitBreakerNode,
   AppServerNode,
   CacheNode,
   DatabaseNode,
   MessageQueueNode,
+  AuthServiceNode,
+  AuthzServiceNode,
+  WorkerPoolNode,
+  DeadLetterQueueNode,
+  ObjectStoreNode,
+  SchedulerNode,
 } from './nodes';
 import { SyncEdge, AsyncEdge } from './edges';
 import { HealthLegend } from './HealthLegend';
+import {
+  SubsystemGroupNode,
+  MergedBoundaryEdge,
+  SUBSYSTEM_GROUP_NODE_TYPE,
+  MERGED_BOUNDARY_EDGE_TYPE,
+} from './groups';
 
 // ─── Custom Node Type Registry ───────────────────────────────────
 
 const nodeTypes: NodeTypes = {
   [NodeType.TrafficGenerator]: TrafficGeneratorNode,
+  [NodeType.ApiGateway]: ApiGatewayNode,
+  [NodeType.RateLimiter]: RateLimiterNode,
   [NodeType.LoadBalancer]: LoadBalancerNode,
+  [NodeType.CircuitBreaker]: CircuitBreakerNode,
   [NodeType.AppServer]: AppServerNode,
   [NodeType.Cache]: CacheNode,
   [NodeType.Database]: DatabaseNode,
   [NodeType.MessageQueue]: MessageQueueNode,
+  [NodeType.AuthService]: AuthServiceNode,
+  [NodeType.AuthzService]: AuthzServiceNode,
+  [NodeType.WorkerPool]: WorkerPoolNode,
+  [NodeType.DeadLetterQueue]: DeadLetterQueueNode,
+  [NodeType.ObjectStore]: ObjectStoreNode,
+  [NodeType.Scheduler]: SchedulerNode,
+  [SUBSYSTEM_GROUP_NODE_TYPE]: SubsystemGroupNode,
 };
 
 // ─── Custom Edge Type Registry ───────────────────────────────────
@@ -56,91 +74,8 @@ const nodeTypes: NodeTypes = {
 const edgeTypes: EdgeTypes = {
   [EdgeProtocol.Sync]: SyncEdge,
   [EdgeProtocol.Async]: AsyncEdge,
+  [MERGED_BOUNDARY_EDGE_TYPE]: MergedBoundaryEdge,
 };
-
-// ─── Default Configurations Per Node Type ────────────────────────
-
-function createDefaultNodeData(
-  nodeType: NodeType,
-  position: { x: number; y: number },
-): SimulationNode {
-  const id = crypto.randomUUID();
-  const base = { id, position };
-
-  switch (nodeType) {
-    case NodeType.TrafficGenerator:
-      return {
-        ...base,
-        nodeType: NodeType.TrafficGenerator,
-        label: 'Traffic Generator',
-        config: {
-          rps: 100,
-          distribution: Distribution.Poisson,
-          spikeMultiplier: 1,
-          spikeDurationSec: 10,
-        },
-      };
-    case NodeType.LoadBalancer:
-      return {
-        ...base,
-        nodeType: NodeType.LoadBalancer,
-        label: 'Load Balancer',
-        config: {
-          algorithm: LBAlgorithm.RoundRobin,
-          healthCheckIntervalMs: 5000,
-          evictionThreshold: 3,
-        },
-      };
-    case NodeType.AppServer:
-      return {
-        ...base,
-        nodeType: NodeType.AppServer,
-        label: 'App Server',
-        config: {
-          workerThreadPoolSize: 16,
-          requestQueueDepth: 100,
-          processingTimeMeanMs: 50,
-          processingTimeStdDevMs: 15,
-        },
-      };
-    case NodeType.Cache:
-      return {
-        ...base,
-        nodeType: NodeType.Cache,
-        label: 'Cache',
-        config: {
-          hitRatio: 0.85,
-          evictionPolicy: EvictionPolicy.LRU,
-          accessLatencyMs: 2,
-        },
-      };
-    case NodeType.Database:
-      return {
-        ...base,
-        nodeType: NodeType.Database,
-        label: 'Database',
-        config: {
-          connectionPoolSize: 20,
-          queryLatencyMeanMs: 25,
-          queryLatencyStdDevMs: 10,
-          lockTimeoutMs: 5000,
-          dbType: DatabaseType.Relational,
-        },
-      };
-    case NodeType.MessageQueue:
-      return {
-        ...base,
-        nodeType: NodeType.MessageQueue,
-        label: 'Message Queue',
-        config: {
-          consumerBatchSize: 10,
-          bufferCapacity: 10000,
-          backpressureThresholdPct: 80,
-          backpressureStrategy: BackpressureStrategy.RejectNew,
-        },
-      };
-  }
-}
 
 // ─── Default Edge Markers ────────────────────────────────────────
 
@@ -192,15 +127,30 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
       // Extract existing edge data for duplicate check
       const existingEdgeData: EdgeData[] = edges.map((e) => e.data as EdgeData);
 
-      const result = validateEdgeConnection(sourceData, targetData, existingEdgeData);
+      // The protocol is decided before validation because R30.13 validates it. Take the
+      // pair's first permitted protocol rather than assuming Sync: an async-only pair
+      // (Message_Queue → App_Server, Scheduler → Worker_Pool) would otherwise be created
+      // as Sync and then rejected by the protocol-mismatch rule.
+      const permitted = getValidProtocols(sourceData.nodeType, targetData.nodeType);
+      const defaultProtocol = permitted[0] ?? EdgeProtocol.Sync;
+
+      // Node lookup for the R30.11 cardinality rejection, which names a third node.
+      const nodesById = new Map<string, SimulationNode>(
+        nodes.map((n) => [n.id, n.data as SimulationNode]),
+      );
+
+      const result = validateEdgeConnection(
+        sourceData,
+        targetData,
+        defaultProtocol,
+        existingEdgeData,
+        nodesById,
+      );
       if (!result.valid) {
         // Could surface this to the user via toast/notification in the future
         console.warn('Connection rejected:', result.reason);
         return;
       }
-
-      // Determine default protocol based on connection rules
-      const defaultProtocol = EdgeProtocol.Sync;
 
       const edgeId = crypto.randomUUID();
       const newEdge: AnalysysEdge = {
@@ -214,6 +164,8 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
           source: connection.source,
           target: connection.target,
           protocol: defaultProtocol,
+          // R32.4 — a new edge carries an equal share until the user reweights it.
+          weight: 1.0,
         },
       };
 
@@ -318,8 +270,6 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
   // ─── Render ────────────────────────────────────────────────────
 
-  const isCanvasEmpty = nodes.length === 0;
-
   return (
     <div ref={reactFlowWrapper} className="relative h-full w-full">
       <ReactFlow
@@ -347,7 +297,6 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         />
         <HealthLegend />
       </ReactFlow>
-      {isCanvasEmpty && <WelcomeOverlay />}
     </div>
   );
 }

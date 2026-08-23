@@ -1,26 +1,33 @@
 import { create } from 'zustand';
+import { MarkerType } from '@xyflow/react';
 import { useTopologyStore } from './topologyStore';
+import { validateEdgeConnection } from '@/validation';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
+import type { MigrationWarning } from '@/types/migration';
+import {
+  migrateV1ToV2,
+  applyV2Defaults,
+  type SerializedTopology,
+  type SerializedTopologyV2,
+} from './schemaMigration';
+
+// Re-export for backward compatibility and test access
+export { migrateV1ToV2, applyV2Defaults };
+export type { SerializedTopology, SerializedTopologyV2 };
 
 // ─── Constants ───────────────────────────────────────────────────
 
 const STORAGE_KEY = 'analysys_saved_topologies';
-const SCHEMA_VERSION = 1;
-const STORAGE_WARNING_BYTES = 4 * 1024 * 1024; // 4MB
+export const CURRENT_SCHEMA_VERSION = 2;
+const STORAGE_WARNING_BYTES = 4_194_304; // 4 MiB
 
-// ─── Serialized Topology Format ──────────────────────────────────
-
-export interface SerializedTopology {
-  schemaVersion: number;
-  nodes: SimulationNode[];
-  edges: EdgeData[];
-}
+// ─── Types ───────────────────────────────────────────────────────
 
 export interface SavedTopologyEntry {
   name: string;
   timestamp: string;
-  data: string; // JSON-serialized SerializedTopology
+  data: string; // JSON-serialized SerializedTopology or SerializedTopologyV2
 }
 
 // ─── Store State ─────────────────────────────────────────────────
@@ -32,11 +39,11 @@ interface PersistenceState {
 // ─── Store Actions ───────────────────────────────────────────────
 
 interface PersistenceActions {
-  saveTopology: (name: string) => void;
-  loadSavedTopology: (name: string) => void;
+  saveTopology: (name: string) => { warnings: string[] };
+  loadSavedTopology: (name: string) => MigrationWarning[];
   deleteSavedTopology: (name: string) => void;
   exportJSON: () => void;
-  importJSON: (file: File) => Promise<void>;
+  importJSON: (file: File) => Promise<MigrationWarning[]>;
   getStorageUsage: () => { bytes: number; warning: boolean };
 }
 
@@ -60,19 +67,62 @@ function saveToLocalStorage(entries: SavedTopologyEntry[]): void {
 
 function serializeCurrentTopology(): string {
   const { nodes, edges } = useTopologyStore.getState().getTopologySnapshot();
-  const payload: SerializedTopology = {
-    schemaVersion: SCHEMA_VERSION,
+  const subsystemGroups = useTopologyStore.getState().subsystemGroups;
+
+  // R34.3 — always write v2 (simplifies reading, and a topology without v2 features
+  // is a strict subset of v2 anyway).
+  const payload: SerializedTopologyV2 = {
+    schemaVersion: 2,
     nodes,
     edges,
+    subsystemGroups,
   };
   return JSON.stringify(payload);
 }
 
-function deserializeTopology(data: string): SerializedTopology {
-  return JSON.parse(data) as SerializedTopology;
+function deserializeAndMigrate(data: string): {
+  topology: SerializedTopologyV2;
+  warnings: MigrationWarning[];
+} {
+  const parsed = JSON.parse(data) as Record<string, unknown>;
+  const version = parsed.schemaVersion;
+
+  if (version === 1) {
+    return migrateV1ToV2(parsed as unknown as SerializedTopology);
+  }
+
+  // v2 — apply absent-field defaults
+  const v2 = parsed as unknown as SerializedTopologyV2;
+  return applyV2Defaults(v2);
 }
 
-function validateSchema(obj: unknown): { valid: boolean; errors: string[] } {
+function validateSchemaVersion(obj: Record<string, unknown>): void {
+  const version = obj.schemaVersion;
+
+  if (version === undefined || version === null || !('schemaVersion' in obj)) {
+    throw new Error(
+      `Import rejected: schemaVersion field is absent (found: ${JSON.stringify(version)}).`,
+    );
+  }
+
+  if (typeof version !== 'number' || !Number.isInteger(version)) {
+    throw new Error(
+      `Import rejected: schemaVersion is not an integer (found: ${JSON.stringify(version)}).`,
+    );
+  }
+
+  if (version < 1) {
+    throw new Error(`Import rejected: schemaVersion must be at least 1 (found: ${version}).`);
+  }
+
+  if (version > CURRENT_SCHEMA_VERSION) {
+    throw new Error(
+      `Import rejected: schema version ${version} is not supported. This build supports up to version ${CURRENT_SCHEMA_VERSION}.`,
+    );
+  }
+}
+
+function validateStructure(obj: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (typeof obj !== 'object' || obj === null) {
@@ -81,10 +131,6 @@ function validateSchema(obj: unknown): { valid: boolean; errors: string[] } {
   }
 
   const record = obj as Record<string, unknown>;
-
-  if (!('schemaVersion' in record) || typeof record.schemaVersion !== 'number') {
-    errors.push('Missing or invalid required field: schemaVersion');
-  }
 
   if (!('nodes' in record) || !Array.isArray(record.nodes)) {
     errors.push('Missing or invalid required field: nodes');
@@ -97,11 +143,28 @@ function validateSchema(obj: unknown): { valid: boolean; errors: string[] } {
   return { valid: errors.length === 0, errors };
 }
 
-function migrateIfNeeded(data: SerializedTopology): SerializedTopology {
-  // Currently at schema version 1 — no migrations needed.
-  // Future migrations would be handled here:
-  // if (data.schemaVersion < 2) { /* migrate v1 → v2 */ }
-  return { ...data, schemaVersion: SCHEMA_VERSION };
+/**
+ * Runs the canvas edge validator over an imported edge set (R30.16).
+ */
+function findFirstInvalidEdge(nodes: SimulationNode[], edges: EdgeData[]): string | null {
+  const nodesById = new Map<string, SimulationNode>(nodes.map((n) => [n.id, n]));
+  const accepted: EdgeData[] = [];
+
+  for (const edge of edges) {
+    const source = nodesById.get(edge.source);
+    const target = nodesById.get(edge.target);
+    if (!source || !target) {
+      return `Edge "${edge.id}" references a node that is not in this file.`;
+    }
+
+    const result = validateEdgeConnection(source, target, edge.protocol, accepted, nodesById);
+    if (!result.valid) {
+      return `Edge from "${source.label}" to "${target.label}" is not permitted: ${result.reason}`;
+    }
+    accepted.push(edge);
+  }
+
+  return null;
 }
 
 function simulationNodesToRFNodes(nodes: SimulationNode[]): AnalysysNode[] {
@@ -118,6 +181,13 @@ function edgeDataToRFEdges(edges: EdgeData[]): AnalysysEdge[] {
     id: edgeData.id,
     source: edgeData.source,
     target: edgeData.target,
+    type: edgeData.protocol,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 16,
+      height: 16,
+      color: '#6b7280',
+    },
     data: edgeData as AnalysysEdge['data'],
   }));
 }
@@ -134,127 +204,160 @@ function triggerDownload(content: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Measures the UTF-8 byte length of a string (R34.7).
+ * Replaces the old UTF-16 code-unit measurement that under-reports multi-byte content.
+ */
+export function measureUtf8Bytes(str: string): number {
+  return new TextEncoder().encode(str).length;
+}
+
 // ─── Store ───────────────────────────────────────────────────────
 
-export const usePersistenceStore = create<PersistenceState & PersistenceActions>()(
-  (set, get) => ({
-    savedTopologies: loadFromLocalStorage(),
+export const usePersistenceStore = create<PersistenceState & PersistenceActions>()((set, get) => ({
+  savedTopologies: loadFromLocalStorage(),
 
-    // ─── Task 45: Save Topology ──────────────────────────────────
+  // ─── Save Topology ───────────────────────────────────────────
 
-    saveTopology: (name) => {
-      const data = serializeCurrentTopology();
-      const entry: SavedTopologyEntry = {
-        name,
-        timestamp: new Date().toISOString(),
-        data,
-      };
+  saveTopology: (name) => {
+    const data = serializeCurrentTopology();
+    const sizeBytes = measureUtf8Bytes(data);
+    const storageWarnings: string[] = [];
 
-      set((state) => {
-        // Overwrite if same name exists, otherwise append
-        const existing = state.savedTopologies.filter((t) => t.name !== name);
-        const updated = [...existing, entry];
-        saveToLocalStorage(updated);
-        return { savedTopologies: updated };
-      });
+    // R34.7 — warn above threshold, but still complete the save
+    if (sizeBytes > STORAGE_WARNING_BYTES) {
+      storageWarnings.push(
+        `Topology "${name}" is ${sizeBytes} bytes, exceeding the ${STORAGE_WARNING_BYTES}-byte threshold.`,
+      );
+      console.warn(
+        `[Persistence] Save warning: serialized size is ${sizeBytes} bytes (threshold: ${STORAGE_WARNING_BYTES}).`,
+      );
+    }
 
-      // Check storage usage and warn
-      const { warning } = get().getStorageUsage();
-      if (warning) {
-        console.warn(
-          '[Persistence] localStorage usage exceeds 4MB. Consider deleting unused topologies.',
-        );
-      }
-    },
+    const entry: SavedTopologyEntry = {
+      name,
+      timestamp: new Date().toISOString(),
+      data,
+    };
 
-    // ─── Task 46: Load Saved Topology ────────────────────────────
+    set((state) => {
+      // Overwrite if same name exists, otherwise append
+      const existing = state.savedTopologies.filter((t) => t.name !== name);
+      const updated = [...existing, entry];
+      saveToLocalStorage(updated);
+      return { savedTopologies: updated };
+    });
 
-    loadSavedTopology: (name) => {
-      const { savedTopologies } = get();
-      const entry = savedTopologies.find((t) => t.name === name);
-      if (!entry) {
-        console.warn(`[Persistence] Topology "${name}" not found.`);
-        return;
-      }
+    return { warnings: storageWarnings };
+  },
 
-      const serialized = deserializeTopology(entry.data);
-      const migrated = migrateIfNeeded(serialized);
-      const rfNodes = simulationNodesToRFNodes(migrated.nodes);
-      const rfEdges = edgeDataToRFEdges(migrated.edges);
+  // ─── Load Saved Topology ─────────────────────────────────────
 
-      useTopologyStore.getState().loadTopology(rfNodes, rfEdges);
-    },
+  loadSavedTopology: (name) => {
+    const { savedTopologies } = get();
+    const entry = savedTopologies.find((t) => t.name === name);
+    if (!entry) {
+      console.warn(`[Persistence] Topology "${name}" not found.`);
+      return [];
+    }
 
-    // ─── Task 47: Delete Saved Topology ──────────────────────────
+    // R34.10 — migrate in-memory only; the stored record stays at its
+    // original version. Version 2 is written on the next explicit save.
+    const { topology, warnings } = deserializeAndMigrate(entry.data);
+    const rfNodes = simulationNodesToRFNodes(topology.nodes);
+    const rfEdges = edgeDataToRFEdges(topology.edges);
 
-    deleteSavedTopology: (name) => {
-      set((state) => {
-        const updated = state.savedTopologies.filter((t) => t.name !== name);
-        saveToLocalStorage(updated);
-        return { savedTopologies: updated };
-      });
-    },
+    useTopologyStore.getState().loadTopology(rfNodes, rfEdges, topology.subsystemGroups);
+    return warnings;
+  },
 
-    // ─── Task 48: Export JSON ────────────────────────────────────
+  // ─── Delete Saved Topology ───────────────────────────────────
 
-    exportJSON: () => {
-      const data = serializeCurrentTopology();
-      triggerDownload(data, 'topology.analysys.json');
-    },
+  deleteSavedTopology: (name) => {
+    set((state) => {
+      const updated = state.savedTopologies.filter((t) => t.name !== name);
+      saveToLocalStorage(updated);
+      return { savedTopologies: updated };
+    });
+  },
 
-    // ─── Task 49 & 50: Import JSON ──────────────────────────────
+  // ─── Export JSON ─────────────────────────────────────────────
 
-    importJSON: async (file: File) => {
-      const text = await file.text();
+  exportJSON: () => {
+    const data = serializeCurrentTopology();
+    triggerDownload(data, 'topology.analysys.json');
+  },
 
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        throw new Error('Invalid JSON: file could not be parsed.');
-      }
+  // ─── Import JSON ─────────────────────────────────────────────
 
-      const validation = validateSchema(parsed);
-      if (!validation.valid) {
-        throw new Error(
-          `Import validation failed:\n${validation.errors.join('\n')}`,
-        );
-      }
+  importJSON: async (file: File) => {
+    const text = await file.text();
 
-      const serialized = parsed as SerializedTopology;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error('Invalid JSON: file could not be parsed.');
+    }
 
-      // Reject future schema versions
-      if (serialized.schemaVersion > SCHEMA_VERSION) {
-        throw new Error(
-          `This file requires Analysys v${serialized.schemaVersion}.0 or later.`,
-        );
-      }
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error('File content is not a valid JSON object.');
+    }
 
-      const migrated = migrateIfNeeded(serialized);
-      const rfNodes = simulationNodesToRFNodes(migrated.nodes);
-      const rfEdges = edgeDataToRFEdges(migrated.edges);
+    const record = parsed as Record<string, unknown>;
 
-      useTopologyStore.getState().loadTopology(rfNodes, rfEdges);
-    },
+    // R34.6, R34.9 — reject bad schema versions before any other validation
+    validateSchemaVersion(record);
 
-    // ─── Task 51: Storage Usage Check ────────────────────────────
+    const structureResult = validateStructure(parsed);
+    if (!structureResult.valid) {
+      throw new Error(`Import validation failed:\n${structureResult.errors.join('\n')}`);
+    }
 
-    getStorageUsage: () => {
-      let totalBytes = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          const value = localStorage.getItem(key);
-          if (value) {
-            // Each char in JS string is 2 bytes (UTF-16), but localStorage typically stores UTF-8
-            totalBytes += key.length + value.length;
-          }
+    const version = record.schemaVersion as number;
+    let topology: SerializedTopologyV2;
+    let migrationWarnings: MigrationWarning[];
+
+    if (version === 1) {
+      const result = migrateV1ToV2(parsed as unknown as SerializedTopology);
+      topology = result.topology;
+      migrationWarnings = result.warnings;
+    } else {
+      // v2 — apply absent-field defaults
+      const result = applyV2Defaults(parsed as unknown as SerializedTopologyV2);
+      topology = result.topology;
+      migrationWarnings = result.warnings;
+    }
+
+    // R30.16 — reject the whole file on the first violating edge.
+    const edgeViolation = findFirstInvalidEdge(topology.nodes, topology.edges);
+    if (edgeViolation) {
+      throw new Error(`Import validation failed:\n${edgeViolation}`);
+    }
+
+    const rfNodes = simulationNodesToRFNodes(topology.nodes);
+    const rfEdges = edgeDataToRFEdges(topology.edges);
+
+    useTopologyStore.getState().loadTopology(rfNodes, rfEdges, topology.subsystemGroups);
+    return migrationWarnings;
+  },
+
+  // ─── Storage Usage Check ─────────────────────────────────────
+
+  getStorageUsage: () => {
+    let totalBytes = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        const value = localStorage.getItem(key);
+        if (value) {
+          totalBytes += measureUtf8Bytes(key) + measureUtf8Bytes(value);
         }
       }
-      return {
-        bytes: totalBytes,
-        warning: totalBytes > STORAGE_WARNING_BYTES,
-      };
-    },
-  }),
-);
+    }
+    return {
+      bytes: totalBytes,
+      warning: totalBytes > STORAGE_WARNING_BYTES,
+    };
+  },
+}));

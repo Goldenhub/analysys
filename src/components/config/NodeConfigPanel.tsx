@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -10,6 +10,7 @@ import {
   DatabaseType,
   BackpressureStrategy,
 } from '@/types/nodes';
+import type { NodeMetricsSnapshot } from '@/types/metrics';
 import type {
   SimulationNode,
   TrafficGeneratorConfig,
@@ -18,7 +19,17 @@ import type {
   CacheConfig,
   DatabaseConfig,
   MessageQueueConfig,
+  ApiGatewayConfig,
+  RateLimiterConfig,
+  CircuitBreakerConfig,
 } from '@/types/nodes';
+import { AuthServiceForm } from './forms/AuthServiceForm';
+import { AuthzServiceForm } from './forms/AuthzServiceForm';
+import { WorkerPoolForm } from './forms/WorkerPoolForm';
+import { DeadLetterQueueForm } from './forms/DeadLetterQueueForm';
+import { ObjectStoreForm } from './forms/ObjectStoreForm';
+import { SchedulerForm } from './forms/SchedulerForm';
+import { RoutingPolicyField } from './RoutingPolicyField';
 
 // ─── Validation Types ────────────────────────────────────────────
 
@@ -36,9 +47,23 @@ const VALIDATION_RULES: Record<string, Record<string, FieldValidation>> = {
     spikeMultiplier: { min: 1, max: 20 },
     spikeDurationSec: { min: 0, max: 3600 },
   },
+  [NodeType.ApiGateway]: {
+    authLatencyMeanMs: { min: 0, max: 60000 },
+    authLatencyStdDevMs: { min: 0, max: 30000 },
+    rejectionRate: { min: 0, max: 1, step: 0.01 },
+  },
+  [NodeType.RateLimiter]: {
+    bucketCapacity: { min: 1, max: 1000000 },
+    refillRatePerSec: { min: 1, max: 1000000 },
+  },
   [NodeType.LoadBalancer]: {
     healthCheckIntervalMs: { min: 100, max: 60000 },
     evictionThreshold: { min: 1, max: 100 },
+  },
+  [NodeType.CircuitBreaker]: {
+    errorThreshold: { min: 0, max: 1, step: 0.01 },
+    openDurationMs: { min: 100, max: 300000 },
+    probeCount: { min: 1, max: 1000 },
   },
   [NodeType.AppServer]: {
     workerThreadPoolSize: { min: 1, max: 1000 },
@@ -61,13 +86,69 @@ const VALIDATION_RULES: Record<string, Record<string, FieldValidation>> = {
     bufferCapacity: { min: 1, max: 1000000 },
     backpressureThresholdPct: { min: 0, max: 100, step: 1 },
   },
+  [NodeType.AuthService]: {
+    verificationLatencyMeanMs: { min: 0, max: 60000 },
+    verificationLatencyStdDevMs: { min: 0, max: 30000 },
+    concurrencyLimit: { min: 1, max: 10000 },
+    queueDepth: { min: 0, max: 10000 },
+    tokenCacheHitRatio: { min: 0, max: 1, step: 0.01 },
+    credentialFailureRate: { min: 0, max: 1, step: 0.01 },
+  },
+  [NodeType.AuthzService]: {
+    policyLatencyMeanMs: { min: 0, max: 60000 },
+    policyLatencyStdDevMs: { min: 0, max: 30000 },
+    policyCacheHitRatio: { min: 0, max: 1, step: 0.01 },
+    lookupsPerRequest: { min: 1, max: 50 },
+    denyRate: { min: 0, max: 1, step: 0.01 },
+    concurrencyLimit: { min: 1, max: 10000 },
+    queueDepth: { min: 0, max: 10000 },
+  },
+  [NodeType.WorkerPool]: {
+    concurrency: { min: 1, max: 10000 },
+    jobProcessingMeanMs: { min: 0, max: 600000 },
+    jobProcessingStdDevMs: { min: 0, max: 300000 },
+    prefetchBufferDepth: { min: 0, max: 10000 },
+    jobFailureRate: { min: 0, max: 1, step: 0.01 },
+    maxRetries: { min: 0, max: 10 },
+    retryBaseDelayMs: { min: 1, max: 300000 },
+    jobTimeoutMs: { min: 1, max: 600000 },
+  },
+  [NodeType.DeadLetterQueue]: {
+    capacity: { min: 1, max: 1000000 },
+    retentionPeriodMs: { min: 1, max: 2592000000 },
+    redriveIntervalMs: { min: 1, max: 300000 },
+    redriveBatchSize: { min: 1, max: 10000 },
+    maxRedriveAttempts: { min: 0, max: 10 },
+  },
+  [NodeType.ObjectStore]: {
+    objectSizeMeanKB: { min: 1, max: 10485760 },
+    objectSizeStdDevKB: { min: 0, max: 10485760 },
+    throughputCapacityMBps: { min: 0.1, max: 100000, step: 0.1 },
+    baseLatencyMeanMs: { min: 0, max: 60000 },
+    baseLatencyStdDevMs: { min: 0, max: 30000 },
+    maxConcurrentTransfers: { min: 1, max: 100000 },
+    transferQueueDepth: { min: 0, max: 10000 },
+    readFraction: { min: 0, max: 1, step: 0.01 },
+    writeLatencyMultiplier: { min: 1, max: 100, step: 0.1 },
+  },
+  [NodeType.Scheduler]: {
+    intervalMs: { min: 100, max: 86400000 },
+    jobsPerTrigger: { min: 1, max: 100000 },
+    startOffsetMs: { min: 0, max: 86400000 },
+    jitterMs: { min: 0, max: 86400000 },
+    maxDeferredTriggers: { min: 1, max: 1000 },
+  },
 };
 
-function validateField(
-  nodeType: NodeType,
-  field: string,
-  value: number,
-): string | null {
+function validateField(nodeType: NodeType, field: string, value: number): string | null {
+  // Checked ahead of the range rules and independently of them: a NaN comparison is
+  // false at both bounds, so without this an empty or non-numeric control would read as
+  // valid and be written to the store. Rejecting here leaves the stored configuration at
+  // its previous value, because `handleFieldChange` returns before it dispatches.
+  if (!Number.isFinite(value)) {
+    return `${field} must be a valid number.`;
+  }
+
   const rules = VALIDATION_RULES[nodeType]?.[field];
   if (!rules) return null;
 
@@ -123,7 +204,17 @@ interface SliderFieldProps {
   displayValue?: string;
 }
 
-function SliderField({ label, field, value, onChange, error, min, max, step, displayValue }: SliderFieldProps) {
+function SliderField({
+  label,
+  field,
+  value,
+  onChange,
+  error,
+  min,
+  max,
+  step,
+  displayValue,
+}: SliderFieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
@@ -260,6 +351,106 @@ function TrafficGeneratorForm({ config, onFieldChange, errors }: FormProps) {
         error={errors.spikeDurationSec}
         min={0}
         max={3600}
+      />
+    </div>
+  );
+}
+
+function ApiGatewayForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as ApiGatewayConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <NumberField
+        label="Auth Latency Mean (ms)"
+        field="authLatencyMeanMs"
+        value={c.authLatencyMeanMs}
+        onChange={onFieldChange}
+        error={errors.authLatencyMeanMs}
+        min={0}
+        max={60000}
+      />
+      <NumberField
+        label="Auth Latency Std Dev (ms)"
+        field="authLatencyStdDevMs"
+        value={c.authLatencyStdDevMs}
+        onChange={onFieldChange}
+        error={errors.authLatencyStdDevMs}
+        min={0}
+        max={30000}
+      />
+      <SliderField
+        label="Rejection Rate"
+        field="rejectionRate"
+        value={c.rejectionRate}
+        onChange={onFieldChange}
+        error={errors.rejectionRate}
+        min={0}
+        max={1}
+        step={0.01}
+        displayValue={`${(c.rejectionRate * 100).toFixed(0)}%`}
+      />
+    </div>
+  );
+}
+
+function RateLimiterForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as RateLimiterConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <NumberField
+        label="Bucket Capacity (burst)"
+        field="bucketCapacity"
+        value={c.bucketCapacity}
+        onChange={onFieldChange}
+        error={errors.bucketCapacity}
+        min={1}
+        max={1000000}
+      />
+      <NumberField
+        label="Refill Rate (tokens/sec)"
+        field="refillRatePerSec"
+        value={c.refillRatePerSec}
+        onChange={onFieldChange}
+        error={errors.refillRatePerSec}
+        min={1}
+        max={1000000}
+      />
+    </div>
+  );
+}
+
+function CircuitBreakerForm({ config, onFieldChange, errors }: FormProps) {
+  const c = config as unknown as CircuitBreakerConfig;
+  return (
+    <div className="flex flex-col gap-3">
+      <SliderField
+        label="Error Threshold"
+        field="errorThreshold"
+        value={c.errorThreshold}
+        onChange={onFieldChange}
+        error={errors.errorThreshold}
+        min={0}
+        max={1}
+        step={0.01}
+        displayValue={`${(c.errorThreshold * 100).toFixed(0)}%`}
+      />
+      <NumberField
+        label="Open Duration (ms)"
+        field="openDurationMs"
+        value={c.openDurationMs}
+        onChange={onFieldChange}
+        error={errors.openDurationMs}
+        min={100}
+        max={300000}
+      />
+      <NumberField
+        label="Probe Count"
+        field="probeCount"
+        value={c.probeCount}
+        onChange={onFieldChange}
+        error={errors.probeCount}
+        min={1}
+        max={1000}
       />
     </div>
   );
@@ -488,11 +679,20 @@ function MessageQueueForm({ config, onFieldChange, errors }: FormProps) {
 
 const NODE_TYPE_LABELS: Record<NodeType, string> = {
   [NodeType.TrafficGenerator]: 'Traffic Generator',
+  [NodeType.ApiGateway]: 'API Gateway',
+  [NodeType.RateLimiter]: 'Rate Limiter',
+  [NodeType.CircuitBreaker]: 'Circuit Breaker',
   [NodeType.LoadBalancer]: 'Load Balancer',
   [NodeType.AppServer]: 'App Server',
   [NodeType.Cache]: 'Cache',
   [NodeType.Database]: 'Database',
   [NodeType.MessageQueue]: 'Message Queue',
+  [NodeType.AuthService]: 'Auth Service',
+  [NodeType.AuthzService]: 'Authz Service',
+  [NodeType.WorkerPool]: 'Worker Pool',
+  [NodeType.DeadLetterQueue]: 'Dead Letter Queue',
+  [NodeType.ObjectStore]: 'Object Store',
+  [NodeType.Scheduler]: 'Scheduler',
 };
 
 function NodeTypeIcon({ nodeType }: { nodeType: NodeType }) {
@@ -500,41 +700,510 @@ function NodeTypeIcon({ nodeType }: { nodeType: NodeType }) {
   switch (nodeType) {
     case NodeType.TrafficGenerator:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+          />
+        </svg>
+      );
+    case NodeType.ApiGateway:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
+          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
+        </svg>
+      );
+    case NodeType.RateLimiter:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
+        </svg>
+      );
+    case NodeType.CircuitBreaker:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v10" />
         </svg>
       );
     case NodeType.LoadBalancer:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+          />
         </svg>
       );
     case NodeType.AppServer:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-13.5-3a3 3 0 0 1 0-6h13.5a3 3 0 1 1 0 6M6 6.75h.008v.008H6V6.75Zm0 7.5h.008v.008H6v-.008Zm0 7.5h.008v.008H6v-.008Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-13.5-3a3 3 0 0 1 0-6h13.5a3 3 0 1 1 0 6M6 6.75h.008v.008H6V6.75Zm0 7.5h.008v.008H6v-.008Zm0 7.5h.008v.008H6v-.008Z"
+          />
         </svg>
       );
     case NodeType.Cache:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+          />
         </svg>
       );
     case NodeType.Database:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
+          />
         </svg>
       );
     case NodeType.MessageQueue:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0L21.75 16.5 12 21.75l-9.75-5.25 4.179-2.25" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0L21.75 16.5 12 21.75l-9.75-5.25 4.179-2.25"
+          />
+        </svg>
+      );
+    case NodeType.AuthService:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"
+          />
+        </svg>
+      );
+    case NodeType.AuthzService:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
+          />
+        </svg>
+      );
+    case NodeType.WorkerPool:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"
+          />
+        </svg>
+      );
+    case NodeType.DeadLetterQueue:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
+          />
+        </svg>
+      );
+    case NodeType.ObjectStore:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 3.75v3.75m-16.5-3.75v3.75"
+          />
+        </svg>
+      );
+    case NodeType.Scheduler:
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+          />
         </svg>
       );
   }
+}
+
+// ─── Activity Tab ────────────────────────────────────────────────
+
+/** What "utilization" measures differs per node type — explain it inline. */
+const UTILIZATION_NOTES: Record<NodeType, string> = {
+  [NodeType.AppServer]: 'Worker threads busy',
+  [NodeType.Database]: 'Connection pool in use',
+  [NodeType.Cache]: 'Observed miss rate',
+  [NodeType.MessageQueue]: 'Buffer capacity used',
+  [NodeType.LoadBalancer]: 'Unhealthy targets',
+  [NodeType.ApiGateway]: 'Observed rejection rate',
+  [NodeType.RateLimiter]: 'Token bucket drained',
+  [NodeType.CircuitBreaker]: 'Breaker tripped',
+  [NodeType.TrafficGenerator]: 'Not capacity-bound',
+  [NodeType.AuthService]: 'Concurrency slots in use',
+  [NodeType.AuthzService]: 'Concurrency slots in use',
+  [NodeType.WorkerPool]: 'Worker concurrency slots busy',
+  [NodeType.DeadLetterQueue]: 'Retained message capacity used',
+  [NodeType.ObjectStore]: 'Transfer bandwidth saturated',
+  [NodeType.Scheduler]: 'No bounded resource',
+};
+
+const QUEUE_DEPTH_TYPES: NodeType[] = [
+  NodeType.AppServer,
+  NodeType.Database,
+  NodeType.MessageQueue,
+];
+
+const CONNECTION_TYPES: NodeType[] = [NodeType.Database, NodeType.AppServer, NodeType.LoadBalancer];
+
+const HEALTH_LABELS: Record<'green' | 'yellow' | 'red', string> = {
+  green: 'Healthy',
+  yellow: 'Degraded',
+  red: 'Critical',
+};
+
+const HEALTH_BADGE_CLASSES: Record<'green' | 'yellow' | 'red', string> = {
+  green: 'bg-green-500/15 text-green-400 border-green-500/40',
+  yellow: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+  red: 'bg-red-500/15 text-red-400 border-red-500/40',
+};
+
+/** Matches the gauge thresholds used in QueueGauge: green <70, amber 70–90, red >90. */
+function utilizationBarColor(pct: number): string {
+  if (pct >= 90) return 'bg-red-500';
+  if (pct >= 70) return 'bg-amber-500';
+  return 'bg-green-500';
+}
+
+function utilizationTextColor(pct: number): string {
+  if (pct >= 90) return 'text-red-400';
+  if (pct >= 70) return 'text-amber-400';
+  return 'text-green-400';
+}
+
+/**
+ * computePercentiles([]) yields all zeros, which is indistinguishable from a
+ * genuine sub-millisecond measurement. If nothing completed in the window,
+ * there is no latency to report.
+ */
+function hasNoCompletions(snapshot: NodeMetricsSnapshot): boolean {
+  const { p50, p90, p99 } = snapshot.latencyPercentiles;
+  return snapshot.throughput === 0 && p50 === 0 && p90 === 0 && p99 === 0;
+}
+
+function formatSimTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const millis = Math.floor(ms % 1000);
+  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+function ActivitySection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+  unit,
+  suffix,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between text-xs">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-200">
+        {value}
+        {unit && <span className="ml-1 text-gray-500">{unit}</span>}
+        {suffix && <span className="ml-1 text-gray-500">{suffix}</span>}
+      </span>
+    </div>
+  );
+}
+
+/** Muted caption used to explain why a metric has no number to show. */
+function ActivityNote({ children }: { children: ReactNode }) {
+  return <p className="text-[10px] text-gray-500">{children}</p>;
+}
+
+const MAX_RECENT_EVENTS = 8;
+
+function ActivityPanel({
+  selectedNodeId,
+  nodeType,
+}: {
+  selectedNodeId: string;
+  nodeType: NodeType;
+}) {
+  const metrics = useSimulationStore((s) => s.metrics);
+  const eventLog = useSimulationStore((s) => s.eventLog);
+  const snapshot = metrics?.nodes.find((n) => n.nodeId === selectedNodeId) ?? null;
+
+  const recentEvents = eventLog
+    .filter((entry) => entry.nodeId === selectedNodeId)
+    .slice(-MAX_RECENT_EVENTS)
+    .reverse();
+
+  if (!snapshot) {
+    return (
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <p className="text-xs leading-relaxed text-gray-500">
+          No activity yet — start a simulation to see this node&apos;s live behavior.
+        </p>
+      </div>
+    );
+  }
+
+  const utilization = snapshot.utilization;
+  const { littlesLaw } = snapshot;
+  const isSource = nodeType === NodeType.TrafficGenerator;
+
+  const utilPct = utilization.kind === 'value' ? utilization.value * 100 : 0;
+
+  // A zero utilization is a real reading; say so rather than leaving a bare 0%. Where the
+  // node has no bounded resource at all, the reading itself carries the explanation.
+  const utilizationNote =
+    utilization.kind === 'not-applicable'
+      ? `Not applicable — ${utilization.reason}`
+      : utilization.idle && !isSource
+        ? `${UTILIZATION_NOTES[nodeType]} — currently idle`
+        : UTILIZATION_NOTES[nodeType];
+
+  return (
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
+      {/* Health */}
+      <ActivitySection title="Health">
+        <span
+          className={`self-start rounded-full border px-2 py-0.5 text-xs font-medium ${HEALTH_BADGE_CLASSES[snapshot.healthStatus]}`}
+        >
+          {HEALTH_LABELS[snapshot.healthStatus]}
+        </span>
+      </ActivitySection>
+
+      {/* Throughput & Errors */}
+      <ActivitySection title="Throughput &amp; Errors">
+        <StatRow label="Throughput" value={snapshot.throughput.toFixed(1)} unit="req/s" />
+        <StatRow label="Error rate" value={(snapshot.errorRate * 100).toFixed(1)} unit="%" />
+      </ActivitySection>
+
+      {/* Latency */}
+      <ActivitySection title="Latency">
+        {isSource ? (
+          <ActivityNote>
+            Not applicable — a traffic generator originates requests rather than serving them.
+          </ActivityNote>
+        ) : hasNoCompletions(snapshot) ? (
+          <ActivityNote>No completions in this window</ActivityNote>
+        ) : (
+          <>
+            <StatRow label="p50" value={snapshot.latencyPercentiles.p50.toFixed(1)} unit="ms" />
+            <StatRow label="p90" value={snapshot.latencyPercentiles.p90.toFixed(1)} unit="ms" />
+            <StatRow label="p99" value={snapshot.latencyPercentiles.p99.toFixed(1)} unit="ms" />
+          </>
+        )}
+      </ActivitySection>
+
+      {/* Resources */}
+      <ActivitySection title="Resources">
+        {QUEUE_DEPTH_TYPES.includes(nodeType) && (
+          <StatRow
+            label="Queue depth"
+            value={String(snapshot.queueDepth)}
+            unit="items"
+            suffix={snapshot.queueDepth === 0 ? '(idle)' : undefined}
+          />
+        )}
+        {CONNECTION_TYPES.includes(nodeType) && (
+          <StatRow label="Active connections" value={String(snapshot.activeConnections)} />
+        )}
+        {nodeType === NodeType.MessageQueue && (
+          <StatRow label="Buffered messages" value={String(Math.round(snapshot.bufferOccupancy))} />
+        )}
+        <div className="mt-1 flex flex-col gap-1">
+          <div className="flex items-baseline justify-between text-xs">
+            <span className="text-gray-400">Utilization</span>
+            {utilization.kind === 'value' && (
+              <span className={utilizationTextColor(utilPct)}>{utilPct.toFixed(0)}%</span>
+            )}
+          </div>
+          {utilization.kind === 'value' && (
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${utilizationBarColor(utilPct)}`}
+                style={{ width: `${Math.min(100, Math.max(0, utilPct))}%` }}
+              />
+            </div>
+          )}
+          <ActivityNote>{utilizationNote}</ActivityNote>
+        </div>
+      </ActivitySection>
+
+      {/* Little's Law */}
+      <ActivitySection title="Little's Law">
+        {isSource ? (
+          <ActivityNote>
+            Not applicable — Little&apos;s Law describes requests dwelling in a system; a source
+            node holds none.
+          </ActivityNote>
+        ) : (
+          <>
+            <StatRow label="L (avg items in system)" value={littlesLaw.L.toFixed(2)} />
+            <StatRow label="λ (arrivals)" value={littlesLaw.lambda.toFixed(2)} unit="/s" />
+            <StatRow label="W (avg time in system)" value={littlesLaw.W.toFixed(1)} unit="ms" />
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="text-gray-400">Steady state</span>
+              <span className={littlesLaw.isStable ? 'text-green-400' : 'text-amber-400'}>
+                {littlesLaw.isStable ? 'Stable' : 'Unstable'}
+                <span className="ml-1 text-gray-500">
+                  ({(littlesLaw.deviation * 100).toFixed(1)}%)
+                </span>
+              </span>
+            </div>
+            <ActivityNote>
+              L = λ × W. A large deviation means the node is not in steady state.
+            </ActivityNote>
+          </>
+        )}
+      </ActivitySection>
+
+      {/* Recent Events */}
+      <ActivitySection title="Recent Events">
+        {recentEvents.length === 0 ? (
+          <p className="text-[10px] text-gray-500">No events recorded for this node.</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {recentEvents.map((entry) => (
+              <li key={entry.id} className="flex gap-1.5 text-[10px] leading-snug">
+                <span className="shrink-0 font-mono text-gray-500">
+                  {formatSimTime(entry.timestamp)}
+                </span>
+                <span className="text-gray-300">{entry.message}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ActivitySection>
+    </div>
+  );
 }
 
 // ─── Main Panel Component ────────────────────────────────────────
@@ -545,14 +1214,13 @@ interface NodeConfigPanelProps {
 }
 
 export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProps) {
-  const node = useTopologyStore((s) =>
-    s.nodes.find((n) => n.id === selectedNodeId),
-  );
+  const node = useTopologyStore((s) => s.nodes.find((n) => n.id === selectedNodeId));
   const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const simState = useSimulationStore((s) => s.simState);
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<'config' | 'activity'>('config');
 
   // Task 232: Escape closes config panel
   useEffect(() => {
@@ -624,28 +1292,81 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
           <NodeTypeIcon nodeType={nodeData.nodeType} />
         </span>
         <div className="flex flex-1 flex-col">
-          <span className="text-sm font-medium text-gray-200">
-            {nodeData.label}
-          </span>
-          <span className="text-xs text-gray-500">
-            {NODE_TYPE_LABELS[nodeData.nodeType]}
-          </span>
+          <span className="text-sm font-medium text-gray-200">{nodeData.label}</span>
+          <span className="text-xs text-gray-500">{NODE_TYPE_LABELS[nodeData.nodeType]}</span>
         </div>
         <button
           onClick={onClose}
           aria-label="Close configuration panel"
           className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
+      {/* Tab Strip */}
+      <div className="border-b border-gray-800 px-4 py-2">
+        <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+          <button
+            type="button"
+            onClick={() => setTab('config')}
+            aria-pressed={tab === 'config'}
+            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              tab === 'config' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Config
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('activity')}
+            aria-pressed={tab === 'activity'}
+            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              tab === 'activity' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Activity
+          </button>
+        </div>
+      </div>
+
+      {tab === 'activity' && (
+        <ActivityPanel selectedNodeId={selectedNodeId} nodeType={nodeData.nodeType} />
+      )}
+
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className={tab === 'config' ? 'flex-1 overflow-y-auto px-4 py-3' : 'hidden'}>
         {nodeData.nodeType === NodeType.TrafficGenerator && (
           <TrafficGeneratorForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.ApiGateway && (
+          <ApiGatewayForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.RateLimiter && (
+          <RateLimiterForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.CircuitBreaker && (
+          <CircuitBreakerForm
             config={nodeData.config as unknown as Record<string, unknown>}
             onFieldChange={handleFieldChange}
             errors={errors}
@@ -686,15 +1407,64 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             errors={errors}
           />
         )}
+        {nodeData.nodeType === NodeType.AuthService && (
+          <AuthServiceForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.AuthzService && (
+          <AuthzServiceForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.WorkerPool && (
+          <WorkerPoolForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.DeadLetterQueue && (
+          <DeadLetterQueueForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.ObjectStore && (
+          <ObjectStoreForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+        {nodeData.nodeType === NodeType.Scheduler && (
+          <SchedulerForm
+            config={nodeData.config as unknown as Record<string, unknown>}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
+        )}
+
+        {/* R32 — routing policy field, shown for any node with 2+ outgoing edges */}
+        <div className="mt-3 border-t border-gray-800 pt-3">
+          <RoutingPolicyField nodeId={selectedNodeId} routingPolicy={nodeData.routingPolicy} />
+        </div>
       </div>
 
-      {/* Footer hint */}
-      <div className="border-t border-gray-800 px-4 py-2">
-        <p className="text-xs text-gray-500">
-          Changes apply immediately.
-          {simState === SimState.Paused && ' Config synced to paused simulation.'}
-        </p>
-      </div>
+      {/* Footer hint — only relevant while editing config */}
+      {tab === 'config' && (
+        <div className="border-t border-gray-800 px-4 py-2">
+          <p className="text-xs text-gray-500">
+            Changes apply immediately.
+            {simState === SimState.Paused && ' Config synced to paused simulation.'}
+          </p>
+        </div>
+      )}
     </aside>
   );
 }

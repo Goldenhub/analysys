@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  type EdgeProps,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { AnalysysEdge } from '@/types/edges';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -52,10 +47,38 @@ export function SyncEdge({
           ...style,
           stroke: '#6b7280',
           strokeWidth: 2,
-          animation: isRunning ? 'sync-pulse 2s ease-in-out infinite' : undefined,
         }}
         markerEnd={markerEnd}
       />
+
+      {/* Animated packet dots when simulation is running */}
+      {isRunning && (
+        <>
+          {/* Request packets (blue dots moving source → target) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth={4}
+            strokeDasharray="3 15"
+            strokeLinecap="round"
+            opacity={0.85}
+            className="animate-packet-forward"
+          />
+          {/* Response packets (green dots moving target → source) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth={3}
+            strokeDasharray="2 20"
+            strokeLinecap="round"
+            opacity={0.7}
+            className="animate-packet-backward"
+          />
+        </>
+      )}
+
       {/* Protocol label on hover */}
       {hovered && (
         <EdgeLabelRenderer>
@@ -69,13 +92,6 @@ export function SyncEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-      {/* CSS animation keyframe injected via style tag */}
-      <style>{`
-        @keyframes sync-pulse {
-          0%, 100% { stroke-opacity: 1; }
-          50% { stroke-opacity: 0.4; }
-        }
-      `}</style>
     </>
   );
 }

@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  type EdgeProps,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { AnalysysEdge } from '@/types/edges';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -57,6 +52,35 @@ export function AsyncEdge({
         }}
         markerEnd={markerEnd}
       />
+
+      {/* Animated packet dots when simulation is running */}
+      {isRunning && (
+        <>
+          {/* Request packets (blue dots moving source → target, slower for async) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth={4}
+            strokeDasharray="3 20"
+            strokeLinecap="round"
+            opacity={0.85}
+            className="animate-packet-forward-slow"
+          />
+          {/* Response packets (green dots moving target → source) */}
+          <path
+            d={edgePath}
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth={3}
+            strokeDasharray="2 25"
+            strokeLinecap="round"
+            opacity={0.7}
+            className="animate-packet-backward-slow"
+          />
+        </>
+      )}
+
       {/* Protocol label on hover */}
       {hovered && (
         <EdgeLabelRenderer>
@@ -70,7 +94,7 @@ export function AsyncEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-      {/* CSS animation for moving dots effect */}
+      {/* CSS animations for edge effects */}
       <style>{`
         @keyframes async-flow {
           0% { stroke-dashoffset: 0; }

@@ -1,5 +1,6 @@
 import type { LoadBalancerConfig } from '@/types/nodes';
 import { LBAlgorithm } from '@/types/nodes';
+import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType } from '../types';
 
@@ -12,40 +13,46 @@ export class LoadBalancerProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
+    const state = context.getNodeState(event.nodeId);
+
     context.recordArrival(event.nodeId, request.id, event.timestamp);
 
     const edges = context.getOutgoingEdges(event.nodeId);
-    const healthyEdges = edges.filter(
-      (e) => this.targetHealthy.get(e.target) !== false,
-    );
+    const healthyEdges = edges.filter((e) => this.targetHealthy.get(e.target) !== false);
 
     if (healthyEdges.length === 0) {
       // No healthy targets — drop the request
       request.status = 'DROPPED' as never;
-      const state = context.getNodeState(event.nodeId);
       if (state) state.totalDropped++;
       context.recordDeparture(event.nodeId, request.id, event.timestamp);
       return;
     }
 
-    const target = this.selectTarget(healthyEdges.map((e) => e.target), context);
+    const target = this.selectTarget(
+      healthyEdges.map((e) => e.target),
+      context,
+    );
 
-    // Route to selected target with negligible LB latency (~0.1ms)
+    // Route to selected target with small LB forwarding latency
+    const lbLatency = 0.5;
     context.scheduleEvent({
       type: SimEventType.RequestRoute,
-      timestamp: event.timestamp + 0.1,
+      timestamp: event.timestamp + lbLatency,
       nodeId: target,
       requestId: request.id,
       payload: { fromNodeId: event.nodeId },
     });
 
-    request.accumulatedLatencyMs += 0.1;
-    context.recordDeparture(event.nodeId, request.id, event.timestamp + 0.1);
+    request.accumulatedLatencyMs += lbLatency;
+
+    if (state) {
+      state.totalProcessed++;
+      state.latencySamples.push(lbLatency);
+      state.activeConnections = healthyEdges.length;
+    }
+
+    context.recordDeparture(event.nodeId, request.id, event.timestamp + lbLatency);
   }
 
   private selectTarget(targets: string[], context: ProcessorContext): string {
@@ -81,7 +88,26 @@ export class LoadBalancerProcessor implements NodeProcessor {
     this.targetHealthy.clear();
   }
 
-  getUtilization(): number {
-    return 0; // LB itself doesn't have capacity constraints in this model
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // LB is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
+  getUtilization(): UtilizationReading {
+    // The LB has no capacity constraint of its own; report the fraction of
+    // known targets that are unhealthy as a stress proxy.
+    const total = this.targetHealthy.size;
+    let unhealthy = 0;
+    for (const healthy of this.targetHealthy.values()) {
+      if (!healthy) unhealthy++;
+    }
+    const value = total === 0 ? 0 : unhealthy / total;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // there is no per-window arrival counter here, so all-healthy targets read as idle
+    // regardless of traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

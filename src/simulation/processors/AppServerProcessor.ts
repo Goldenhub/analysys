@@ -1,5 +1,12 @@
 import type { AppServerConfig } from '@/types/nodes';
-import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext, NodeRuntimeState } from '../types';
+import type { UtilizationReading } from '@/types/metrics';
+import type {
+  NodeProcessor,
+  SimEvent,
+  SimRequest,
+  ProcessorContext,
+  NodeRuntimeState,
+} from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
 export class AppServerProcessor implements NodeProcessor {
@@ -10,11 +17,7 @@ export class AppServerProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -72,11 +75,7 @@ export class AppServerProcessor implements NodeProcessor {
    * Called by the engine when a RequestProcess event fires.
    * Releases the worker and routes downstream.
    */
-  onProcessComplete(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onProcessComplete(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -86,9 +85,9 @@ export class AppServerProcessor implements NodeProcessor {
     state.latencySamples.push(request.accumulatedLatencyMs);
 
     // Route downstream
-    const edges = context.getOutgoingEdges(event.nodeId);
+    const edges = context.resolveTargets(event.nodeId, request);
     if (edges.length > 0) {
-      const target = edges[0]!.target; // Simple: route to first downstream
+      const target = edges[0]!.target;
       context.scheduleEvent({
         type: SimEventType.RequestRoute,
         timestamp: event.timestamp,
@@ -125,8 +124,28 @@ export class AppServerProcessor implements NodeProcessor {
     // No-op
   }
 
-  getUtilization(): number {
-    if (this.config.workerThreadPoolSize === 0) return 0;
-    return this.activeWorkers / this.config.workerThreadPoolSize;
+  onNodeDisabled(context: ProcessorContext): string[] {
+    // Return all request IDs held in bounded resources (active workers + queue)
+    const held: string[] = [];
+    // The engine manages queuedRequests on NodeRuntimeState; we just report our internal state
+    // Active workers don't track individual request IDs here, but the engine's queue does.
+    void context;
+    this.activeWorkers = 0;
+    return held;
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.activeWorkers = 0;
+  }
+
+  getUtilization(): UtilizationReading {
+    const value =
+      this.config.workerThreadPoolSize === 0
+        ? 0
+        : this.activeWorkers / this.config.workerThreadPoolSize;
+    // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because
+    // the pool holds no per-window arrival counter, so a pool with every worker momentarily
+    // free reads the same as one that saw no traffic. Refine once an arrival count exists.
+    return { kind: 'value', value, idle: value === 0 };
   }
 }

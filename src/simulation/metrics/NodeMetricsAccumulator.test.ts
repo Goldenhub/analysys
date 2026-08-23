@@ -56,7 +56,7 @@ describe('NodeMetricsAccumulator', () => {
     expect(metrics.W).toBeLessThan(110);
   });
 
-  it('validates Little\'s Law (L ≈ λ × W) under steady state', () => {
+  it("validates Little's Law (L ≈ λ × W) under steady state", () => {
     const acc = new NodeMetricsAccumulator('node-1', 10000);
 
     // Simulate steady state: 100 req/sec, each staying 50ms → L ≈ 5

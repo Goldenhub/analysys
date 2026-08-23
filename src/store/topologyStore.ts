@@ -6,13 +6,22 @@ import {
   type EdgeChange,
 } from '@xyflow/react';
 import type { AnalysysNode, SimulationNode } from '../types/nodes';
+import type { RoutingPolicy } from '../types/nodes';
 import type { AnalysysEdge, EdgeData, EdgeProtocol } from '../types/edges';
+import type { SubsystemGroup } from '../types/groups';
+import {
+  validateGroupName,
+  validateGroupCreation,
+  validateAddNodesToGroup,
+  type GroupValidationError,
+} from '../validation/groupValidation';
 
 // ─── History Snapshot ────────────────────────────────────────────
 
 interface TopologySnapshot {
   nodes: AnalysysNode[];
   edges: AnalysysEdge[];
+  subsystemGroups: SubsystemGroup[];
 }
 
 // ─── Store State ─────────────────────────────────────────────────
@@ -20,6 +29,7 @@ interface TopologySnapshot {
 interface TopologyState {
   nodes: AnalysysNode[];
   edges: AnalysysEdge[];
+  subsystemGroups: SubsystemGroup[];
 
   // Undo/Redo
   past: TopologySnapshot[];
@@ -39,6 +49,17 @@ interface TopologyActions {
   addEdge: (edge: AnalysysEdge) => void;
   removeEdge: (edgeId: string) => void;
   updateEdgeProtocol: (edgeId: string, protocol: EdgeProtocol) => void;
+  updateEdgeWeight: (edgeId: string, weight: number) => void;
+  updateNodeRoutingPolicy: (nodeId: string, policy: RoutingPolicy) => void;
+
+  // Subsystem Grouping (Requirement 33)
+  createGroup: (nodeIds: string[]) => GroupValidationError | null;
+  renameGroup: (groupId: string, name: string) => string | null;
+  setGroupCollapsed: (groupId: string, collapsed: boolean) => void;
+  addNodesToGroup: (groupId: string, nodeIds: string[]) => GroupValidationError | null;
+  removeNodesFromGroup: (groupId: string, nodeIds: string[]) => void;
+  deleteGroup: (groupId: string) => void;
+  dragGroup: (groupId: string, dx: number, dy: number) => void;
 
   // React Flow compatibility handlers
   onNodesChange: (changes: NodeChange<AnalysysNode>[]) => void;
@@ -50,7 +71,11 @@ interface TopologyActions {
 
   // Serialization
   getTopologySnapshot: () => { nodes: SimulationNode[]; edges: EdgeData[] };
-  loadTopology: (nodes: AnalysysNode[], edges: AnalysysEdge[]) => void;
+  loadTopology: (
+    nodes: AnalysysNode[],
+    edges: AnalysysEdge[],
+    subsystemGroups?: SubsystemGroup[],
+  ) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -61,6 +86,7 @@ function takeSnapshot(state: TopologyState): TopologySnapshot {
   return {
     nodes: structuredClone(state.nodes),
     edges: structuredClone(state.edges),
+    subsystemGroups: structuredClone(state.subsystemGroups),
   };
 }
 
@@ -75,6 +101,7 @@ function pushHistory(state: TopologyState): Pick<TopologyState, 'past' | 'future
 export const useTopologyStore = create<TopologyState & TopologyActions>()((set, get) => ({
   nodes: [],
   edges: [],
+  subsystemGroups: [],
   past: [],
   future: [],
 
@@ -87,19 +114,26 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     })),
 
   removeNode: (nodeId) =>
-    set((state) => ({
-      ...pushHistory(state),
-      nodes: state.nodes.filter((n) => n.id !== nodeId),
-      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
-    })),
+    set((state) => {
+      const history = pushHistory(state);
+      const nodes = state.nodes.filter((n) => n.id !== nodeId);
+      const edges = state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId);
+
+      // R33.19/R33.20 — remove node from its group; delete group if < 2 members remain
+      let subsystemGroups = state.subsystemGroups.map((g) => {
+        if (!g.memberNodeIds.includes(nodeId)) return g;
+        return { ...g, memberNodeIds: g.memberNodeIds.filter((id) => id !== nodeId) };
+      });
+      subsystemGroups = subsystemGroups.filter((g) => g.memberNodeIds.length >= 2);
+
+      return { ...history, nodes, edges, subsystemGroups };
+    }),
 
   updateNodePosition: (nodeId, position) =>
     set((state) => ({
       ...pushHistory(state),
       nodes: state.nodes.map((n) =>
-        n.id === nodeId
-          ? { ...n, position, data: { ...n.data, position } }
-          : n,
+        n.id === nodeId ? { ...n, position, data: { ...n.data, position } } : n,
       ),
     })),
 
@@ -122,7 +156,12 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
   addEdge: (edge) =>
     set((state) => ({
       ...pushHistory(state),
-      edges: [...state.edges, edge],
+      // R32.4 — an edge arriving without a weight (an older caller, or a v1 payload)
+      // gets an equal share, so the Weighted policy never sees an undefined weight.
+      edges: [
+        ...state.edges,
+        edge.data ? { ...edge, data: { ...edge.data, weight: edge.data.weight ?? 1.0 } } : edge,
+      ],
     })),
 
   removeEdge: (edgeId) =>
@@ -135,11 +174,137 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     set((state) => ({
       ...pushHistory(state),
       edges: state.edges.map((e) =>
-        e.id === edgeId
-          ? { ...e, data: { ...e.data!, protocol } }
-          : e,
+        e.id === edgeId ? { ...e, data: { ...e.data!, protocol } } : e,
       ),
     })),
+
+  updateEdgeWeight: (edgeId, weight) =>
+    set((state) => ({
+      ...pushHistory(state),
+      edges: state.edges.map((e) => (e.id === edgeId ? { ...e, data: { ...e.data!, weight } } : e)),
+    })),
+
+  updateNodeRoutingPolicy: (nodeId, policy) =>
+    set((state) => ({
+      ...pushHistory(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const currentData = n.data as SimulationNode;
+        const updatedData = { ...currentData, routingPolicy: policy };
+        return { ...n, data: updatedData as AnalysysNode['data'] };
+      }),
+    })),
+
+  // ─── Subsystem Grouping (Requirement 33) ─────────────────────
+
+  createGroup: (nodeIds) => {
+    const state = get();
+    const nodeLabelsById = new Map(
+      state.nodes.map((n) => [n.id, (n.data as SimulationNode).label]),
+    );
+    const error = validateGroupCreation(nodeIds, state.subsystemGroups, nodeLabelsById);
+    if (error) return error;
+
+    // Generate a unique default name
+    const existingNames = new Set(state.subsystemGroups.map((g) => g.name.toLowerCase()));
+    let defaultName = 'Subsystem';
+    let suffix = 1;
+    while (existingNames.has(defaultName.toLowerCase())) {
+      suffix++;
+      defaultName = `Subsystem ${suffix}`;
+    }
+
+    const newGroup: SubsystemGroup = {
+      id: `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: defaultName,
+      memberNodeIds: [...nodeIds],
+      collapsed: false,
+    };
+
+    set((s) => ({
+      ...pushHistory(s),
+      subsystemGroups: [...s.subsystemGroups, newGroup],
+    }));
+    return null;
+  },
+
+  renameGroup: (groupId, name) => {
+    const state = get();
+    const error = validateGroupName(name, state.subsystemGroups, groupId);
+    if (error) return error;
+
+    set((s) => ({
+      ...pushHistory(s),
+      subsystemGroups: s.subsystemGroups.map((g) =>
+        g.id === groupId ? { ...g, name: name.trim() } : g,
+      ),
+    }));
+    return null;
+  },
+
+  setGroupCollapsed: (groupId, collapsed) =>
+    set((state) => ({
+      ...pushHistory(state),
+      subsystemGroups: state.subsystemGroups.map((g) =>
+        g.id === groupId ? { ...g, collapsed } : g,
+      ),
+    })),
+
+  addNodesToGroup: (groupId, nodeIds) => {
+    const state = get();
+    const nodeLabelsById = new Map(
+      state.nodes.map((n) => [n.id, (n.data as SimulationNode).label]),
+    );
+    const error = validateAddNodesToGroup(groupId, nodeIds, state.subsystemGroups, nodeLabelsById);
+    if (error) return error;
+
+    set((s) => ({
+      ...pushHistory(s),
+      subsystemGroups: s.subsystemGroups.map((g) =>
+        g.id === groupId ? { ...g, memberNodeIds: [...g.memberNodeIds, ...nodeIds] } : g,
+      ),
+    }));
+    return null;
+  },
+
+  removeNodesFromGroup: (groupId, nodeIds) =>
+    set((state) => {
+      const history = pushHistory(state);
+      const nodeIdSet = new Set(nodeIds);
+      let subsystemGroups = state.subsystemGroups.map((g) => {
+        if (g.id !== groupId) return g;
+        return { ...g, memberNodeIds: g.memberNodeIds.filter((id) => !nodeIdSet.has(id)) };
+      });
+      // Delete group if fewer than 2 members remain — nodes/edges stay at stored positions
+      subsystemGroups = subsystemGroups.filter((g) => g.memberNodeIds.length >= 2);
+      return { ...history, subsystemGroups };
+    }),
+
+  deleteGroup: (groupId) =>
+    set((state) => ({
+      // All nodes and edges are retained at their stored positions (R33.24)
+      ...pushHistory(state),
+      subsystemGroups: state.subsystemGroups.filter((g) => g.id !== groupId),
+    })),
+
+  dragGroup: (groupId, dx, dy) =>
+    set((state) => {
+      const group = state.subsystemGroups.find((g) => g.id === groupId);
+      if (!group) return state;
+      const memberSet = new Set(group.memberNodeIds);
+      return {
+        ...pushHistory(state),
+        nodes: state.nodes.map((n) => {
+          if (!memberSet.has(n.id)) return n;
+          const newPos = { x: n.position.x + dx, y: n.position.y + dy };
+          return {
+            ...n,
+            position: newPos,
+            data: { ...n.data, position: newPos },
+          };
+        }),
+      };
+    }),
 
   // ─── React Flow Handlers ─────────────────────────────────────
 
@@ -163,6 +328,7 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       return {
         nodes: previous.nodes,
         edges: previous.edges,
+        subsystemGroups: previous.subsystemGroups,
         past: state.past.slice(0, -1),
         future: [currentSnapshot, ...state.future].slice(0, MAX_HISTORY_SIZE),
       };
@@ -176,6 +342,7 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       return {
         nodes: next.nodes,
         edges: next.edges,
+        subsystemGroups: next.subsystemGroups,
         past: [...state.past, currentSnapshot].slice(-MAX_HISTORY_SIZE),
         future: state.future.slice(1),
       };
@@ -190,10 +357,11 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     return { nodes: simulationNodes, edges: edgeData };
   },
 
-  loadTopology: (nodes, edges) =>
+  loadTopology: (nodes, edges, subsystemGroups) =>
     set((state) => ({
       ...pushHistory(state),
       nodes,
       edges,
+      subsystemGroups: subsystemGroups ?? [],
     })),
 }));

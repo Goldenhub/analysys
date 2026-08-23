@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { SimState } from '@/simulation/types';
 import type { MetricsBatchPayload } from '@/types/metrics';
-import type {
-  MainToWorkerMessage,
-  WorkerToMainMessage,
-  SimEventLogEntry,
-} from '@/types/messages';
+import type { MainToWorkerMessage, WorkerToMainMessage, SimEventLogEntry } from '@/types/messages';
+import { useAnalysisStore } from '@/store/analysisStore';
+import { useTopologyStore } from '@/store/topologyStore';
+import type { SimulationNode } from '@/types/nodes';
+import type { EdgeData } from '@/types/edges';
 
 // ─── Chaos Effect ────────────────────────────────────────────────
 
@@ -80,13 +80,23 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
 
   setSpeed: (multiplier) => set({ speedMultiplier: multiplier }),
 
-  updateMetrics: (payload) => set({ metrics: payload }),
+  updateMetrics: (payload) =>
+    set((state) => {
+      // Ignore late metrics batches that arrive after pause/complete
+      if (state.simState === SimState.Paused || state.simState === SimState.Complete) {
+        return state;
+      }
+      return { metrics: payload };
+    }),
 
-  appendEventLog: (entries) =>
-    set((state) => ({ eventLog: [...state.eventLog, ...entries] })),
+  appendEventLog: (entries) => set((state) => ({ eventLog: [...state.eventLog, ...entries] })),
 
   setNodeStatus: (nodeId, status) =>
     set((state) => {
+      // Ignore late status updates after pause/complete
+      if (state.simState === SimState.Paused || state.simState === SimState.Complete) {
+        return state;
+      }
       const next = new Map(state.nodeStatuses);
       next.set(nodeId, status);
       return { nodeStatuses: next };
@@ -128,10 +138,9 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       worker.terminate();
     }
 
-    worker = new Worker(
-      new URL('../simulation/simulation.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
+    worker = new Worker(new URL('../simulation/simulation.worker.ts', import.meta.url), {
+      type: 'module',
+    });
 
     worker.onmessage = (event: MessageEvent<WorkerToMainMessage>) => {
       const msg = event.data;
@@ -139,6 +148,21 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       switch (msg.type) {
         case 'METRICS_BATCH':
           useSimulationStore.getState().updateMetrics(msg.payload);
+          {
+            const simState = useSimulationStore.getState().simState;
+            const eventLog = useSimulationStore.getState().eventLog;
+            const topoState = useTopologyStore.getState();
+            const topology = {
+              nodes: topoState.nodes.map((n) => n.data as SimulationNode),
+              edges: topoState.edges.map((e) => e.data as EdgeData),
+            };
+            useAnalysisStore.getState().onMetricsBatch(
+              msg.payload,
+              topology,
+              eventLog,
+              simState,
+            );
+          }
           break;
         case 'NODE_STATUS':
           useSimulationStore.getState().setNodeStatus(msg.payload.nodeId, msg.payload.status);
@@ -148,6 +172,15 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
           break;
         case 'SIM_COMPLETE':
           useSimulationStore.getState().setSimState(SimState.Complete);
+          {
+            const eventLog = useSimulationStore.getState().eventLog;
+            const topoState = useTopologyStore.getState();
+            const topology = {
+              nodes: topoState.nodes.map((n) => n.data as SimulationNode),
+              edges: topoState.edges.map((e) => e.data as EdgeData),
+            };
+            useAnalysisStore.getState().onSimComplete(topology, eventLog);
+          }
           break;
         case 'ERROR':
           console.error('[SimWorker]', msg.payload.message, msg.payload.stack);

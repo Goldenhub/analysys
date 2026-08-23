@@ -16,7 +16,8 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
         engine = new SimulationEngine(msg.payload);
         engine.setCallbacks({
           onMetricsBatch: (payload) => postMsg({ type: 'METRICS_BATCH', payload }),
-          onNodeStatus: (nodeId, status) => postMsg({ type: 'NODE_STATUS', payload: { nodeId, status } }),
+          onNodeStatus: (nodeId, status) =>
+            postMsg({ type: 'NODE_STATUS', payload: { nodeId, status } }),
           onEventLog: (entries) => postMsg({ type: 'EVENT_LOG', payload: entries }),
           onComplete: (summary) => postMsg({ type: 'SIM_COMPLETE', payload: summary }),
         });
@@ -25,7 +26,10 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
 
       case 'START': {
         if (!engine) {
-          postMsg({ type: 'ERROR', payload: { message: 'Engine not initialized. Send INIT first.' } });
+          postMsg({
+            type: 'ERROR',
+            payload: { message: 'Engine not initialized. Send INIT first.' },
+          });
           return;
         }
         engine.run();

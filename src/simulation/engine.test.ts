@@ -1,11 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import { SimulationEngine } from './engine';
-import { NodeType, Distribution, DatabaseType, EvictionPolicy, LBAlgorithm } from '@/types/nodes';
+import {
+  NodeType,
+  Distribution,
+  DatabaseType,
+  EvictionPolicy,
+  LBAlgorithm,
+  BackpressureStrategy,
+  RoutingPolicy,
+} from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import type { SimulationEngineConfig } from '@/types/messages';
-import type { MetricsBatchPayload } from '@/types/metrics';
+import type { MetricsBatchPayload, UtilizationReading } from '@/types/metrics';
+
+/**
+ * Utilization is a discriminated reading. Every assertion below is about the numeric
+ * variant, so unwrap it loudly rather than coercing a not-applicable reading to a number.
+ */
+function numericUtilization(reading: UtilizationReading): number {
+  if (reading.kind !== 'value') {
+    throw new Error(`expected a numeric utilization reading, got: ${reading.reason}`);
+  }
+  return reading.value;
+}
 
 function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
   const nodes: SimulationNode[] = [
@@ -14,6 +33,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.TrafficGenerator,
       label: 'Generator',
       position: { x: 0, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         rps: 100,
         distribution: Distribution.Uniform,
@@ -26,6 +46,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.AppServer,
       label: 'App Server',
       position: { x: 200, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         workerThreadPoolSize: 10,
         requestQueueDepth: 100,
@@ -38,6 +59,7 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
       nodeType: NodeType.Database,
       label: 'Database',
       position: { x: 400, y: 0 },
+      routingPolicy: RoutingPolicy.First,
       config: {
         connectionPoolSize: 20,
         queryLatencyMeanMs: 10,
@@ -49,8 +71,8 @@ function createBasicTopology(): { nodes: SimulationNode[]; edges: EdgeData[] } {
   ];
 
   const edges: EdgeData[] = [
-    { id: 'e1', source: 'gen-1', target: 'app-1', protocol: EdgeProtocol.Sync },
-    { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+    { id: 'e1', source: 'gen-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
   ];
 
   return { nodes, edges };
@@ -82,7 +104,9 @@ describe('SimulationEngine', () => {
 
     let completed = false;
     engine.setCallbacks({
-      onComplete: () => { completed = true; },
+      onComplete: () => {
+        completed = true;
+      },
     });
 
     await engine.run();
@@ -117,8 +141,16 @@ describe('SimulationEngine', () => {
     let summary1: Record<string, unknown> | null = null;
     let summary2: Record<string, unknown> | null = null;
 
-    engine1.setCallbacks({ onComplete: (s) => { summary1 = s as Record<string, unknown>; } });
-    engine2.setCallbacks({ onComplete: (s) => { summary2 = s as Record<string, unknown>; } });
+    engine1.setCallbacks({
+      onComplete: (s) => {
+        summary1 = s as Record<string, unknown>;
+      },
+    });
+    engine2.setCallbacks({
+      onComplete: (s) => {
+        summary2 = s as Record<string, unknown>;
+      },
+    });
 
     await engine1.run();
     await engine2.run();
@@ -168,6 +200,7 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Orphan Gen',
         position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: {
           rps: 50,
           distribution: Distribution.Uniform,
@@ -205,44 +238,74 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen 1',
         position: { x: 0, y: 0 },
-        config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 500,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'lb-1',
         nodeType: NodeType.LoadBalancer,
         label: 'LB',
         position: { x: 100, y: 0 },
-        config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 1000, evictionThreshold: 3 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 1000,
+          evictionThreshold: 3,
+        },
       },
       {
         id: 'app-1',
         nodeType: NodeType.AppServer,
         label: 'App 1',
         position: { x: 200, y: -50 },
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'app-2',
         nodeType: NodeType.AppServer,
         label: 'App 2',
         position: { x: 200, y: 50 },
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
-        config: { connectionPoolSize: 50, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 50,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'lb-1', target: 'app-1', protocol: EdgeProtocol.Sync },
-      { id: 'e3', source: 'lb-1', target: 'app-2', protocol: EdgeProtocol.Sync },
-      { id: 'e4', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync },
-      { id: 'e5', source: 'app-2', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'lb-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e3', source: 'lb-1', target: 'app-2', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e4', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e5', source: 'app-2', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -273,13 +336,20 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.TrafficGenerator,
         label: 'Gen',
         position: { x: 0, y: 0 },
-        config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
       },
       {
         id: 'cache-1',
         nodeType: NodeType.Cache,
         label: 'Cache',
         position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
         config: { hitRatio: 0.95, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
       },
       {
@@ -287,13 +357,20 @@ describe('SimulationEngine', () => {
         nodeType: NodeType.Database,
         label: 'DB',
         position: { x: 400, y: 0 },
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
     const edges: EdgeData[] = [
-      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync },
-      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync },
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
     ];
 
     const config = createConfig({
@@ -321,4 +398,428 @@ describe('SimulationEngine', () => {
     // After chaos reverts, normal hit ratio resumes
     expect(batches.length).toBeGreaterThan(0);
   });
+
+  it('cache miss rate is per-window and recovers after chaos reverts', async () => {
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 200,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
+      },
+      {
+        id: 'cache-1',
+        nodeType: NodeType.Cache,
+        label: 'Cache',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: { hitRatio: 0.95, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 8000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const cacheUtilization: number[] = [];
+    engine.setCallbacks({
+      onMetricsBatch: (b) => {
+        const cache = b.nodes.find((n) => n.nodeId === 'cache-1');
+        if (cache) cacheUtilization.push(numericUtilization(cache.utilization));
+      },
+    });
+
+    // Flush the cache for the first 2 seconds only
+    engine.injectChaos({ chaosType: 'FLUSH_CACHE', durationMs: 2000, params: {} });
+
+    await engine.run();
+
+    expect(cacheUtilization.length).toBeGreaterThan(3);
+
+    // First window is entirely under chaos: every lookup is a miss
+    expect(cacheUtilization[0]).toBeGreaterThan(0.9);
+
+    // Final window is well after chaos reverted. With a cumulative counter the
+    // early misses would keep this high; per-window counters let it recover.
+    // (configured miss rate is 0.05; the cumulative rate would still be ~0.3)
+    const last = cacheUtilization[cacheUtilization.length - 1]!;
+    expect(last).toBeLessThan(0.15);
+  });
+
+  it('reports non-zero active requests without leaking the in-flight counter', async () => {
+    // Low-traffic gen → cache → db topology. The true average in-flight count here
+    // is a fraction of a request, which must not be reported as 0.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 20,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      },
+      {
+        id: 'cache-1',
+        nodeType: NodeType.Cache,
+        label: 'Cache',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: { hitRatio: 0.9, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cache-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cache-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 5000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number; successRate: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => {
+        summary = s;
+      },
+    });
+
+    await engine.run();
+
+    expect(batches.length).toBeGreaterThanOrEqual(4);
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    // The final batch is the completion snapshot, which reports the instantaneous
+    // count rather than a windowed average. Only the mid-run windows exercise the
+    // time-weighted average, so the "is it live?" check must ignore the tail.
+    const midRun = activeSeries.slice(0, -1);
+
+    // (1) The counter is live. True steady-state occupancy here is ~0.1 requests:
+    // rounding to whole numbers, or releasing cache hits before their response
+    // traversal finishes, both collapse every one of these windows to 0.
+    expect(Math.max(...midRun)).toBeGreaterThan(0);
+
+    // (2) No leak. ResponseComplete now owns the decrement for every success path
+    // (cache hits and MQ enqueues included). If any success path failed to release
+    // its slot, the count would grow monotonically toward totalRequests.
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(100);
+    const lastActive = activeSeries[activeSeries.length - 1]!;
+    expect(lastActive).toBeLessThan(total * 0.1);
+    // Steady state for this topology is well under one request in flight.
+    expect(lastActive).toBeLessThan(10);
+
+    // (3) Requests reach a terminal state rather than hanging in flight.
+    expect(summary!.successRate).toBeGreaterThan(0.9);
+  });
+
+  it('MQ consumer drain delivers messages to the downstream node', async () => {
+    // gen → mq → app over an ASYNC edge. The enqueue is not the end of the
+    // request's journey: the consumer poll must route each buffered message to
+    // the AppServer. Modest RPS and a generous buffer keep backpressure out of
+    // the picture so this isolates the drain path.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      },
+      {
+        id: 'mq-1',
+        nodeType: NodeType.MessageQueue,
+        label: 'Queue',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          consumerBatchSize: 50,
+          bufferCapacity: 1000,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.DropOldest,
+        },
+      },
+      {
+        id: 'app-1',
+        nodeType: NodeType.AppServer,
+        label: 'Consumer App',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          workerThreadPoolSize: 20,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 10000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number; successRate: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => {
+        summary = s;
+      },
+    });
+
+    await engine.run();
+
+    expect(batches.length).toBeGreaterThanOrEqual(4);
+
+    // (1) Messages actually reached the consumer. If the enqueue marks the
+    // request Success, every drained message is rejected by the InFlight guard
+    // in handleRequestRoute and the AppServer never sees a single one.
+    const appThroughput = batches.map((b) => b.nodes.find((n) => n.nodeId === 'app-1')!.throughput);
+    expect(Math.max(...appThroughput)).toBeGreaterThan(0);
+
+    // (2) No in-flight leak: the count must not creep toward totalRequests.
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(200);
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    expect(activeSeries[activeSeries.length - 1]!).toBeLessThan(total * 0.1);
+
+    // (3) The async leg completes end to end.
+    expect(summary!.successRate).toBeGreaterThan(0.5);
+  }, 30000);
+
+  it('MQ DropOldest eviction terminates the evicted request', async () => {
+    // Tiny buffer plus heavy load means near-constant eviction. Each evicted
+    // message must reach a terminal state; otherwise it stays InFlight forever
+    // and activeRequests grows without bound.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 500,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      },
+      {
+        id: 'mq-1',
+        nodeType: NodeType.MessageQueue,
+        label: 'Tiny Queue',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          consumerBatchSize: 2,
+          bufferCapacity: 5,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.DropOldest,
+        },
+      },
+      {
+        id: 'app-1',
+        nodeType: NodeType.AppServer,
+        label: 'Consumer App',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          workerThreadPoolSize: 5,
+          requestQueueDepth: 20,
+          processingTimeMeanMs: 20,
+          processingTimeStdDevMs: 2,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'mq-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'mq-1', target: 'app-1', protocol: EdgeProtocol.Async, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 5000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const batches: MetricsBatchPayload[] = [];
+    let summary: { totalRequests: number } | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (b) => batches.push(b),
+      onComplete: (s) => {
+        summary = s;
+      },
+    });
+
+    await engine.run();
+
+    // Eviction must have happened for this test to mean anything.
+    const mqBufferPeak = Math.max(
+      ...batches.map((b) => b.nodes.find((n) => n.nodeId === 'mq-1')!.bufferOccupancy),
+    );
+    expect(mqBufferPeak).toBeGreaterThanOrEqual(5);
+
+    const total = summary!.totalRequests;
+    expect(total).toBeGreaterThanOrEqual(1000);
+
+    // Active requests stays bounded by the actual work in the system (buffer +
+    // app pool + app queue), nowhere near the total request count.
+    const activeSeries = batches.map((b) => b.systemWide.activeRequests);
+    expect(activeSeries[activeSeries.length - 1]!).toBeLessThan(total * 0.1);
+  }, 30000);
+
+  it('circuit breaker trips on downstream failure and recovers after chaos reverts', async () => {
+    // gen → breaker → db. DROP_DB makes every query time out, so the breaker
+    // should observe the failure rate itself and fast-fail, then close again
+    // once the database is healthy and the open window has elapsed.
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Gen',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 200,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      },
+      {
+        id: 'cb-1',
+        nodeType: NodeType.CircuitBreaker,
+        label: 'Breaker',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: { errorThreshold: 0.5, openDurationMs: 2000, probeCount: 3 },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'DB',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'cb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'cb-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const chaosDurationMs = 4000;
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 20000,
+      metricsIntervalMs: 1000,
+    });
+
+    const engine = new SimulationEngine(config);
+    const breakerUtilization: Array<{ t: number; utilization: number }> = [];
+    engine.setCallbacks({
+      onMetricsBatch: (b) => {
+        const cb = b.nodes.find((n) => n.nodeId === 'cb-1');
+        if (cb) {
+          breakerUtilization.push({
+            t: b.simulatedTimeMs,
+            utilization: numericUtilization(cb.utilization),
+          });
+        }
+      },
+    });
+
+    engine.injectChaos({ chaosType: 'DROP_DB', durationMs: chaosDurationMs, params: {} });
+
+    await engine.run();
+
+    expect(breakerUtilization.length).toBeGreaterThan(5);
+
+    // While the DB is down the breaker must trip fully open at some point.
+    // (Chaos starts at t=0, so this is already true by the first snapshot.)
+    const duringChaos = breakerUtilization.filter((s) => s.t <= chaosDurationMs);
+    expect(Math.max(...duringChaos.map((s) => s.utilization))).toBe(1);
+
+    // Once the DB is healthy again and the open window has elapsed, the breaker
+    // closes. Anything still pinned at 1 means it never recovered.
+    const last = breakerUtilization[breakerUtilization.length - 1]!;
+    expect(last.t).toBeGreaterThan(chaosDurationMs + 2000);
+    expect(last.utilization).toBeLessThan(1);
+  }, 30000);
 });

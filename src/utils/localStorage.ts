@@ -1,5 +1,9 @@
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
+import type { SubsystemGroup } from '@/types/groups';
+import type { MigrationWarning } from '@/types/migration';
+import { NodeType } from '@/types/nodes';
+import { migrateV1ToV2, type SerializedTopology } from '@/store/schemaMigration';
 
 // ─── Schema Interface ────────────────────────────────────────────
 
@@ -10,6 +14,7 @@ export interface AnalysysFileSchema {
   topology: {
     nodes: SimulationNode[];
     edges: EdgeData[];
+    subsystemGroups?: SubsystemGroup[];
   };
 }
 
@@ -17,20 +22,19 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   data?: AnalysysFileSchema;
+  warnings?: MigrationWarning[];
 }
 
 // ─── Constants ───────────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
-const VALID_NODE_TYPES = [
-  'TRAFFIC_GENERATOR',
-  'LOAD_BALANCER',
-  'APP_SERVER',
-  'CACHE',
-  'DATABASE',
-  'MESSAGE_QUEUE',
-];
+/**
+ * All valid node types — derived from the NodeType enum so that new members
+ * added to the enum are automatically accepted by the validator.
+ * Replaces the former hard-coded 6-element array that rejected new types.
+ */
+const VALID_NODE_TYPES: string[] = Object.values(NodeType);
 
 const VALID_EDGE_PROTOCOLS = ['SYNC', 'ASYNC'];
 
@@ -46,13 +50,46 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
 
   const record = obj as Record<string, unknown>;
 
-  // Schema version
-  if (!('schemaVersion' in record) || typeof record.schemaVersion !== 'number') {
-    errors.push('Missing or invalid required field: schemaVersion');
-  } else if (record.schemaVersion > CURRENT_SCHEMA_VERSION) {
-    errors.push(
-      `Schema version ${record.schemaVersion} is not supported. Maximum: ${CURRENT_SCHEMA_VERSION}`,
-    );
+  // Schema version — R34.9: reject absent, non-integer, or below 1
+  if (
+    !('schemaVersion' in record) ||
+    record.schemaVersion === undefined ||
+    record.schemaVersion === null
+  ) {
+    return {
+      valid: false,
+      errors: [
+        `Import rejected: schemaVersion field is absent (found: ${JSON.stringify(record.schemaVersion ?? null)}).`,
+      ],
+    };
+  }
+
+  if (typeof record.schemaVersion !== 'number' || !Number.isInteger(record.schemaVersion)) {
+    return {
+      valid: false,
+      errors: [
+        `Import rejected: schemaVersion is not an integer (found: ${JSON.stringify(record.schemaVersion)}).`,
+      ],
+    };
+  }
+
+  if (record.schemaVersion < 1) {
+    return {
+      valid: false,
+      errors: [
+        `Import rejected: schemaVersion must be at least 1 (found: ${record.schemaVersion}).`,
+      ],
+    };
+  }
+
+  // R34.6: reject schema version above current
+  if (record.schemaVersion > CURRENT_SCHEMA_VERSION) {
+    return {
+      valid: false,
+      errors: [
+        `Import rejected: schema version ${record.schemaVersion} is not supported. This build supports up to version ${CURRENT_SCHEMA_VERSION}.`,
+      ],
+    };
   }
 
   // Topology
@@ -122,14 +159,18 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
 
 /** Serializes a topology to a JSON string conforming to the .analysys.json schema. */
 export function serialize(
-  topology: { nodes: SimulationNode[]; edges: EdgeData[] },
+  topology: { nodes: SimulationNode[]; edges: EdgeData[]; subsystemGroups?: SubsystemGroup[] },
   name: string,
 ): string {
   const schema: AnalysysFileSchema = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     name,
     createdAt: new Date().toISOString(),
-    topology,
+    topology: {
+      nodes: topology.nodes,
+      edges: topology.edges,
+      subsystemGroups: topology.subsystemGroups ?? [],
+    },
   };
   return JSON.stringify(schema, null, 2);
 }
@@ -150,7 +191,7 @@ export function deserialize(json: string): ValidationResult {
 
   // Apply migrations if needed
   const migrated = migrateSchema(result.data!, result.data!.schemaVersion);
-  return { valid: true, errors: [], data: migrated };
+  return { valid: true, errors: [], data: migrated.data, warnings: migrated.warnings };
 }
 
 // ─── Schema Migration ────────────────────────────────────────────
@@ -159,32 +200,51 @@ export function deserialize(json: string): ValidationResult {
 export function migrateSchema(
   data: AnalysysFileSchema,
   fromVersion: number,
-): AnalysysFileSchema {
-  const current = { ...data };
+): { data: AnalysysFileSchema; warnings: MigrationWarning[] } {
+  let current = { ...data };
+  let allWarnings: MigrationWarning[] = [];
 
-  // Future migrations would go here:
-  // if (fromVersion < 2) { current = migrateV1ToV2(current); }
+  if (fromVersion < 2) {
+    // Build a SerializedTopology from the file schema and migrate to v2
+    const v1Payload: SerializedTopology = {
+      schemaVersion: 1,
+      nodes: current.topology.nodes,
+      edges: current.topology.edges,
+    };
+    const { topology: migrated, warnings } = migrateV1ToV2(v1Payload);
+    current = {
+      ...current,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      topology: {
+        nodes: migrated.nodes,
+        edges: migrated.edges,
+        subsystemGroups: migrated.subsystemGroups,
+      },
+    };
+    allWarnings = warnings;
+  }
 
   // Ensure schema version is current
   current.schemaVersion = CURRENT_SCHEMA_VERSION;
 
-  // Suppress unused parameter lint (will be used when migrations are added)
-  void fromVersion;
-
-  return current;
+  return { data: current, warnings: allWarnings };
 }
 
 // ─── Storage Usage ───────────────────────────────────────────────
 
-/** Returns the total number of bytes stored in localStorage. */
+/**
+ * Returns the total number of UTF-8 bytes stored in localStorage.
+ * Uses TextEncoder for accurate multi-byte measurement (R34.7).
+ */
 export function getLocalStorageUsageBytes(): number {
+  const encoder = new TextEncoder();
   let totalBytes = 0;
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key) {
       const value = localStorage.getItem(key);
       if (value) {
-        totalBytes += key.length + value.length;
+        totalBytes += encoder.encode(key).length + encoder.encode(value).length;
       }
     }
   }
