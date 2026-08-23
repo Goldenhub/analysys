@@ -85,6 +85,14 @@ export class RateLimiterProcessor implements NodeProcessor {
     // No chaos state to revert.
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Rate limiter is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // Fraction of the bucket drained — 1 means the next request is rejected.
     const used = 1 - this.tokens / this.config.bucketCapacity;

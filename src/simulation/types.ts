@@ -236,6 +236,8 @@ export interface NodeRuntimeState {
   terminalCounts: Record<TerminalStatus, number>;
   /** R31.3 — never reset, and the only counter a cumulative Finding may read. */
   cumulativeTerminalCounts: Record<TerminalStatus, number>;
+  /** R39.9 — simulated time until which this node is unreachable, or null if reachable. */
+  unreachableUntilMs: number | null;
 }
 
 // ─── Node Processor Interface ────────────────────────────────────

@@ -274,6 +274,14 @@ export class AuthzServiceProcessor implements NodeProcessor {
   onChaosApplied(): void {}
   onChaosReverted(): void {}
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Authz service is stateless
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   resetWindowCounters(): void {
     this.windowRequestsAdmitted = 0;
     this.windowLookupCallsIssued = 0;

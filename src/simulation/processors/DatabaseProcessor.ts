@@ -133,6 +133,18 @@ export class DatabaseProcessor implements NodeProcessor {
     this.isDown = false;
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // Database holds active connections; the engine manages queuedRequests
+    this.activeConnections = 0;
+    this.isDown = true;
+    return [];
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.activeConnections = 0;
+    this.isDown = false;
+  }
+
   getUtilization(): UtilizationReading {
     const value =
       this.config.connectionPoolSize === 0

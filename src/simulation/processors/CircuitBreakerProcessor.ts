@@ -164,6 +164,14 @@ export class CircuitBreakerProcessor implements NodeProcessor {
     // See onChaosApplied.
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Circuit breaker is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // The reading is the breaker's position in its state machine, not a resource fraction.
     // TODO(task 392): `idle` mirrors the pre-existing `utilization === 0` derivation because

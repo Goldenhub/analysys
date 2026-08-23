@@ -476,6 +476,33 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
   onChaosApplied(): void {}
   onChaosReverted(): void {}
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // Return all request IDs in executing, prefetch, and retryWaiting
+    const held: string[] = [];
+    for (const [reqId] of this.executing) {
+      held.push(reqId);
+    }
+    for (const reqId of this.prefetch) {
+      held.push(reqId);
+    }
+    for (const entry of this.retryWaiting) {
+      held.push(entry.jobId);
+    }
+    // Clear all populations
+    this.executing.clear();
+    this.prefetch = [];
+    this.retryWaiting = [];
+    this.epochMap.clear();
+    return held;
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.executing.clear();
+    this.prefetch = [];
+    this.retryWaiting = [];
+    this.epochMap.clear();
+  }
+
   resetWindowCounters(): void {
     this.windowJobsCompleted = 0;
     this.windowJobsAdmitted = 0;

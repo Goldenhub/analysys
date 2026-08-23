@@ -876,6 +876,7 @@ describe('RULE_REGISTRY', () => {
       'configuration.scheduler-collision',
       'reliability.admission-dominates',
       'capacity.headroom',
+      'spof.reachability',
     ];
     expect(RULE_REGISTRY.map((r) => r.id)).toEqual(expectedIds);
   });

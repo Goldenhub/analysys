@@ -232,6 +232,19 @@ export class MessageQueueProcessor implements NodeProcessor {
     // No-op
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // Return all request IDs in the buffer, then clear it
+    const held = [...this.buffer];
+    this.buffer = [];
+    this.consumerScheduled = false;
+    return held;
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.buffer = [];
+    this.consumerScheduled = false;
+  }
+
   getUtilization(): UtilizationReading {
     const value =
       this.config.bufferCapacity === 0 ? 0 : this.buffer.length / this.config.bufferCapacity;

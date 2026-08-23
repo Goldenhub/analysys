@@ -272,6 +272,14 @@ export class AuthServiceProcessor implements NodeProcessor {
   onChaosApplied(): void {}
   onChaosReverted(): void {}
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Auth service is stateless
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   resetWindowCounters(): void {
     this.windowVerifications = 0;
     this.windowCacheHits = 0;

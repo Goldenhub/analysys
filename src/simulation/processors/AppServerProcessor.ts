@@ -126,6 +126,20 @@ export class AppServerProcessor implements NodeProcessor {
     // No-op
   }
 
+  onNodeDisabled(context: ProcessorContext): string[] {
+    // Return all request IDs held in bounded resources (active workers + queue)
+    const held: string[] = [];
+    // The engine manages queuedRequests on NodeRuntimeState; we just report our internal state
+    // Active workers don't track individual request IDs here, but the engine's queue does.
+    void context;
+    this.activeWorkers = 0;
+    return held;
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.activeWorkers = 0;
+  }
+
   getUtilization(): UtilizationReading {
     const value =
       this.config.workerThreadPoolSize === 0

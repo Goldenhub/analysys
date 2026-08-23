@@ -76,6 +76,14 @@ export class ApiGatewayProcessor implements NodeProcessor {
     // No chaos state to revert.
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // API Gateway is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // Not capacity-bound; report the observed rejection rate as a stress proxy.
     const total = this.admittedInWindow + this.rejectedInWindow;

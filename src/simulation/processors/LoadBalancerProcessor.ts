@@ -91,6 +91,14 @@ export class LoadBalancerProcessor implements NodeProcessor {
     this.targetHealthy.clear();
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // LB is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // The LB has no capacity constraint of its own; report the fraction of
     // known targets that are unhealthy as a stress proxy.

@@ -34,6 +34,14 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
     this.spikeActive = false;
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Traffic generator is a source node
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // Generators don't have utilization. The Activity view already short-circuits source
     // nodes with its own "not capacity-bound" note, so this stays the numeric variant to

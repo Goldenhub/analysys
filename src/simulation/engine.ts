@@ -162,7 +162,99 @@ export class SimulationEngine {
 
     const logEntries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }> = [];
 
-    // Apply chaos to relevant nodes
+    // ─── Targeted chaos: DISABLE_NODE and REDRIVE_DLQ ──────────
+    if ((chaosType === 'DISABLE_NODE' || chaosType === 'REDRIVE_DLQ') && targetNodeId) {
+      const state = this.nodeStates.get(targetNodeId);
+      const node = this.nodeConfigs.get(targetNodeId);
+      if (!state || !node) return;
+
+      if (chaosType === 'DISABLE_NODE') {
+        // R39.10: Reject re-applying to an already-unreachable node
+        if (state.unreachableUntilMs !== null) {
+          const remaining = state.unreachableUntilMs - this.virtualClockMs;
+          logEntries.push({
+            id: this.eventCounter,
+            timestamp: this.virtualClockMs,
+            type: 'CHAOS_REJECTED',
+            nodeId: targetNodeId,
+            message: `DISABLE_NODE rejected for ${node.label}: already unreachable, ${Math.ceil(remaining)}ms remaining`,
+          });
+          if (logEntries.length > 0) this.onEventLog?.(logEntries);
+          return;
+        }
+
+        // Mark node as unreachable
+        state.unreachableUntilMs = this.virtualClockMs + durationMs;
+
+        // R39.9: Terminate all held requests via onNodeDisabled
+        const isDlq = node.nodeType === NodeType.DeadLetterQueue;
+        if (!isDlq && state.processor.onNodeDisabled) {
+          const heldRequestIds = state.processor.onNodeDisabled(this.getProcessorContext());
+          // Terminate each held request as Timeout
+          for (const reqId of heldRequestIds) {
+            const req = this.requests.get(reqId);
+            if (req && req.status === RequestStatus.InFlight) {
+              this.terminateRequest(req, RequestStatus.Timeout, targetNodeId, this.virtualClockMs);
+            }
+          }
+        }
+
+        // Also terminate queued requests held in state.queuedRequests
+        if (!isDlq) {
+          for (const reqId of state.queuedRequests) {
+            const req = this.requests.get(reqId);
+            if (req && req.status === RequestStatus.InFlight) {
+              this.terminateRequest(req, RequestStatus.Timeout, targetNodeId, this.virtualClockMs);
+            }
+          }
+          state.queuedRequests = [];
+          state.activeConnections = 0;
+          state.bufferedMessages = 0;
+        }
+
+        logEntries.push({
+          id: this.eventCounter,
+          timestamp: this.virtualClockMs,
+          type: 'CHAOS_START',
+          nodeId: targetNodeId,
+          message: `DISABLE_NODE applied to ${node.label} for ${durationMs}ms`,
+        });
+
+        // Emit NODE_STATE_CHANGE
+        this.emitNodeStateChange(targetNodeId, true);
+
+        // Schedule restoration
+        this.scheduleEvent({
+          type: SimEventType.NodeRestored,
+          timestamp: this.virtualClockMs + durationMs,
+          nodeId: targetNodeId,
+          requestId: '',
+          payload: { chaosType: 'DISABLE_NODE' },
+        });
+      } else {
+        // REDRIVE_DLQ — same as existing DLQ_REDRIVE logic
+        state.processor.onChaosApplied(chaosType, payload.params);
+        logEntries.push({
+          id: this.eventCounter,
+          timestamp: this.virtualClockMs,
+          type: 'CHAOS_START',
+          nodeId: targetNodeId,
+          message: `REDRIVE_DLQ applied to ${node.label}`,
+        });
+        this.scheduleEvent({
+          type: SimEventType.DlqRedrive,
+          timestamp: this.virtualClockMs,
+          nodeId: targetNodeId,
+          requestId: '',
+          payload: { manual: true },
+        });
+      }
+
+      if (logEntries.length > 0) this.onEventLog?.(logEntries);
+      return;
+    }
+
+    // Apply chaos to relevant nodes (existing type-matching loop)
     for (const [nodeId, state] of this.nodeStates) {
       const node = this.nodeConfigs.get(nodeId);
       if (!node) continue;
@@ -312,6 +404,9 @@ export class SimulationEngine {
       case SimEventType.SchedulerTrigger:
         this.handleSchedulerTrigger(event);
         break;
+      case SimEventType.NodeRestored:
+        this.handleNodeRestored(event);
+        break;
       default:
         break;
     }
@@ -373,6 +468,16 @@ export class SimulationEngine {
   private handleRequestRoute(event: SimEvent): void {
     const request = this.requests.get(event.requestId);
     if (!request || request.status !== RequestStatus.InFlight) return;
+
+    // R39.9: If this node is unreachable, terminate the arriving request Timeout
+    const routeState = this.nodeStates.get(event.nodeId);
+    if (routeState && routeState.unreachableUntilMs !== null && routeState.unreachableUntilMs > event.timestamp) {
+      this.terminateRequest(request, RequestStatus.Timeout, event.nodeId, event.timestamp);
+      if (request.parentRequestId) {
+        this.scheduleSubRequestSettled(request, event.timestamp);
+      }
+      return;
+    }
 
     request.hopCount++;
     request.path.push(event.nodeId);
@@ -1070,6 +1175,48 @@ export class SimulationEngine {
     }
   }
 
+  private handleNodeRestored(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (!state) return;
+
+    // Clear the unreachable flag
+    state.unreachableUntilMs = null;
+
+    // Restore bounded resources at 0 occupancy
+    state.activeConnections = 0;
+    state.queuedRequests = [];
+    state.bufferedMessages = 0;
+
+    // Invoke processor's onNodeRestored
+    if (state.processor.onNodeRestored) {
+      state.processor.onNodeRestored(this.getProcessorContext());
+    }
+
+    const nodeLabel = this.nodeConfigs.get(event.nodeId)?.label ?? event.nodeId;
+    this.pendingLogEntries.push({
+      id: this.eventCounter,
+      timestamp: event.timestamp,
+      type: 'NODE_RESTORED',
+      nodeId: event.nodeId,
+      message: `Node ${nodeLabel} restored at ${event.timestamp}ms`,
+    });
+
+    // Emit NODE_STATE_CHANGE
+    this.emitNodeStateChange(event.nodeId, false);
+  }
+
+  private emitNodeStateChange(nodeId: string, unreachable: boolean): void {
+    this.onEventLog?.([{
+      id: this.eventCounter,
+      timestamp: this.virtualClockMs,
+      type: 'NODE_STATE_CHANGE',
+      nodeId,
+      message: unreachable
+        ? `Node became unreachable`
+        : `Node restored to service`,
+    }]);
+  }
+
   private handleConsumerPoll(event: SimEvent): void {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
@@ -1109,6 +1256,7 @@ export class SimulationEngine {
         latencySamples: [],
         terminalCounts: emptyTerminalCounts(),
         cumulativeTerminalCounts: emptyTerminalCounts(),
+        unreachableUntilMs: null,
       });
     }
   }

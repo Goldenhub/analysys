@@ -870,29 +870,29 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 23.1 Reachability and the SPOF Rule (`src/analysis/reachability.ts`, `rules/spof.ts`)
 
-- [~] 506. Implement the reachability analysis over the directed graph alone, ignoring edge protocol, weight, routing policy, and Subsystem_Group state, treating every out-degree-0 node as terminal irrespective of type and every Traffic_Generator and Scheduler as a source, and producing results whether or not a run has completed.
-- [~] 507. Compute each source's baseline reachable terminal set, then for each candidate node re-run a BFS in the graph with that node and every incident edge removed, designating a SPOF where at least one source goes from 1 or more reachable terminals to 0 — a per-source test, stricter than global disconnection.
-- [~] 508. Yield every 8 candidates so main-thread occupancy stays at or below 33 consecutive milliseconds; the roughly 90k edge visits at the 80-node envelope need no bitset or dominator-tree optimisation.
-- [~] 509. Implement `spofRule` emitting one Finding per designated node naming every source whose reachable terminal set becomes empty, with fan-in count, losing-source count, and topology source count as evidence.
-- [~] 510. Compute fan-in as the count of distinct nodes holding an edge into the subject, and set severity Critical at 3 or more and Warning at 2 or fewer.
-- [~] 511. Populate the recommended action as a `StructuralAction` naming the node, its type, one of the two structural changes, and the node and edge counts it adds, with a tradeoff naming those added nodes against the 200-node canvas limit and the metric the change degrades.
-- [~] 512. Read Blast_Radius from `terminatedThroughNodeCount / systemTerminatedCount × 100` as the Finding's primary evidence, and where no completed run is retained omit the entry entirely, state Blast_Radius is not applicable because no run has completed, promote the losing-source count to primary, and set confidence Low.
+- [x] 506. Implement the reachability analysis over the directed graph alone, ignoring edge protocol, weight, routing policy, and Subsystem_Group state, treating every out-degree-0 node as terminal irrespective of type and every Traffic_Generator and Scheduler as a source, and producing results whether or not a run has completed.
+- [x] 507. Compute each source's baseline reachable terminal set, then for each candidate node re-run a BFS in the graph with that node and every incident edge removed, designating a SPOF where at least one source goes from 1 or more reachable terminals to 0 — a per-source test, stricter than global disconnection.
+- [x] 508. Yield every 8 candidates so main-thread occupancy stays at or below 33 consecutive milliseconds; the roughly 90k edge visits at the 80-node envelope need no bitset or dominator-tree optimisation.
+- [x] 509. Implement `spofRule` emitting one Finding per designated node naming every source whose reachable terminal set becomes empty, with fan-in count, losing-source count, and topology source count as evidence.
+- [x] 510. Compute fan-in as the count of distinct nodes holding an edge into the subject, and set severity Critical at 3 or more and Warning at 2 or fewer.
+- [x] 511. Populate the recommended action as a `StructuralAction` naming the node, its type, one of the two structural changes, and the node and edge counts it adds, with a tradeoff naming those added nodes against the 200-node canvas limit and the metric the change degrades.
+- [x] 512. Read Blast_Radius from `terminatedThroughNodeCount / systemTerminatedCount × 100` as the Finding's primary evidence, and where no completed run is retained omit the entry entirely, state Blast_Radius is not applicable because no run has completed, promote the losing-source count to primary, and set confidence Low.
 
 ### 23.2 DISABLE_NODE and REDRIVE_DLQ Chaos
 
-- [~] 513. Extend `ChaosEventPayload.chaosType` with `DISABLE_NODE` and `REDRIVE_DLQ`, and add a targeted branch to `injectChaos` ahead of the existing node-type-matching loop, since both are addressed to a single node identifier.
-- [~] 514. Add `unreachableUntilMs: number | null` to `NodeRuntimeState` and terminate each arriving request `Timeout` against that node while it is set, forwarding nowhere, before delegating to the processor.
-- [~] 515. Implement `onNodeDisabled` on every processor holding occupancy, returning the request identifiers held in bounded resources, queues, prefetch buffers, and transfer queues for the engine to terminate through the single terminal-assignment helper, then hold every bounded resource at 0 occupancy.
-- [~] 516. Exempt a Dead_Letter_Queue: retain every held message without termination and perform no Redrive while unreachable.
-- [~] 517. Reject re-applying the control to an already-unreachable node, leaving its duration and scheduled restoration unchanged, holding no deferred failure, and naming the node's label and remaining duration.
-- [~] 518. Implement `onNodeRestored` restoring reachability with every bounded resource at 0 occupancy, log a recovery event naming the label and simulated time, and emit `NODE_STATE_CHANGE` on both transitions.
-- [~] 519. Add the failure-simulation control to `ChaosPanel.tsx` accepting any of the fifteen node types and a duration of 100 to 600,000 simulated ms while Running without a pause, and the Manual DLQ redrive control per Dead_Letter_Queue node.
+- [x] 513. Extend `ChaosEventPayload.chaosType` with `DISABLE_NODE` and `REDRIVE_DLQ`, and add a targeted branch to `injectChaos` ahead of the existing node-type-matching loop, since both are addressed to a single node identifier.
+- [x] 514. Add `unreachableUntilMs: number | null` to `NodeRuntimeState` and terminate each arriving request `Timeout` against that node while it is set, forwarding nowhere, before delegating to the processor.
+- [x] 515. Implement `onNodeDisabled` on every processor holding occupancy, returning the request identifiers held in bounded resources, queues, prefetch buffers, and transfer queues for the engine to terminate through the single terminal-assignment helper, then hold every bounded resource at 0 occupancy.
+- [x] 516. Exempt a Dead_Letter_Queue: retain every held message without termination and perform no Redrive while unreachable.
+- [x] 517. Reject re-applying the control to an already-unreachable node, leaving its duration and scheduled restoration unchanged, holding no deferred failure, and naming the node's label and remaining duration.
+- [x] 518. Implement `onNodeRestored` restoring reachability with every bounded resource at 0 occupancy, log a recovery event naming the label and simulated time, and emit `NODE_STATE_CHANGE` on both transitions.
+- [x] 519. Add the failure-simulation control to `ChaosPanel.tsx` accepting any of the fifteen node types and a duration of 100 to 600,000 simulated ms while Running without a pause, and the Manual DLQ redrive control per Dead_Letter_Queue node.
 
 ### 23.3 Failure Impact Reporting
 
-- [~] 520. Compare the pre-failure window — the most recent window completing at or before the failure instant — against every window lying **wholly** within the failure interval, excluding partial overlaps at both ends.
-- [~] 521. Report the change in success rate and in end-to-end p99 as a signed absolute difference and a signed percentage of the pre-failure value, as not applicable where the pre-failure value is 0, and both as not applicable stating the interval contained no complete window where none lies wholly inside — the common case for a failure shorter than `metricsIntervalMs`.
-- [~] 522. State in the panel that every source retains a path to a reachable terminal under any single removal where no node is designated, listing every node excluded as a source and every source reaching 0 terminals before any removal.
+- [x] 520. Compare the pre-failure window — the most recent window completing at or before the failure instant — against every window lying **wholly** within the failure interval, excluding partial overlaps at both ends.
+- [x] 521. Report the change in success rate and in end-to-end p99 as a signed absolute difference and a signed percentage of the pre-failure value, as not applicable where the pre-failure value is 0, and both as not applicable stating the interval contained no complete window where none lies wholly inside — the common case for a failure shorter than `metricsIntervalMs`.
+- [x] 522. State in the panel that every source retains a path to a reachable terminal under any single removal where no node is designated, listing every node excluded as a source and every source reaching 0 terminals before any removal.
 
 ---
 

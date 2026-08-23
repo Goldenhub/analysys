@@ -179,6 +179,20 @@ export class DeadLetterQueueProcessor implements NodeProcessor {
   onChaosReverted(): void {}
 
   /**
+   * R39.9 — DLQ is exempt from DISABLE_NODE: retains every held message
+   * without termination and performs no Redrive while unreachable.
+   * Returns empty array since nothing is terminated.
+   */
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // DLQ exempt: retain all messages, return nothing to terminate
+    return [];
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op: DLQ retains messages through the failure period
+  }
+
+  /**
    * Perform the actual redrive: route up to redriveBatchSize retained messages
    * whose redriveAttempts < maxRedriveAttempts in ascending retention start order.
    */

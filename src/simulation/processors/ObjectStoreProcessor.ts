@@ -306,6 +306,28 @@ export class ObjectStoreProcessor implements NodeProcessor {
   onChaosApplied(): void {}
   onChaosReverted(): void {}
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    // Return all request IDs in active transfers and transfer queue
+    const held: string[] = [];
+    for (const [reqId] of this.active) {
+      held.push(reqId);
+    }
+    for (const reqId of this.transferQueue) {
+      held.push(reqId);
+    }
+    this.active.clear();
+    this.transferQueue = [];
+    this.queueEntryTimes.clear();
+    this.currentShareMBps = 0;
+    return held;
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    this.active.clear();
+    this.transferQueue = [];
+    this.queueEntryTimes.clear();
+    this.currentShareMBps = 0;
+  }
   resetWindowCounters(): void {
     this.windowTransferredKB = 0;
     this.windowTransferCount = 0;

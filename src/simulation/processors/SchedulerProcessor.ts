@@ -269,6 +269,14 @@ export class SchedulerProcessor implements NodeProcessor {
   onChaosApplied(): void {}
   onChaosReverted(): void {}
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Scheduler is a source node, not typically disabled
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   resetWindowCounters(): void {
     this.windowTriggered = 0;
     this.windowSkipped = 0;

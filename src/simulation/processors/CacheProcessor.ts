@@ -98,6 +98,14 @@ export class CacheProcessor implements NodeProcessor {
     }
   }
 
+  onNodeDisabled(_context: ProcessorContext): string[] {
+    return []; // Cache is stateless pass-through
+  }
+
+  onNodeRestored(_context: ProcessorContext): void {
+    // No-op
+  }
+
   getUtilization(): UtilizationReading {
     // Cache utilization isn't directly capacity-bound in this model.
     // Report the observed miss rate as a proxy (more misses = more stressed).

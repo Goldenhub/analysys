@@ -42,6 +42,7 @@ import { dlqGrowthRule, admissionDominatesRule } from './reliability';
 import { workerPoolConcurrencyRule } from './capacity';
 import { schedulerCollisionRule } from './configuration';
 import { headroomRule } from './headroom';
+import { spofRule } from './spof';
 
 // ─── Rule Registry (Task 487) ────────────────────────────────────
 
@@ -65,6 +66,7 @@ export const RULE_REGISTRY: readonly AnalysisRule[] = [
   schedulerCollisionRule,
   admissionDominatesRule,
   headroomRule,
+  spofRule,
 ];
 
 // ─── Re-exports ──────────────────────────────────────────────────
@@ -82,3 +84,4 @@ export { workerPoolConcurrencyRule } from './capacity';
 export { sweepKneeRule } from './capacity';
 export { schedulerCollisionRule } from './configuration';
 export { headroomRule } from './headroom';
+export { spofRule } from './spof';
