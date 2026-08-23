@@ -137,6 +137,14 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
           Per-Node Breakdown
         </h3>
+        {nodes.length === 0 ? (
+          <div className="rounded-lg border border-gray-700 bg-gray-800/40 px-4 py-6 text-center">
+            <p className="text-sm text-gray-400">Waiting for node metrics...</p>
+            <p className="mt-1 text-[10px] text-gray-500">
+              Per-node data will appear once the simulation has processed enough events.
+            </p>
+          </div>
+        ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-700">
           <table className="w-full text-left text-[11px]">
             <thead>
@@ -182,6 +190,7 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
             </tbody>
           </table>
         </div>
+        )}
         <p className="mt-2 text-[10px] text-gray-500">
           Throughput = requests processed per second at this node. Utilization = % of node capacity
           in use. Queue = requests waiting to be processed.

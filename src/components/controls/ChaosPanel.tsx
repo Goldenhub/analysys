@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSimulationStore, useTopologyStore } from '@/store';
 import type { ActiveChaosEffect, ChaosMetricsSnapshot } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -80,11 +80,37 @@ export function ChaosPanel() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
 
+  const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [selectedDbNodeId, setSelectedDbNodeId] = useState<string>('');
   const [impactSummaries, setImpactSummaries] = useState<ChaosImpactSummary[]>([]);
   const [selectedDisableNodeId, setSelectedDisableNodeId] = useState<string>('');
   const [disableDurationMs, setDisableDurationMs] = useState<number>(10_000);
   const [selectedDlqNodeId, setSelectedDlqNodeId] = useState<string>('');
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // ─── Derived ─────────────────────────────────────────────────
 
@@ -348,18 +374,42 @@ export function ChaosPanel() {
   // ─── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Section Header */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs">🔬</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-          Chaos Engineering
-        </span>
-        <span className="text-[10px] text-gray-500">— Inject failures to test resilience</span>
-      </div>
+    <div className="relative" ref={panelRef}>
+      {/* Toggle Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 ${
+          activeChaosEffects.length > 0 ? 'animate-pulse' : ''
+        }`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+      >
+        <span>⚡</span>
+        <span>Chaos</span>
+        {activeChaosEffects.length > 0 && (
+          <span className="ml-1 rounded-full bg-amber-600 px-1.5 text-[10px] text-white">
+            {activeChaosEffects.length}
+          </span>
+        )}
+      </Button>
+
+      {/* Floating Panel */}
+      {isOpen && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[480px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-xl">
+          <div className="flex flex-col gap-2">
+            {/* Section Header */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs">🔬</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Chaos Engineering
+              </span>
+              <span className="text-[10px] text-gray-500">— Inject failures to test resilience</span>
+            </div>
 
       {/* Chaos Buttons with Descriptions */}
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         {/* Flush Cache */}
         <div className="flex flex-col items-center gap-0.5">
           <Button
@@ -429,7 +479,7 @@ export function ChaosPanel() {
       </div>
 
       {/* Node Failure (DISABLE_NODE) */}
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <select
@@ -593,6 +643,9 @@ export function ChaosPanel() {
               Single Point{spofStatus.spofs.length > 1 ? 's' : ''} of Failure.
             </span>
           )}
+        </div>
+      )}
+          </div>
         </div>
       )}
     </div>

@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { NodeType } from '@/types/nodes';
 import { useTopologyStore } from '@/store/topologyStore';
 import type { AnalysysNode } from '@/types/nodes';
 import { createDefaultNodeData } from '@/types/nodeDefaults';
+import { CONNECTION_RULES } from '@/validation/edgeValidation';
 
 // ─── Palette Item Definition ─────────────────────────────────────
 
@@ -284,6 +285,45 @@ function DeadLetterQueueIcon() {
   );
 }
 
+// ─── Node Descriptions ───────────────────────────────────────────
+
+const NODE_DESCRIPTIONS: Record<NodeType, string> = {
+  [NodeType.TrafficGenerator]: 'Generates incoming requests at a configurable rate and distribution. Acts as the entry point for simulated traffic.',
+  [NodeType.Scheduler]: 'Emits requests on a periodic schedule with configurable overlap policies. Useful for batch job patterns.',
+  [NodeType.ApiGateway]: 'Routes, authenticates, and rate-limits incoming requests before forwarding to internal services.',
+  [NodeType.RateLimiter]: 'Token-bucket rate limiter that admits requests up to a sustained rate and burst capacity.',
+  [NodeType.CircuitBreaker]: 'Monitors downstream error rates and trips open to prevent cascading failures.',
+  [NodeType.AuthService]: 'Authenticates requests by verifying credentials. Adds latency for token verification.',
+  [NodeType.AuthzService]: 'Authorizes requests by checking permissions and policies against cached rules.',
+  [NodeType.LoadBalancer]: 'Distributes requests across multiple downstream targets using round-robin or least-connections.',
+  [NodeType.AppServer]: 'Processes requests using a thread pool with configurable concurrency and processing latency.',
+  [NodeType.WorkerPool]: 'Background task processor that pulls work from queues and processes asynchronously.',
+  [NodeType.Cache]: 'In-memory cache with configurable hit ratio and eviction policy. Cache hits bypass the database.',
+  [NodeType.Database]: 'Persistent data store with connection pooling. Terminal node (no outgoing connections).',
+  [NodeType.ObjectStore]: 'Blob/object storage (e.g., S3). Terminal node (no outgoing connections).',
+  [NodeType.MessageQueue]: 'Asynchronous message buffer with backpressure. Decouples producers from consumers.',
+  [NodeType.DeadLetterQueue]: 'Stores failed/undeliverable messages for later inspection or reprocessing.',
+};
+
+/** Friendly label for a NodeType enum value */
+function nodeTypeLabel(nt: NodeType): string {
+  return nt
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Derive which node types can connect TO a given target */
+function getAllowedInputs(target: NodeType): NodeType[] {
+  const inputs: NodeType[] = [];
+  for (const [sourceType, rules] of Object.entries(CONNECTION_RULES)) {
+    if (rules.allowedTargets.includes(target)) {
+      inputs.push(sourceType as NodeType);
+    }
+  }
+  return inputs;
+}
+
 // ─── Palette Categories (R29.1 five groups) ──────────────────────
 
 const PALETTE_CATEGORIES: PaletteCategory[] = [
@@ -345,6 +385,11 @@ interface PaletteItemComponentProps {
 
 function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   const addNode = useTopologyStore((s) => s.addNode);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const rules = CONNECTION_RULES[item.nodeType];
+  const allowedOutputs = rules.allowedTargets;
+  const allowedInputs = getAllowedInputs(item.nodeType);
 
   const onDragStart = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -377,17 +422,63 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   );
 
   return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onKeyDown={onKeyDown}
-      tabIndex={0}
-      role="button"
-      aria-label={`Add ${item.label} node. Drag to canvas or press Enter to place.`}
-      className="flex cursor-grab items-center gap-2 rounded-md border border-gray-700/50 bg-gray-800/60 px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:ring-offset-gray-900 active:cursor-grabbing"
-    >
-      <span className="flex-shrink-0 text-gray-400">{item.icon}</span>
-      <span className="truncate">{item.label}</span>
+    <div className="group relative flex items-center gap-1">
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onKeyDown={onKeyDown}
+        tabIndex={0}
+        role="button"
+        aria-label={`Add ${item.label} node. Drag to canvas or press Enter to place.`}
+        className="flex flex-1 cursor-grab items-center gap-2 rounded-md border border-gray-700/50 bg-gray-800/60 px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:ring-offset-gray-900 active:cursor-grabbing"
+      >
+        <span className="flex-shrink-0 text-gray-400">{item.icon}</span>
+        <span className="truncate">{item.label}</span>
+      </div>
+      {/* Info button */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setShowTooltip((prev) => !prev); }}
+        onBlur={() => setShowTooltip(false)}
+        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-gray-500 hover:bg-gray-700 hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        aria-label="Show node connection details"
+      >
+        ?
+      </button>
+      {/* Tooltip popover */}
+      {showTooltip && (
+        <div className="absolute left-full top-0 z-50 ml-2 w-64 rounded-lg border border-gray-700 bg-gray-900 p-3 text-[11px] shadow-xl">
+          <p className="mb-2 text-gray-300">{NODE_DESCRIPTIONS[item.nodeType]}</p>
+          <div className="space-y-1.5">
+            {allowedOutputs.length > 0 ? (
+              <div>
+                <span className="font-semibold text-gray-400">Connects to: </span>
+                <span className="text-gray-300">
+                  {allowedOutputs.map(nodeTypeLabel).join(', ')}
+                </span>
+              </div>
+            ) : (
+              <div>
+                <span className="font-semibold text-gray-400">Connects to: </span>
+                <span className="text-gray-500 italic">None (terminal node)</span>
+              </div>
+            )}
+            {allowedInputs.length > 0 ? (
+              <div>
+                <span className="font-semibold text-gray-400">Receives from: </span>
+                <span className="text-gray-300">
+                  {allowedInputs.map(nodeTypeLabel).join(', ')}
+                </span>
+              </div>
+            ) : (
+              <div>
+                <span className="font-semibold text-gray-400">Receives from: </span>
+                <span className="text-gray-500 italic">None (source node)</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

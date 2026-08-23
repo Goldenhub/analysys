@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { SimState } from '@/simulation/types';
 import type { MetricsBatchPayload } from '@/types/metrics';
 import type { MainToWorkerMessage, WorkerToMainMessage, SimEventLogEntry } from '@/types/messages';
+import { useAnalysisStore } from '@/store/analysisStore';
+import { useTopologyStore } from '@/store/topologyStore';
+import type { SimulationNode } from '@/types/nodes';
+import type { EdgeData } from '@/types/edges';
 
 // ─── Chaos Effect ────────────────────────────────────────────────
 
@@ -144,6 +148,21 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       switch (msg.type) {
         case 'METRICS_BATCH':
           useSimulationStore.getState().updateMetrics(msg.payload);
+          {
+            const simState = useSimulationStore.getState().simState;
+            const eventLog = useSimulationStore.getState().eventLog;
+            const topoState = useTopologyStore.getState();
+            const topology = {
+              nodes: topoState.nodes.map((n) => n.data as SimulationNode),
+              edges: topoState.edges.map((e) => e.data as EdgeData),
+            };
+            useAnalysisStore.getState().onMetricsBatch(
+              msg.payload,
+              topology,
+              eventLog,
+              simState,
+            );
+          }
           break;
         case 'NODE_STATUS':
           useSimulationStore.getState().setNodeStatus(msg.payload.nodeId, msg.payload.status);
@@ -153,6 +172,15 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
           break;
         case 'SIM_COMPLETE':
           useSimulationStore.getState().setSimState(SimState.Complete);
+          {
+            const eventLog = useSimulationStore.getState().eventLog;
+            const topoState = useTopologyStore.getState();
+            const topology = {
+              nodes: topoState.nodes.map((n) => n.data as SimulationNode),
+              edges: topoState.edges.map((e) => e.data as EdgeData),
+            };
+            useAnalysisStore.getState().onSimComplete(topology, eventLog);
+          }
           break;
         case 'ERROR':
           console.error('[SimWorker]', msg.payload.message, msg.payload.stack);
