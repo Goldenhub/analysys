@@ -977,43 +977,43 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 27.1 Test Infrastructure
 
-- [~] 567. Add `fast-check` as a dev dependency at a pinned version — it is not currently in `package.json`.
-- [~] 568. Implement `arbTopology()` building a valid graph over the fifteen types **by construction** rather than by filtering: pick a source, then extend only along pairs permitted by `CONNECTION_RULES` and `PROTOCOL_OVERRIDES`, parameterised to force Fan_Out nodes at varying depth, a Worker_Pool with a Dead_Letter_Queue, and several Traffic_Generators.
-- [~] 569. Implement `arbConfig(nodeType)` drawing each parameter across its Requirement 23–28 range including both bounds, with explicit weight on the degenerate values the requirements call out (hit ratio 0.0 and 1.0, `maxRetries` 0, `queueDepth` 0, jitter above interval) so those edge cases need no separate example test.
-- [~] 570. Implement `arbSubsystemGroups(nodes)` producing a random partition of a node subset into 0 to 20 groups of 2 to 50 members, and share one engine test fixture that sets `disablePacing: true` so no test builds its own config object.
+- [x] 567. Add `fast-check` as a dev dependency at a pinned version — it is not currently in `package.json`.
+- [x] 568. Implement `arbTopology()` building a valid graph over the fifteen types **by construction** rather than by filtering: pick a source, then extend only along pairs permitted by `CONNECTION_RULES` and `PROTOCOL_OVERRIDES`, parameterised to force Fan_Out nodes at varying depth, a Worker_Pool with a Dead_Letter_Queue, and several Traffic_Generators.
+- [x] 569. Implement `arbConfig(nodeType)` drawing each parameter across its Requirement 23–28 range including both bounds, with explicit weight on the degenerate values the requirements call out (hit ratio 0.0 and 1.0, `maxRetries` 0, `queueDepth` 0, jitter above interval) so those edge cases need no separate example test.
+- [x] 570. Implement `arbSubsystemGroups(nodes)` producing a random partition of a node subset into 0 to 20 groups of 2 to 50 members, and share one engine test fixture that sets `disablePacing: true` so no test builds its own config object.
 
 ### 27.2 Property Tests (one per property, `{ numRuns: 100 }` minimum)
 
-- [~] 571. Property 7 (CP-1) analysis determinism: two runs at one seed produce Finding sets of equal size comparing equal field-for-field after `round6` and presenting in the same display order.
-- [~] 572. Property 8 (CP-2) Analysis_Report round trip through `report.ts` export and import, in memory with no simulation.
-- [~] 573. Property 9 (CP-3) topology serialization round trip at schema version 2 across new node types, routing policies, edge weights, and Subsystem_Groups.
-- [~] 574. Property 10 (CP-4) schema v1 behavioural equivalence: final metrics equal before and after migration at the same seed.
-- [~] 575. Property 11 (CP-5) terminal status partition, asserted at **every** metrics snapshot of a generated run rather than only at the end.
-- [~] 576. Property 12 (CP-6) grouping invariance: one run per generated group set over the same topology and seed, asserting metric equality.
-- [~] 577. Property 13 (CP-7) resource conservation for the new types, asserted at every metrics snapshot.
-- [~] 578. Property 14 (CP-8) retry budget bound: total attempts at most `maxRetries + 1`, with the Job terminating `Retry_Exhausted` or arriving at a Dead_Letter_Queue.
-- [~] 579. Property 15 (CP-9) weight normalisation idempotence and unit sum — a pure-function test, no engine.
-- [~] 580. Property 16 (CP-10) fan-out latency is the maximum, over generated branch latencies mixing Sync and Async edges.
-- [~] 581. Property 17 (CP-11) evidence completeness over Finding sets built through `FindingBuilder` and over the Findings of every engine-backed property run.
-- [~] 582. Property 18 (CP-12) sweep offered loads strictly increasing, against `CapacitySweepController` with a stubbed Worker plus a direct test of the pure RPS split.
-- [~] 583. Property 19 (CP-13) SPOF soundness, checked against an independent brute-force reachability oracle so the naive implementation validates the sliced one.
-- [~] 584. Property 20 (CP-14) comparison antisymmetry over two generated `BaselineRun` records compared in both orders.
-- [~] 585. Property 21 (CP-15) Scheduler emission count under the Allow policy — a pure-function test, no engine.
-- [~] 586. Property 22 (CP-16) Object_Store bandwidth bound and share sum, asserted at every metrics snapshot.
-- [~] 587. Property 23 (CP-17) fan-out depth bound of 0 to 4 with the depth-4 single-edge forward, asserted at every metrics snapshot.
-- [~] 588. Property 24 (CP-18) Round_Robin selection determinism including the cycle order, the reset position, and cursor survival across a pause and resume.
-- [~] 589. Property 25 (CP-19) Scheduler schedule holds no drift: scheduled times independent of jitter, skips, and deferrals, with non-decreasing fire times.
-- [~] 590. Property 26 (CP-20) Subsystem_Group membership is a partition after every store mutation and after import.
-- [~] 591. Property 27 (CP-21) Finding identifier invariance across label edits, recomputations, and repeated runs, with at most one Finding per identifier per result.
+- [x] 571. Property 7 (CP-1) analysis determinism: two runs at one seed produce Finding sets of equal size comparing equal field-for-field after `round6` and presenting in the same display order.
+- [x] 572. Property 8 (CP-2) Analysis_Report round trip through `report.ts` export and import, in memory with no simulation.
+- [x] 573. Property 9 (CP-3) topology serialization round trip at schema version 2 across new node types, routing policies, edge weights, and Subsystem_Groups.
+- [x] 574. Property 10 (CP-4) schema v1 behavioural equivalence: final metrics equal before and after migration at the same seed.
+- [x] 575. Property 11 (CP-5) terminal status partition, asserted at **every** metrics snapshot of a generated run rather than only at the end.
+- [x] 576. Property 12 (CP-6) grouping invariance: one run per generated group set over the same topology and seed, asserting metric equality.
+- [x] 577. Property 13 (CP-7) resource conservation for the new types, asserted at every metrics snapshot.
+- [x] 578. Property 14 (CP-8) retry budget bound: total attempts at most `maxRetries + 1`, with the Job terminating `Retry_Exhausted` or arriving at a Dead_Letter_Queue.
+- [x] 579. Property 15 (CP-9) weight normalisation idempotence and unit sum — a pure-function test, no engine.
+- [x] 580. Property 16 (CP-10) fan-out latency is the maximum, over generated branch latencies mixing Sync and Async edges.
+- [x] 581. Property 17 (CP-11) evidence completeness over Finding sets built through `FindingBuilder` and over the Findings of every engine-backed property run.
+- [x] 582. Property 18 (CP-12) sweep offered loads strictly increasing, against `CapacitySweepController` with a stubbed Worker plus a direct test of the pure RPS split.
+- [x] 583. Property 19 (CP-13) SPOF soundness, checked against an independent brute-force reachability oracle so the naive implementation validates the sliced one.
+- [x] 584. Property 20 (CP-14) comparison antisymmetry over two generated `BaselineRun` records compared in both orders.
+- [x] 585. Property 21 (CP-15) Scheduler emission count under the Allow policy — a pure-function test, no engine.
+- [x] 586. Property 22 (CP-16) Object_Store bandwidth bound and share sum, asserted at every metrics snapshot.
+- [x] 587. Property 23 (CP-17) fan-out depth bound of 0 to 4 with the depth-4 single-edge forward, asserted at every metrics snapshot.
+- [x] 588. Property 24 (CP-18) Round_Robin selection determinism including the cycle order, the reset position, and cursor survival across a pause and resume.
+- [x] 589. Property 25 (CP-19) Scheduler schedule holds no drift: scheduled times independent of jitter, skips, and deferrals, with non-decreasing fire times.
+- [x] 590. Property 26 (CP-20) Subsystem_Group membership is a partition after every store mutation and after import.
+- [x] 591. Property 27 (CP-21) Finding identifier invariance across label edits, recomputations, and repeated runs, with at most one Finding per identifier per result.
 
 ### 27.3 Example-Based and Integration Tests
 
-- [~] 592. Example tests for the scenarios that are not properties: a Scheduler's first trigger at t=0 with zero offset, the exact Skip and Queue overlap transitions, the deferred-trigger-overflow log entry, and the Redrive decrement of a `Dead_Lettered` count.
-- [~] 593. Example tests asserting the exact rejection message text for each connection rule of Requirement 30 including the protocol mismatch and the Worker_Pool to Dead_Letter_Queue cardinality violation.
-- [~] 594. Integration test asserting each of the three reference presets, run at its stored seed, duration, speed multiplier, offered load, and chaos timeline, produces a Bottleneck Finding naming its stored expected Bottleneck node.
-- [~] 595. Integration test asserting each reference preset makes its stored expected dominant terminal status the largest of the eight non-Success cumulative counts.
-- [~] 596. Integration test asserting a reference preset load presents a first frame containing every node and edge within 2,000 ms, and that export then import restores every position, configuration, policy, protocol, weight, and group.
-- [~] 597. Extend the component test suite for the six new config forms, the regrouped fifteen-item palette, the group toolbar, and the terminal status table.
+- [x] 592. Example tests for the scenarios that are not properties: a Scheduler's first trigger at t=0 with zero offset, the exact Skip and Queue overlap transitions, the deferred-trigger-overflow log entry, and the Redrive decrement of a `Dead_Lettered` count.
+- [x] 593. Example tests asserting the exact rejection message text for each connection rule of Requirement 30 including the protocol mismatch and the Worker_Pool to Dead_Letter_Queue cardinality violation.
+- [x] 594. Integration test asserting each of the three reference presets, run at its stored seed, duration, speed multiplier, offered load, and chaos timeline, produces a Bottleneck Finding naming its stored expected Bottleneck node.
+- [x] 595. Integration test asserting each reference preset makes its stored expected dominant terminal status the largest of the eight non-Success cumulative counts.
+- [x] 596. Integration test asserting a reference preset load presents a first frame containing every node and edge within 2,000 ms, and that export then import restores every position, configuration, policy, protocol, weight, and group.
+- [x] 597. Extend the component test suite for the six new config forms, the regrouped fifteen-item palette, the group toolbar, and the terminal status table.
 
 ---
 
