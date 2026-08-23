@@ -85,3 +85,4 @@ export { sweepKneeRule } from './capacity';
 export { schedulerCollisionRule } from './configuration';
 export { headroomRule } from './headroom';
 export { spofRule } from './spof';
+export { comparisonObjectiveRule, comparisonUtilizationRule } from './comparison';

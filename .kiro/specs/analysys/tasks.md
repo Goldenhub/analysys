@@ -900,22 +900,22 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 24.1 Baseline Store (`src/store/baselineStore.ts`)
 
-- [~] 523. Define `BaselineRun` at schema version 2 carrying name, creation timestamp, seed, simulated duration, total offered load, optional Service_Objective, the version 2 topology, and the whole-run and per-node aggregates.
-- [~] 524. Write a record only from the `Complete` state, taking every value from the run's final cumulative metrics over its full simulated duration via `RunCumulativeAccumulator` rather than from a window or a mean across windows.
-- [~] 525. Retain at most 5 records under the localStorage key `analysys_baseline_runs`, list each by name and creation timestamp, and offer a per-record delete leaving every other record unchanged.
-- [~] 526. Validate the submitted name as 1 to 40 characters after trimming and case-insensitively unique, and reject a write at the 5-record limit with an error naming the violated constraint and the stored names, leaving every record and the current run's metrics unchanged.
-- [~] 527. On application load, restore every stored record at version 2 holding every required field, exclude any record at another version or missing a field with a warning naming it and the problem, and leave every stored record unmodified — a forward-incompatible baseline is hidden, never deleted.
-- [~] 528. Implement baseline reuse restoring the topology, positions, configurations, routing policies, protocols, weights, and groups with their collapsed states to the Canvas, leaving the stored record unchanged and requiring confirmation while unsaved changes exist.
-- [~] 529. Create `src/components/analysis/BaselineManager.tsx` offering retain, list, delete, and reuse, operable by keyboard alone.
+- [x] 523. Define `BaselineRun` at schema version 2 carrying name, creation timestamp, seed, simulated duration, total offered load, optional Service_Objective, the version 2 topology, and the whole-run and per-node aggregates.
+- [x] 524. Write a record only from the `Complete` state, taking every value from the run's final cumulative metrics over its full simulated duration via `RunCumulativeAccumulator` rather than from a window or a mean across windows.
+- [x] 525. Retain at most 5 records under the localStorage key `analysys_baseline_runs`, list each by name and creation timestamp, and offer a per-record delete leaving every other record unchanged.
+- [x] 526. Validate the submitted name as 1 to 40 characters after trimming and case-insensitively unique, and reject a write at the 5-record limit with an error naming the violated constraint and the stored names, leaving every record and the current run's metrics unchanged.
+- [x] 527. On application load, restore every stored record at version 2 holding every required field, exclude any record at another version or missing a field with a warning naming it and the problem, and leave every stored record unmodified — a forward-incompatible baseline is hidden, never deleted.
+- [x] 528. Implement baseline reuse restoring the topology, positions, configurations, routing policies, protocols, weights, and groups with their collapsed states to the Canvas, leaving the stored record unchanged and requiring confirmation while unsaved changes exist.
+- [x] 529. Create `src/components/analysis/BaselineManager.tsx` offering retain, list, delete, and reuse, operable by keyboard alone.
 
 ### 24.2 Comparison (`src/analysis/comparison.ts`)
 
-- [~] 530. Accept exactly two selections from the stored baselines and the most recently completed run, designate them A and B, compute every signed difference as B minus A in one place, and report no result with a message where both selections name the same run.
-- [~] 531. Report for p50, p90, p99, total throughput, total error rate, and each of the nine terminal status rates: the A value, the B value, the signed absolute difference in that metric's unit, and the signed percentage difference over `|A|` to 2 decimal places.
-- [~] 532. Report per node present in both runs the mean per-window Utilization, throughput as Success terminations over simulated seconds, error rate over the full duration, and mean queue depth, each for A and B with the signed difference.
-- [~] 533. Implement node matching as same identifier with same type, falling back to same type and same case-insensitive label where the identifier appears in one run only and exactly one candidate exists per run — the fallback exists because a rebuilt topology gets fresh UUIDs, and everything ambiguous is listed as not present.
-- [~] 534. List every node not present in both runs with the run holding it, and every configuration parameter differing between the runs for a matched node with the parameter and both values.
-- [~] 535. Label a comparison a Controlled_Comparison at identical seed, identical duration, and offered loads within 0.01 RPS, else label it uncontrolled naming each differing attribute with its value in each run, and still report every result; then implement `comparisonObjectiveRule` and `comparisonUtilizationRule` in `src/analysis/rules/comparison.ts`.
+- [x] 530. Accept exactly two selections from the stored baselines and the most recently completed run, designate them A and B, compute every signed difference as B minus A in one place, and report no result with a message where both selections name the same run.
+- [x] 531. Report for p50, p90, p99, total throughput, total error rate, and each of the nine terminal status rates: the A value, the B value, the signed absolute difference in that metric's unit, and the signed percentage difference over `|A|` to 2 decimal places.
+- [x] 532. Report per node present in both runs the mean per-window Utilization, throughput as Success terminations over simulated seconds, error rate over the full duration, and mean queue depth, each for A and B with the signed difference.
+- [x] 533. Implement node matching as same identifier with same type, falling back to same type and same case-insensitive label where the identifier appears in one run only and exactly one candidate exists per run — the fallback exists because a rebuilt topology gets fresh UUIDs, and everything ambiguous is listed as not present.
+- [x] 534. List every node not present in both runs with the run holding it, and every configuration parameter differing between the runs for a matched node with the parameter and both values.
+- [x] 535. Label a comparison a Controlled_Comparison at identical seed, identical duration, and offered loads within 0.01 RPS, else label it uncontrolled naming each differing attribute with its value in each run, and still report every result; then implement `comparisonObjectiveRule` and `comparisonUtilizationRule` in `src/analysis/rules/comparison.ts`.
 
 ---
 
