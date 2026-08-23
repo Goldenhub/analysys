@@ -113,7 +113,12 @@ describe('topologyStore', () => {
       const nodeB = createTestNode('b');
       const nodeC = createTestNode('c');
       const edge = createTestEdge('e1', 'b', 'c');
-      useTopologyStore.setState({ nodes: [nodeA, nodeB, nodeC], edges: [edge], past: [], future: [] });
+      useTopologyStore.setState({
+        nodes: [nodeA, nodeB, nodeC],
+        edges: [edge],
+        past: [],
+        future: [],
+      });
 
       useTopologyStore.getState().removeNode('a');
 
@@ -143,7 +148,9 @@ describe('topologyStore', () => {
       useTopologyStore.getState().updateNodeConfig('node-1', { workerThreadPoolSize: 50 });
 
       const { nodes } = useTopologyStore.getState();
-      const data = nodes[0].data as { config: { workerThreadPoolSize: number; requestQueueDepth: number } };
+      const data = nodes[0].data as {
+        config: { workerThreadPoolSize: number; requestQueueDepth: number };
+      };
       expect(data.config.workerThreadPoolSize).toBe(50);
       expect(data.config.requestQueueDepth).toBe(100); // unchanged
     });
@@ -299,9 +306,9 @@ describe('topologyStore', () => {
       const node = createTestNode('node-1');
       useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
 
-      useTopologyStore.getState().onNodesChange([
-        { type: 'position', id: 'node-1', position: { x: 500, y: 600 } },
-      ]);
+      useTopologyStore
+        .getState()
+        .onNodesChange([{ type: 'position', id: 'node-1', position: { x: 500, y: 600 } }]);
 
       const { nodes } = useTopologyStore.getState();
       expect(nodes[0].position).toEqual({ x: 500, y: 600 });

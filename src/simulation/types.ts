@@ -243,11 +243,7 @@ export interface NodeRuntimeState {
 // ─── Node Processor Interface ────────────────────────────────────
 
 export interface NodeProcessor {
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void;
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void;
   onChaosApplied(chaosType: string, params: Record<string, unknown>): void;
   onChaosReverted(): void;
   getUtilization(): UtilizationReading;
@@ -278,7 +274,11 @@ export interface ProcessorContext {
   resolveTargets(nodeId: string, request: SimRequest): EdgeData[];
   getNodeConfig(nodeId: string): SimulationNode | undefined;
   getNodeState(nodeId: string): NodeRuntimeState | undefined;
-  getRNG(): { next(): number; normalPositive(mean: number, stdDev: number): number; exponential(rate: number): number };
+  getRNG(): {
+    next(): number;
+    normalPositive(mean: number, stdDev: number): number;
+    exponential(rate: number): number;
+  };
   currentTime(): number;
   recordArrival(nodeId: string, requestId: string, timestamp: number): void;
   recordDeparture(nodeId: string, requestId: string, timestamp: number): void;

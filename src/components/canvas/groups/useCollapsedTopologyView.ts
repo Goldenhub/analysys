@@ -78,7 +78,10 @@ export function computeCollapsedView(
   for (const group of collapsedGroups) {
     const memberNodes = nodes.filter((n) => group.memberNodeIds.includes(n.id));
     if (memberNodes.length === 0) continue;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     for (const n of memberNodes) {
       minX = Math.min(minX, n.position.x);
       maxX = Math.max(maxX, n.position.x);
@@ -114,14 +117,17 @@ export function computeCollapsedView(
   // Emit edges: omit internal edges, rewrite & merge boundary edges
   const resultEdges: AnalysysEdge[] = [];
   // Key: `grp:{groupId}:{in|out}:{externalNodeId}` → accumulated merged edge data
-  const mergedEdgeMap = new Map<string, {
-    groupId: string;
-    externalNodeId: string;
-    direction: 'in' | 'out';
-    underlyingEdgeIds: string[];
-    memberLabels: string[];
-    memberProtocols: string[];
-  }>();
+  const mergedEdgeMap = new Map<
+    string,
+    {
+      groupId: string;
+      externalNodeId: string;
+      direction: 'in' | 'out';
+      underlyingEdgeIds: string[];
+      memberLabels: string[];
+      memberProtocols: string[];
+    }
+  >();
 
   for (const edge of edges) {
     const sourceGroup = nodeToGroup.get(edge.source);

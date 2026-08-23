@@ -220,10 +220,7 @@ export function* computeSpofs(
 /**
  * Non-generator wrapper for synchronous use in tests or single-pass contexts.
  */
-export function computeSpofsSync(
-  nodes: SimulationNode[],
-  edges: EdgeData[],
-): ReachabilityResult {
+export function computeSpofsSync(nodes: SimulationNode[], edges: EdgeData[]): ReachabilityResult {
   const gen = computeSpofs(nodes, edges);
   let result = gen.next();
   while (!result.done) {

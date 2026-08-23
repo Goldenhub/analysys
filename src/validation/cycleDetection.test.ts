@@ -14,7 +14,12 @@ function makeAppServer(id: string): SimulationNode {
     label: id,
     position: { x: 0, y: 0 },
     routingPolicy: RoutingPolicy.First,
-    config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+    config: {
+      workerThreadPoolSize: 10,
+      requestQueueDepth: 100,
+      processingTimeMeanMs: 5,
+      processingTimeStdDevMs: 1,
+    },
   };
 }
 
@@ -35,7 +40,12 @@ describe('detectCycles', () => {
     });
 
     it('returns empty array for a DAG (diamond shape)', () => {
-      const nodes = [makeAppServer('a'), makeAppServer('b'), makeAppServer('c'), makeAppServer('d')];
+      const nodes = [
+        makeAppServer('a'),
+        makeAppServer('b'),
+        makeAppServer('c'),
+        makeAppServer('d'),
+      ];
       const edges = [
         makeEdge('a', 'b'),
         makeEdge('a', 'c'),
@@ -83,14 +93,18 @@ describe('detectCycles', () => {
   describe('multi-cycle', () => {
     it('detects multiple independent cycles', () => {
       const nodes = [
-        makeAppServer('a'), makeAppServer('b'),
-        makeAppServer('c'), makeAppServer('d'),
+        makeAppServer('a'),
+        makeAppServer('b'),
+        makeAppServer('c'),
+        makeAppServer('d'),
       ];
       const edges = [
         // Cycle 1: a → b → a
-        makeEdge('a', 'b'), makeEdge('b', 'a'),
+        makeEdge('a', 'b'),
+        makeEdge('b', 'a'),
         // Cycle 2: c → d → c
-        makeEdge('c', 'd'), makeEdge('d', 'c'),
+        makeEdge('c', 'd'),
+        makeEdge('d', 'c'),
       ];
 
       const cycles = detectCycles(nodes, edges);
@@ -99,7 +113,12 @@ describe('detectCycles', () => {
 
     it('detects cycles in a complex graph with shared nodes', () => {
       // a → b → c → a (cycle) and b → d → b (another cycle through b)
-      const nodes = [makeAppServer('a'), makeAppServer('b'), makeAppServer('c'), makeAppServer('d')];
+      const nodes = [
+        makeAppServer('a'),
+        makeAppServer('b'),
+        makeAppServer('c'),
+        makeAppServer('d'),
+      ];
       const edges = [
         makeEdge('a', 'b'),
         makeEdge('b', 'c'),
@@ -116,12 +135,17 @@ describe('detectCycles', () => {
   describe('disconnected components', () => {
     it('finds cycle in one component while other is acyclic', () => {
       const nodes = [
-        makeAppServer('a'), makeAppServer('b'), makeAppServer('c'), // Component 1: a→b→c (no cycle)
-        makeAppServer('x'), makeAppServer('y'),                     // Component 2: x→y→x (cycle)
+        makeAppServer('a'),
+        makeAppServer('b'),
+        makeAppServer('c'), // Component 1: a→b→c (no cycle)
+        makeAppServer('x'),
+        makeAppServer('y'), // Component 2: x→y→x (cycle)
       ];
       const edges = [
-        makeEdge('a', 'b'), makeEdge('b', 'c'),
-        makeEdge('x', 'y'), makeEdge('y', 'x'),
+        makeEdge('a', 'b'),
+        makeEdge('b', 'c'),
+        makeEdge('x', 'y'),
+        makeEdge('y', 'x'),
       ];
 
       const cycles = detectCycles(nodes, edges);
@@ -134,8 +158,10 @@ describe('detectCycles', () => {
 
     it('returns empty for multiple disconnected acyclic components', () => {
       const nodes = [
-        makeAppServer('a'), makeAppServer('b'),
-        makeAppServer('c'), makeAppServer('d'),
+        makeAppServer('a'),
+        makeAppServer('b'),
+        makeAppServer('c'),
+        makeAppServer('d'),
       ];
       const edges = [makeEdge('a', 'b'), makeEdge('c', 'd')];
 

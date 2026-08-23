@@ -5,8 +5,20 @@ import type { SimulationEngineConfig, ChaosEventPayload } from '@/types/messages
 import type { MetricsBatchPayload } from '@/types/metrics';
 import { MinHeap } from './eventQueue';
 import { SeededRNG } from './prng';
-import type { SimEvent, SimRequest, NodeRuntimeState, ProcessorContext, NodeProcessor } from './types';
-import { SimEventType, SimState, RequestStatus, SubRequestPolicy, emptyTerminalCounts } from './types';
+import type {
+  SimEvent,
+  SimRequest,
+  NodeRuntimeState,
+  ProcessorContext,
+  NodeProcessor,
+} from './types';
+import {
+  SimEventType,
+  SimState,
+  RequestStatus,
+  SubRequestPolicy,
+  emptyTerminalCounts,
+} from './types';
 import type { TerminalStatus } from './types';
 import { TrafficGeneratorProcessor } from './processors/TrafficGeneratorProcessor';
 import { ApiGatewayProcessor } from './processors/ApiGatewayProcessor';
@@ -48,9 +60,31 @@ export class SimulationEngine {
 
   // Callback for sending messages back to main thread
   private onMetricsBatch: ((payload: MetricsBatchPayload) => void) | null = null;
-  private onNodeStatus: ((nodeId: string, status: 'green' | 'yellow' | 'red') => void) | null = null;
-  private onEventLog: ((entries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }>) => void) | null = null;
-  private onComplete: ((summary: { totalEvents: number; totalRequests: number; successRate: number; avgEndToEndLatencyMs: number; simulatedDurationMs: number; wallClockDurationMs: number; eventsPerSecond: number }) => void) | null = null;
+  private onNodeStatus: ((nodeId: string, status: 'green' | 'yellow' | 'red') => void) | null =
+    null;
+  private onEventLog:
+    | ((
+        entries: Array<{
+          id: number;
+          timestamp: number;
+          type: string;
+          nodeId: string;
+          requestId?: string;
+          message: string;
+        }>,
+      ) => void)
+    | null = null;
+  private onComplete:
+    | ((summary: {
+        totalEvents: number;
+        totalRequests: number;
+        successRate: number;
+        avgEndToEndLatencyMs: number;
+        simulatedDurationMs: number;
+        wallClockDurationMs: number;
+        eventsPerSecond: number;
+      }) => void)
+    | null = null;
 
   // In-flight request tracking (time-weighted average)
   private inFlightCount = 0;
@@ -60,7 +94,14 @@ export class SimulationEngine {
   private countedAsComplete: Set<string> = new Set();
 
   // Event log batching — accumulate entries and flush on metrics snapshot
-  private pendingLogEntries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }> = [];
+  private pendingLogEntries: Array<{
+    id: number;
+    timestamp: number;
+    type: string;
+    nodeId: string;
+    requestId?: string;
+    message: string;
+  }> = [];
   private completionLogCounter = 0;
   private readonly COMPLETION_LOG_SAMPLE_RATE = 50; // log every Nth completion
 
@@ -71,7 +112,11 @@ export class SimulationEngine {
     this.config = config;
     this.rng = new SeededRNG(config.seed);
     this.eventQueue = new MinHeap<SimEvent>((a, b) => a.timestamp - b.timestamp);
-    this.metricsCollector = new MetricsCollector(config.topology.nodes, 5000, config.topology.edges);
+    this.metricsCollector = new MetricsCollector(
+      config.topology.nodes,
+      5000,
+      config.topology.edges,
+    );
 
     this.buildAdjacency(config.topology.edges);
     this.initializeNodeStates(config.topology.nodes);
@@ -83,8 +128,25 @@ export class SimulationEngine {
   setCallbacks(callbacks: {
     onMetricsBatch?: (payload: MetricsBatchPayload) => void;
     onNodeStatus?: (nodeId: string, status: 'green' | 'yellow' | 'red') => void;
-    onEventLog?: (entries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }>) => void;
-    onComplete?: (summary: { totalEvents: number; totalRequests: number; successRate: number; avgEndToEndLatencyMs: number; simulatedDurationMs: number; wallClockDurationMs: number; eventsPerSecond: number }) => void;
+    onEventLog?: (
+      entries: Array<{
+        id: number;
+        timestamp: number;
+        type: string;
+        nodeId: string;
+        requestId?: string;
+        message: string;
+      }>,
+    ) => void;
+    onComplete?: (summary: {
+      totalEvents: number;
+      totalRequests: number;
+      successRate: number;
+      avgEndToEndLatencyMs: number;
+      simulatedDurationMs: number;
+      wallClockDurationMs: number;
+      eventsPerSecond: number;
+    }) => void;
   }): void {
     this.onMetricsBatch = callbacks.onMetricsBatch ?? null;
     this.onNodeStatus = callbacks.onNodeStatus ?? null;
@@ -160,7 +222,14 @@ export class SimulationEngine {
   injectChaos(payload: ChaosEventPayload): void {
     const { chaosType, targetNodeId, durationMs } = payload;
 
-    const logEntries: Array<{ id: number; timestamp: number; type: string; nodeId: string; requestId?: string; message: string }> = [];
+    const logEntries: Array<{
+      id: number;
+      timestamp: number;
+      type: string;
+      nodeId: string;
+      requestId?: string;
+      message: string;
+    }> = [];
 
     // ─── Targeted chaos: DISABLE_NODE and REDRIVE_DLQ ──────────
     if ((chaosType === 'DISABLE_NODE' || chaosType === 'REDRIVE_DLQ') && targetNodeId) {
@@ -264,7 +333,8 @@ export class SimulationEngine {
       if (chaosType === 'DROP_DB' && node.nodeType === NodeType.Database) {
         applies = !targetNodeId || targetNodeId === nodeId;
       }
-      if (chaosType === 'SPIKE_TRAFFIC' && node.nodeType === NodeType.TrafficGenerator) applies = true;
+      if (chaosType === 'SPIKE_TRAFFIC' && node.nodeType === NodeType.TrafficGenerator)
+        applies = true;
       if (chaosType === 'DLQ_REDRIVE' && node.nodeType === NodeType.DeadLetterQueue) {
         applies = !targetNodeId || targetNodeId === nodeId;
       }
@@ -459,7 +529,8 @@ export class SimulationEngine {
     }
 
     // Schedule next arrival
-    const processor = this.nodeStates.get(event.nodeId)?.processor as TrafficGeneratorProcessor | undefined;
+    const processor = this.nodeStates.get(event.nodeId)?.processor as
+      TrafficGeneratorProcessor | undefined;
     if (processor) {
       processor.scheduleNextArrival(event.nodeId, event.timestamp, this.getProcessorContext());
     }
@@ -471,7 +542,11 @@ export class SimulationEngine {
 
     // R39.9: If this node is unreachable, terminate the arriving request Timeout
     const routeState = this.nodeStates.get(event.nodeId);
-    if (routeState && routeState.unreachableUntilMs !== null && routeState.unreachableUntilMs > event.timestamp) {
+    if (
+      routeState &&
+      routeState.unreachableUntilMs !== null &&
+      routeState.unreachableUntilMs > event.timestamp
+    ) {
       this.terminateRequest(request, RequestStatus.Timeout, event.nodeId, event.timestamp);
       if (request.parentRequestId) {
         this.scheduleSubRequestSettled(request, event.timestamp);
@@ -582,9 +657,17 @@ export class SimulationEngine {
 
     // Delegate to processor's onProcessComplete
     if (node.nodeType === NodeType.AppServer) {
-      (state.processor as AppServerProcessor).onProcessComplete(event, request, this.getProcessorContext());
+      (state.processor as AppServerProcessor).onProcessComplete(
+        event,
+        request,
+        this.getProcessorContext(),
+      );
     } else if (node.nodeType === NodeType.Database) {
-      (state.processor as DatabaseProcessor).onProcessComplete(event, request, this.getProcessorContext());
+      (state.processor as DatabaseProcessor).onProcessComplete(
+        event,
+        request,
+        this.getProcessorContext(),
+      );
     }
 
     // If request is now complete, start response traversal
@@ -727,9 +810,7 @@ export class SimulationEngine {
     const branch = this.requests.get(event.requestId);
     if (!branch) return;
 
-    const parent = branch.parentRequestId
-      ? this.requests.get(branch.parentRequestId)
-      : undefined;
+    const parent = branch.parentRequestId ? this.requests.get(branch.parentRequestId) : undefined;
     if (!parent) return;
 
     // If branch was discarded (sibling failed first), ignore
@@ -739,14 +820,18 @@ export class SimulationEngine {
 
     if (result.parentTerminated) {
       // Check if parent is at an Auth or Authz node — delegate to processor
-      const dispatchNodeId = parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
+      const dispatchNodeId =
+        parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
       const nodeConfig = this.nodeConfigs.get(dispatchNodeId);
 
       if (nodeConfig?.nodeType === NodeType.AuthService) {
         const state = this.nodeStates.get(dispatchNodeId);
         if (state) {
           (state.processor as AuthServiceProcessor).onSubRequestSettled(
-            parent, false, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+            parent,
+            false,
+            { ...event, nodeId: dispatchNodeId },
+            this.getProcessorContext(),
           );
         }
         return;
@@ -755,7 +840,11 @@ export class SimulationEngine {
         const state = this.nodeStates.get(dispatchNodeId);
         if (state) {
           (state.processor as AuthzServiceProcessor).onSubRequestSettled(
-            parent, false, branch.status, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+            parent,
+            false,
+            branch.status,
+            { ...event, nodeId: dispatchNodeId },
+            this.getProcessorContext(),
           );
         }
         return;
@@ -766,17 +855,26 @@ export class SimulationEngine {
         branch,
         parent.branchPolicy ?? SubRequestPolicy.FanOut,
       );
-      this.terminateRequest(parent, mappedStatus as TerminalStatus, dispatchNodeId, event.timestamp);
+      this.terminateRequest(
+        parent,
+        mappedStatus as TerminalStatus,
+        dispatchNodeId,
+        event.timestamp,
+      );
     } else if (result.parentResumes) {
       // All branches settled successfully — check if parent is at Auth/Authz node
-      const dispatchNodeId = parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
+      const dispatchNodeId =
+        parent.dispatchedAtNodeId ?? parent.path[parent.path.length - 1] ?? event.nodeId;
       const nodeConfig = this.nodeConfigs.get(dispatchNodeId);
 
       if (nodeConfig?.nodeType === NodeType.AuthService) {
         const state = this.nodeStates.get(dispatchNodeId);
         if (state) {
           (state.processor as AuthServiceProcessor).onSubRequestSettled(
-            parent, true, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+            parent,
+            true,
+            { ...event, nodeId: dispatchNodeId },
+            this.getProcessorContext(),
           );
         }
         return;
@@ -785,7 +883,11 @@ export class SimulationEngine {
         const state = this.nodeStates.get(dispatchNodeId);
         if (state) {
           (state.processor as AuthzServiceProcessor).onSubRequestSettled(
-            parent, true, undefined, { ...event, nodeId: dispatchNodeId }, this.getProcessorContext(),
+            parent,
+            true,
+            undefined,
+            { ...event, nodeId: dispatchNodeId },
+            this.getProcessorContext(),
           );
         }
         return;
@@ -827,7 +929,9 @@ export class SimulationEngine {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       (state.processor as AuthServiceProcessor).onVerificationComplete(
-        event, request, this.getProcessorContext(),
+        event,
+        request,
+        this.getProcessorContext(),
       );
       // If the processor set a terminal status, handle accounting
       // (The processor mutates request.status; TS narrowing from the guard above is stale.)
@@ -858,7 +962,9 @@ export class SimulationEngine {
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
       (state.processor as AuthzServiceProcessor).onPolicyEvaluated(
-        event, request, this.getProcessorContext(),
+        event,
+        request,
+        this.getProcessorContext(),
       );
       // If the processor set a terminal status, handle accounting
       const postStatus2 = request.status as RequestStatus;
@@ -893,7 +999,10 @@ export class SimulationEngine {
 
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
-      (state.processor as WorkerPoolProcessor).onJobAttemptComplete(event, this.getProcessorContext());
+      (state.processor as WorkerPoolProcessor).onJobAttemptComplete(
+        event,
+        this.getProcessorContext(),
+      );
       // If the processor set a terminal status, handle accounting
       if (request.status !== RequestStatus.InFlight) {
         if (request.status === RequestStatus.RetryExhausted) {
@@ -955,7 +1064,10 @@ export class SimulationEngine {
       const request = this.requests.get(event.requestId);
       const wasPreviouslyInFlight = request?.status === RequestStatus.InFlight;
 
-      (state.processor as ObjectStoreProcessor).onTransferComplete(event, this.getProcessorContext());
+      (state.processor as ObjectStoreProcessor).onTransferComplete(
+        event,
+        this.getProcessorContext(),
+      );
 
       // If the processor set success, handle accounting
       if (request && wasPreviouslyInFlight && request.status === RequestStatus.Success) {
@@ -1106,9 +1218,10 @@ export class SimulationEngine {
     const windowDuration = this.virtualClockMs - this.lastSnapshotTime;
     // Keep one decimal place: low-traffic topologies have a true average well
     // below 1, which a plain Math.round would collapse to 0.
-    const avgInFlight = windowDuration > 0
-      ? Math.round((this.inFlightTimeWeightedSum / windowDuration) * 10) / 10
-      : this.inFlightCount;
+    const avgInFlight =
+      windowDuration > 0
+        ? Math.round((this.inFlightTimeWeightedSum / windowDuration) * 10) / 10
+        : this.inFlightCount;
 
     const batch = this.metricsCollector.generateBatch(
       this.virtualClockMs,
@@ -1206,15 +1319,15 @@ export class SimulationEngine {
   }
 
   private emitNodeStateChange(nodeId: string, unreachable: boolean): void {
-    this.onEventLog?.([{
-      id: this.eventCounter,
-      timestamp: this.virtualClockMs,
-      type: 'NODE_STATE_CHANGE',
-      nodeId,
-      message: unreachable
-        ? `Node became unreachable`
-        : `Node restored to service`,
-    }]);
+    this.onEventLog?.([
+      {
+        id: this.eventCounter,
+        timestamp: this.virtualClockMs,
+        type: 'NODE_STATE_CHANGE',
+        nodeId,
+        message: unreachable ? `Node became unreachable` : `Node restored to service`,
+      },
+    ]);
   }
 
   private handleConsumerPoll(event: SimEvent): void {
@@ -1386,7 +1499,11 @@ export class SimulationEngine {
     // while the request still holds its full lineage.
     if (request) {
       this.metricsCollector.recordTerminationForAnalysis(
-        request, status, this.virtualClockMs, this.nodeStates, this.requests,
+        request,
+        status,
+        this.virtualClockMs,
+        this.nodeStates,
+        this.requests,
       );
       // Departures: a termination at this node counts as a departure
       this.metricsCollector.recordAnalysisDeparture(nodeId);
@@ -1541,14 +1658,17 @@ export class SimulationEngine {
     const successful = topLevelRequests.filter((r) => r.status === RequestStatus.Success);
     const totalLatency = successful.reduce((sum, r) => sum + r.accumulatedLatencyMs, 0);
     // Task 341: report unfinished In_Flight count
-    const unfinishedCount = topLevelRequests.filter((r) => r.status === RequestStatus.InFlight).length;
+    const unfinishedCount = topLevelRequests.filter(
+      (r) => r.status === RequestStatus.InFlight,
+    ).length;
 
     this.onComplete?.({
       totalEvents: this.eventCounter,
       totalRequests: topLevelRequests.length,
-      successRate: topLevelRequests.length > 0
-        ? successful.length / (topLevelRequests.length - unfinishedCount || 1)
-        : 0,
+      successRate:
+        topLevelRequests.length > 0
+          ? successful.length / (topLevelRequests.length - unfinishedCount || 1)
+          : 0,
       avgEndToEndLatencyMs: successful.length > 0 ? totalLatency / successful.length : 0,
       simulatedDurationMs: this.virtualClockMs,
       wallClockDurationMs: wallClockMs,

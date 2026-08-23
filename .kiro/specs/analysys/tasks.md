@@ -1021,19 +1021,19 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 28.1 Benchmarks at the 80-Node / 200-Edge Envelope
 
-- [~] 598. Benchmark engine throughput at 80 nodes drawn from all fifteen types and 200 edges, asserting 1,000 or more events per wall-clock second with `disablePacing: true`.
-- [~] 599. Benchmark full Finding recomputation, asserting 500 ms or less as the maximum over 10 consecutive recomputations within a single run.
-- [~] 600. Benchmark the longest main-thread slice by instrumenting `AnalysisScheduler` directly rather than sampling frame times, asserting 33 ms or less per slice — this measures what the requirement states.
-- [~] 601. Benchmark the single-point-of-failure analysis, asserting 500 ms or less from invocation to Finding availability and 33 ms or less of consecutive main-thread occupancy.
-- [~] 602. Benchmark an 8-step sweep at 60,000 ms per step and the 50x multiplier, asserting every step completes and reports within 90 wall-clock seconds.
+- [x] 598. Benchmark engine throughput at 80 nodes drawn from all fifteen types and 200 edges, asserting 1,000 or more events per wall-clock second with `disablePacing: true`.
+- [x] 599. Benchmark full Finding recomputation, asserting 500 ms or less as the maximum over 10 consecutive recomputations within a single run.
+- [x] 600. Benchmark the longest main-thread slice by instrumenting `AnalysisScheduler` directly rather than sampling frame times, asserting 33 ms or less per slice — this measures what the requirement states.
+- [x] 601. Benchmark the single-point-of-failure analysis, asserting 500 ms or less from invocation to Finding availability and 33 ms or less of consecutive main-thread occupancy.
+- [x] 602. Benchmark an 8-step sweep at 60,000 ms per step and the 50x multiplier, asserting every step completes and reports within 90 wall-clock seconds.
 
 ### 28.2 Final Verification
 
-- [~] 603. Run `npm run build` and confirm a clean type-check and production build with the Worker still code-split into its own chunk.
-- [~] 604. Run `npm run lint` and `npm run format:check` and resolve every finding.
-- [~] 605. Run `npm run test` and confirm the full suite passes, including the property tests at their configured `numRuns`.
-- [~] 606. Verify the CI workflow still passes on Node 22 — the matrix in `.github/workflows/ci.yml` pins Node 22, and `fast-check` plus the new benchmarks must run there without a local-only assumption.
-- [~] 607. Confirm the bundle size budget still holds with the analysis layer and the three reference presets added, and warn in the build output rather than failing if the preset JSON pushes the serialized size toward the localStorage threshold.
+- [x] 603. Run `npm run build` and confirm a clean type-check and production build with the Worker still code-split into its own chunk.
+- [x] 604. Run `npm run lint` and `npm run format:check` and resolve every finding.
+- [x] 605. Run `npm run test` and confirm the full suite passes, including the property tests at their configured `numRuns`.
+- [x] 606. Verify the CI workflow still passes on Node 22 — the matrix in `.github/workflows/ci.yml` pins Node 22, and `fast-check` plus the new benchmarks must run there without a local-only assumption.
+- [x] 607. Confirm the bundle size budget still holds with the analysis layer and the three reference presets added, and warn in the build output rather than failing if the preset JSON pushes the serialized size toward the localStorage threshold.
 
 ---
 

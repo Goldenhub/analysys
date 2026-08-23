@@ -230,7 +230,11 @@ export function arbConfig(nodeType: NodeType): fc.Arbitrary<Record<string, unkno
           { weight: 2, arbitrary: fc.integer({ min: 50_000, max: 86_400_000 }) },
           { weight: 8, arbitrary: fc.integer({ min: 0, max: 86_400_000 }) },
         ),
-        overlapPolicy: fc.constantFrom(OverlapPolicy.Allow, OverlapPolicy.Skip, OverlapPolicy.Queue),
+        overlapPolicy: fc.constantFrom(
+          OverlapPolicy.Allow,
+          OverlapPolicy.Skip,
+          OverlapPolicy.Queue,
+        ),
         maxDeferredTriggers: fc.integer({ min: 1, max: 1_000 }),
       }) as fc.Arbitrary<Record<string, unknown>>;
   }
@@ -299,9 +303,15 @@ export function arbTopology(opts: TopologyOptions = {}): fc.Arbitrary<{
         // Helper: create a node of a given type
         function createNode(type: NodeType): SimulationNode {
           const id = freshId(type.toLowerCase().replace(/_/g, '-'));
-          const routingPolicy = forceFanOut && nodes.length > tgCount + 1
-            ? pick([RoutingPolicy.First, RoutingPolicy.RoundRobin, RoutingPolicy.Weighted, RoutingPolicy.FanOut])
-            : pick([RoutingPolicy.First, RoutingPolicy.RoundRobin, RoutingPolicy.Weighted]);
+          const routingPolicy =
+            forceFanOut && nodes.length > tgCount + 1
+              ? pick([
+                  RoutingPolicy.First,
+                  RoutingPolicy.RoundRobin,
+                  RoutingPolicy.Weighted,
+                  RoutingPolicy.FanOut,
+                ])
+              : pick([RoutingPolicy.First, RoutingPolicy.RoundRobin, RoutingPolicy.Weighted]);
           const node = {
             id,
             nodeType: type,
@@ -395,13 +405,16 @@ export function arbTopology(opts: TopologyOptions = {}): fc.Arbitrary<{
 
         // Step 4: Force Worker_Pool + DLQ if requested
         if (forceDlq) {
-          const wp = nodes.find((n) => n.nodeType === NodeType.WorkerPool)
-            ?? createNode(NodeType.WorkerPool);
-          const dlq = nodes.find((n) => n.nodeType === NodeType.DeadLetterQueue)
-            ?? createNode(NodeType.DeadLetterQueue);
+          const wp =
+            nodes.find((n) => n.nodeType === NodeType.WorkerPool) ??
+            createNode(NodeType.WorkerPool);
+          const dlq =
+            nodes.find((n) => n.nodeType === NodeType.DeadLetterQueue) ??
+            createNode(NodeType.DeadLetterQueue);
           // Ensure MQ → WP edge
-          const mq = nodes.find((n) => n.nodeType === NodeType.MessageQueue)
-            ?? createNode(NodeType.MessageQueue);
+          const mq =
+            nodes.find((n) => n.nodeType === NodeType.MessageQueue) ??
+            createNode(NodeType.MessageQueue);
           if (!edges.some((e) => e.source === mq.id && e.target === wp.id)) {
             edges.push({
               id: freshId('e'),
@@ -446,11 +459,13 @@ export function arbTopology(opts: TopologyOptions = {}): fc.Arbitrary<{
 export function arbSubsystemGroups(nodeIds: string[]): fc.Arbitrary<SubsystemGroup[]> {
   if (nodeIds.length < 2) return fc.constant([]);
 
-  return fc.integer({ min: 0, max: Math.min(20, Math.floor(nodeIds.length / 2)) }).chain(
-    (groupCount) => {
+  return fc
+    .integer({ min: 0, max: Math.min(20, Math.floor(nodeIds.length / 2)) })
+    .chain((groupCount) => {
       if (groupCount === 0) return fc.constant([]);
-      return fc.shuffledSubarray(nodeIds, { minLength: groupCount * 2, maxLength: nodeIds.length }).map(
-        (shuffled) => {
+      return fc
+        .shuffledSubarray(nodeIds, { minLength: groupCount * 2, maxLength: nodeIds.length })
+        .map((shuffled) => {
           const groups: SubsystemGroup[] = [];
           let offset = 0;
           const perGroup = Math.max(2, Math.min(50, Math.floor(shuffled.length / groupCount)));
@@ -467,10 +482,8 @@ export function arbSubsystemGroups(nodeIds: string[]): fc.Arbitrary<SubsystemGro
             offset += size;
           }
           return groups;
-        },
-      );
-    },
-  );
+        });
+    });
 }
 
 // ─── Default configs (for topology builder) ──────────────────────
@@ -478,35 +491,110 @@ export function arbSubsystemGroups(nodeIds: string[]): fc.Arbitrary<SubsystemGro
 function defaultConfig(type: NodeType): Record<string, unknown> {
   switch (type) {
     case NodeType.TrafficGenerator:
-      return { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 };
+      return {
+        rps: 100,
+        distribution: Distribution.Poisson,
+        spikeMultiplier: 1,
+        spikeDurationSec: 0,
+      };
     case NodeType.ApiGateway:
       return { authLatencyMeanMs: 5, authLatencyStdDevMs: 1, rejectionRate: 0.01 };
     case NodeType.RateLimiter:
       return { bucketCapacity: 10_000, refillRatePerSec: 1_000 };
     case NodeType.LoadBalancer:
-      return { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 };
+      return {
+        algorithm: LBAlgorithm.RoundRobin,
+        healthCheckIntervalMs: 5000,
+        evictionThreshold: 3,
+      };
     case NodeType.CircuitBreaker:
       return { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 };
     case NodeType.AppServer:
-      return { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 10, processingTimeStdDevMs: 2 };
+      return {
+        workerThreadPoolSize: 50,
+        requestQueueDepth: 200,
+        processingTimeMeanMs: 10,
+        processingTimeStdDevMs: 2,
+      };
     case NodeType.Cache:
       return { hitRatio: 0.8, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 };
     case NodeType.Database:
-      return { connectionPoolSize: 50, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 3, lockTimeoutMs: 5000, dbType: DatabaseType.Relational };
+      return {
+        connectionPoolSize: 50,
+        queryLatencyMeanMs: 10,
+        queryLatencyStdDevMs: 3,
+        lockTimeoutMs: 5000,
+        dbType: DatabaseType.Relational,
+      };
     case NodeType.MessageQueue:
-      return { consumerBatchSize: 10, bufferCapacity: 10_000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.RejectNew };
+      return {
+        consumerBatchSize: 10,
+        bufferCapacity: 10_000,
+        backpressureThresholdPct: 80,
+        backpressureStrategy: BackpressureStrategy.RejectNew,
+      };
     case NodeType.AuthService:
-      return { verificationMode: VerificationMode.Local, verificationLatencyMeanMs: 5, verificationLatencyStdDevMs: 1, concurrencyLimit: 100, queueDepth: 200, tokenCacheHitRatio: 0.9, credentialFailureRate: 0.01 };
+      return {
+        verificationMode: VerificationMode.Local,
+        verificationLatencyMeanMs: 5,
+        verificationLatencyStdDevMs: 1,
+        concurrencyLimit: 100,
+        queueDepth: 200,
+        tokenCacheHitRatio: 0.9,
+        credentialFailureRate: 0.01,
+      };
     case NodeType.AuthzService:
-      return { policyLatencyMeanMs: 5, policyLatencyStdDevMs: 1, policyCacheHitRatio: 0.8, lookupsPerRequest: 1, denyRate: 0.02, concurrencyLimit: 100, queueDepth: 200 };
+      return {
+        policyLatencyMeanMs: 5,
+        policyLatencyStdDevMs: 1,
+        policyCacheHitRatio: 0.8,
+        lookupsPerRequest: 1,
+        denyRate: 0.02,
+        concurrencyLimit: 100,
+        queueDepth: 200,
+      };
     case NodeType.WorkerPool:
-      return { concurrency: 10, jobProcessingMeanMs: 100, jobProcessingStdDevMs: 20, prefetchBufferDepth: 50, jobFailureRate: 0.05, maxRetries: 3, retryBackoff: RetryBackoff.Exponential, retryBaseDelayMs: 1000, jobTimeoutMs: 30_000 };
+      return {
+        concurrency: 10,
+        jobProcessingMeanMs: 100,
+        jobProcessingStdDevMs: 20,
+        prefetchBufferDepth: 50,
+        jobFailureRate: 0.05,
+        maxRetries: 3,
+        retryBackoff: RetryBackoff.Exponential,
+        retryBaseDelayMs: 1000,
+        jobTimeoutMs: 30_000,
+      };
     case NodeType.DeadLetterQueue:
-      return { capacity: 10_000, retentionPeriodMs: 86_400_000, redriveMode: RedriveMode.Manual, redriveIntervalMs: 60_000, redriveBatchSize: 10, maxRedriveAttempts: 3 };
+      return {
+        capacity: 10_000,
+        retentionPeriodMs: 86_400_000,
+        redriveMode: RedriveMode.Manual,
+        redriveIntervalMs: 60_000,
+        redriveBatchSize: 10,
+        maxRedriveAttempts: 3,
+      };
     case NodeType.ObjectStore:
-      return { objectSizeMeanKB: 1024, objectSizeStdDevKB: 256, throughputCapacityMBps: 100, baseLatencyMeanMs: 10, baseLatencyStdDevMs: 3, maxConcurrentTransfers: 100, transferQueueDepth: 200, readFraction: 0.7, writeLatencyMultiplier: 2.0 };
+      return {
+        objectSizeMeanKB: 1024,
+        objectSizeStdDevKB: 256,
+        throughputCapacityMBps: 100,
+        baseLatencyMeanMs: 10,
+        baseLatencyStdDevMs: 3,
+        maxConcurrentTransfers: 100,
+        transferQueueDepth: 200,
+        readFraction: 0.7,
+        writeLatencyMultiplier: 2.0,
+      };
     case NodeType.Scheduler:
-      return { intervalMs: 10_000, jobsPerTrigger: 10, startOffsetMs: 0, jitterMs: 0, overlapPolicy: OverlapPolicy.Allow, maxDeferredTriggers: 10 };
+      return {
+        intervalMs: 10_000,
+        jobsPerTrigger: 10,
+        startOffsetMs: 0,
+        jitterMs: 0,
+        overlapPolicy: OverlapPolicy.Allow,
+        maxDeferredTriggers: 10,
+      };
   }
 }
 

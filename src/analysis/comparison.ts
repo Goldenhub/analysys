@@ -1,8 +1,4 @@
-import type {
-  BaselineRun,
-  WholeRunAggregates,
-  PerNodeAggregates,
-} from '@/types/baseline';
+import type { BaselineRun, WholeRunAggregates, PerNodeAggregates } from '@/types/baseline';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -48,7 +44,10 @@ export interface ConfigDifference {
 
 export type ComparisonLabel =
   | { kind: 'controlled' }
-  | { kind: 'uncontrolled'; differences: Array<{ attribute: string; valueA: unknown; valueB: unknown }> };
+  | {
+      kind: 'uncontrolled';
+      differences: Array<{ attribute: string; valueA: unknown; valueB: unknown }>;
+    };
 
 export interface ComparisonResult {
   label: ComparisonLabel;

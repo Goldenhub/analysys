@@ -97,16 +97,12 @@ export class FindingBuilder {
 
     // ── Validate subjectNodeIds ──
     if (subjectNodeIds.length > 200) {
-      throw new AnalysisError(
-        `subjectNodeIds exceeds 200: got ${String(subjectNodeIds.length)}`,
-      );
+      throw new AnalysisError(`subjectNodeIds exceeds 200: got ${String(subjectNodeIds.length)}`);
     }
 
     // ── Validate evidence ──
     if (evidence.length < 1 || evidence.length > 20) {
-      throw new AnalysisError(
-        `evidence must have 1–20 entries: got ${String(evidence.length)}`,
-      );
+      throw new AnalysisError(`evidence must have 1–20 entries: got ${String(evidence.length)}`);
     }
 
     const primaryCount = evidence.filter((e) => e.primary === true).length;
@@ -140,14 +136,10 @@ export class FindingBuilder {
 
     // ── Validate constraint and tradeoff ──
     if (constraint.length < 1 || constraint.length > 500) {
-      throw new AnalysisError(
-        `constraint must be 1–500 chars: got ${String(constraint.length)}`,
-      );
+      throw new AnalysisError(`constraint must be 1–500 chars: got ${String(constraint.length)}`);
     }
     if (tradeoff.length < 1 || tradeoff.length > 500) {
-      throw new AnalysisError(
-        `tradeoff must be 1–500 chars: got ${String(tradeoff.length)}`,
-      );
+      throw new AnalysisError(`tradeoff must be 1–500 chars: got ${String(tradeoff.length)}`);
     }
 
     // ── Round action numeric fields ──

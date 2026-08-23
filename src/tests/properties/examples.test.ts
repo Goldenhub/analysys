@@ -8,7 +8,15 @@
  * - Exact rejection messages for Requirement 30 connection rules
  */
 import { describe, it, expect } from 'vitest';
-import { NodeType, RoutingPolicy, Distribution, OverlapPolicy, BackpressureStrategy, RetryBackoff, RedriveMode } from '@/types/nodes';
+import {
+  NodeType,
+  RoutingPolicy,
+  Distribution,
+  OverlapPolicy,
+  BackpressureStrategy,
+  RetryBackoff,
+  RedriveMode,
+} from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
@@ -41,17 +49,25 @@ describe('Scheduler first trigger at t=0 with zero offset', () => {
         label: 'App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 100, requestQueueDepth: 1000, processingTimeMeanMs: 1, processingTimeStdDevMs: 0 },
+        config: {
+          workerThreadPoolSize: 100,
+          requestQueueDepth: 1000,
+          processingTimeMeanMs: 1,
+          processingTimeStdDevMs: 0,
+        },
       },
     ];
     const edges: EdgeData[] = [
       { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
     ];
 
-    const { summary } = await runEngine({ nodes, edges }, {
-      maxSimulatedTimeMs: 6_000,
-      seed: 42,
-    });
+    const { summary } = await runEngine(
+      { nodes, edges },
+      {
+        maxSimulatedTimeMs: 6_000,
+        seed: 42,
+      },
+    );
 
     // First trigger at t=0 produces jobsPerTrigger jobs
     // Second trigger at t=5000 produces another batch
@@ -85,17 +101,25 @@ describe('Skip overlap policy', () => {
         label: 'Slow App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 1, requestQueueDepth: 0, processingTimeMeanMs: 2500, processingTimeStdDevMs: 0 },
+        config: {
+          workerThreadPoolSize: 1,
+          requestQueueDepth: 0,
+          processingTimeMeanMs: 2500,
+          processingTimeStdDevMs: 0,
+        },
       },
     ];
     const edges: EdgeData[] = [
       { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
     ];
 
-    const { batches } = await runEngine({ nodes, edges }, {
-      maxSimulatedTimeMs: 10_000,
-      seed: 42,
-    });
+    const { batches } = await runEngine(
+      { nodes, edges },
+      {
+        maxSimulatedTimeMs: 10_000,
+        seed: 42,
+      },
+    );
 
     // With Skip policy and 2500ms processing, the second trigger at t=1000 should be
     // skipped since the first job hasn't completed yet.
@@ -131,17 +155,25 @@ describe('Queue overlap policy', () => {
         label: 'Slow App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 1, requestQueueDepth: 100, processingTimeMeanMs: 2500, processingTimeStdDevMs: 0 },
+        config: {
+          workerThreadPoolSize: 1,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 2500,
+          processingTimeStdDevMs: 0,
+        },
       },
     ];
     const edges: EdgeData[] = [
       { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
     ];
 
-    const { batches } = await runEngine({ nodes, edges }, {
-      maxSimulatedTimeMs: 10_000,
-      seed: 42,
-    });
+    const { batches } = await runEngine(
+      { nodes, edges },
+      {
+        maxSimulatedTimeMs: 10_000,
+        seed: 42,
+      },
+    );
 
     // Queue policy queues up to maxDeferredTriggers=3 then drops subsequent ones
     const total = Object.values(getCumulativeTerminalCounts(batches)).reduce((s, c) => s + c, 0);
@@ -158,7 +190,12 @@ describe('Redrive decrements Dead_Lettered count', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 20, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 20,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'mq-1',
@@ -166,7 +203,12 @@ describe('Redrive decrements Dead_Lettered count', () => {
         label: 'MQ',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { consumerBatchSize: 10, bufferCapacity: 10000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.RejectNew },
+        config: {
+          consumerBatchSize: 10,
+          bufferCapacity: 10000,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.RejectNew,
+        },
       },
       {
         id: 'wp-1',
@@ -238,7 +280,11 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
   it('self-referencing edge is rejected', () => {
     const node = makeNode('a', NodeType.AppServer);
     const result = validateEdgeConnection(
-      node, node, EdgeProtocol.Sync, [], new Map([['a', node]]),
+      node,
+      node,
+      EdgeProtocol.Sync,
+      [],
+      new Map([['a', node]]),
     );
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('Self-referencing edges are not allowed.');
@@ -247,9 +293,18 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
   it('duplicate edge is rejected', () => {
     const source = makeNode('a', NodeType.AppServer);
     const target = makeNode('b', NodeType.Database);
-    const existing: EdgeData[] = [{ id: 'e1', source: 'a', target: 'b', protocol: EdgeProtocol.Sync, weight: 1 }];
+    const existing: EdgeData[] = [
+      { id: 'e1', source: 'a', target: 'b', protocol: EdgeProtocol.Sync, weight: 1 },
+    ];
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, existing, new Map([['a', source], ['b', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      existing,
+      new Map([
+        ['a', source],
+        ['b', target],
+      ]),
     );
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('A connection already exists between these nodes.');
@@ -259,17 +314,33 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('obj-1', NodeType.ObjectStore);
     const target = makeNode('db-1', NodeType.Database);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, [], new Map([['obj-1', source], ['db-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      [],
+      new Map([
+        ['obj-1', source],
+        ['db-1', target],
+      ]),
     );
     expect(result.valid).toBe(false);
-    expect(result.reason).toBe('OBJECT_STORE is a terminal node type and cannot have outgoing connections.');
+    expect(result.reason).toBe(
+      'OBJECT_STORE is a terminal node type and cannot have outgoing connections.',
+    );
   });
 
   it('Database as source is rejected (empty allowedTargets)', () => {
     const source = makeNode('db-1', NodeType.Database);
     const target = makeNode('app-1', NodeType.AppServer);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, [], new Map([['db-1', source], ['app-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      [],
+      new Map([
+        ['db-1', source],
+        ['app-1', target],
+      ]),
     );
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('DATABASE cannot connect to APP_SERVER.');
@@ -279,7 +350,14 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('cache-1', NodeType.Cache);
     const target = makeNode('app-1', NodeType.AppServer);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, [], new Map([['cache-1', source], ['app-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      [],
+      new Map([
+        ['cache-1', source],
+        ['app-1', target],
+      ]),
     );
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('CACHE cannot connect to APP_SERVER.');
@@ -290,7 +368,14 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('wp-1', NodeType.WorkerPool);
     const target = makeNode('db-1', NodeType.Database);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Async, [], new Map([['wp-1', source], ['db-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Async,
+      [],
+      new Map([
+        ['wp-1', source],
+        ['db-1', target],
+      ]),
     );
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('cannot connect to');
@@ -321,7 +406,14 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('tg-1', NodeType.TrafficGenerator);
     const target = makeNode('auth-1', NodeType.AuthService);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, [], new Map([['tg-1', source], ['auth-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      [],
+      new Map([
+        ['tg-1', source],
+        ['auth-1', target],
+      ]),
     );
     expect(result.valid).toBe(true);
   });
@@ -330,7 +422,14 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('sched-1', NodeType.Scheduler);
     const target = makeNode('mq-1', NodeType.MessageQueue);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Async, [], new Map([['sched-1', source], ['mq-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Async,
+      [],
+      new Map([
+        ['sched-1', source],
+        ['mq-1', target],
+      ]),
     );
     expect(result.valid).toBe(true);
   });
@@ -339,7 +438,14 @@ describe('Connection rule rejection messages (Requirement 30)', () => {
     const source = makeNode('wp-1', NodeType.WorkerPool);
     const target = makeNode('obj-1', NodeType.ObjectStore);
     const result = validateEdgeConnection(
-      source, target, EdgeProtocol.Sync, [], new Map([['wp-1', source], ['obj-1', target]]),
+      source,
+      target,
+      EdgeProtocol.Sync,
+      [],
+      new Map([
+        ['wp-1', source],
+        ['obj-1', target],
+      ]),
     );
     expect(result.valid).toBe(true);
   });

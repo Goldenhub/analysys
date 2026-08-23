@@ -49,7 +49,10 @@ describe('MinHeap', () => {
   });
 
   it('works with object comparator (SimEvent-like)', () => {
-    interface Event { timestamp: number; id: string }
+    interface Event {
+      timestamp: number;
+      id: string;
+    }
     const heap = new MinHeap<Event>((a, b) => a.timestamp - b.timestamp);
 
     heap.insert({ timestamp: 100, id: 'c' });

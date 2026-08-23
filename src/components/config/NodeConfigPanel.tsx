@@ -140,11 +140,7 @@ const VALIDATION_RULES: Record<string, Record<string, FieldValidation>> = {
   },
 };
 
-function validateField(
-  nodeType: NodeType,
-  field: string,
-  value: number,
-): string | null {
+function validateField(nodeType: NodeType, field: string, value: number): string | null {
   // Checked ahead of the range rules and independently of them: a NaN comparison is
   // false at both bounds, so without this an empty or non-numeric control would read as
   // valid and be written to the store. Rejecting here leaves the stored configuration at
@@ -208,7 +204,17 @@ interface SliderFieldProps {
   displayValue?: string;
 }
 
-function SliderField({ label, field, value, onChange, error, min, max, step, displayValue }: SliderFieldProps) {
+function SliderField({
+  label,
+  field,
+  value,
+  onChange,
+  error,
+  min,
+  max,
+  step,
+  displayValue,
+}: SliderFieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
@@ -694,95 +700,237 @@ function NodeTypeIcon({ nodeType }: { nodeType: NodeType }) {
   switch (nodeType) {
     case NodeType.TrafficGenerator:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+          />
         </svg>
       );
     case NodeType.ApiGateway:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
+          />
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
         </svg>
       );
     case NodeType.RateLimiter:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
         </svg>
       );
     case NodeType.CircuitBreaker:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M18.36 6.64a9 9 0 1 1-12.73 0" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v10" />
         </svg>
       );
     case NodeType.LoadBalancer:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+          />
         </svg>
       );
     case NodeType.AppServer:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-13.5-3a3 3 0 0 1 0-6h13.5a3 3 0 1 1 0 6M6 6.75h.008v.008H6V6.75Zm0 7.5h.008v.008H6v-.008Zm0 7.5h.008v.008H6v-.008Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-13.5-3a3 3 0 0 1 0-6h13.5a3 3 0 1 1 0 6M6 6.75h.008v.008H6V6.75Zm0 7.5h.008v.008H6v-.008Zm0 7.5h.008v.008H6v-.008Z"
+          />
         </svg>
       );
     case NodeType.Cache:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+          />
         </svg>
       );
     case NodeType.Database:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
+          />
         </svg>
       );
     case NodeType.MessageQueue:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0L21.75 16.5 12 21.75l-9.75-5.25 4.179-2.25" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0L21.75 16.5 12 21.75l-9.75-5.25 4.179-2.25"
+          />
         </svg>
       );
     case NodeType.AuthService:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"
+          />
         </svg>
       );
     case NodeType.AuthzService:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
+          />
         </svg>
       );
     case NodeType.WorkerPool:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"
+          />
         </svg>
       );
     case NodeType.DeadLetterQueue:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
+          />
         </svg>
       );
     case NodeType.ObjectStore:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 3.75v3.75m-16.5-3.75v3.75" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 3.75v3.75m-16.5-3.75v3.75"
+          />
         </svg>
       );
     case NodeType.Scheduler:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+          />
         </svg>
       );
   }
@@ -815,11 +963,7 @@ const QUEUE_DEPTH_TYPES: NodeType[] = [
   NodeType.MessageQueue,
 ];
 
-const CONNECTION_TYPES: NodeType[] = [
-  NodeType.Database,
-  NodeType.AppServer,
-  NodeType.LoadBalancer,
-];
+const CONNECTION_TYPES: NodeType[] = [NodeType.Database, NodeType.AppServer, NodeType.LoadBalancer];
 
 const HEALTH_LABELS: Record<'green' | 'yellow' | 'red', string> = {
   green: 'Healthy',
@@ -867,9 +1011,7 @@ function formatSimTime(ms: number): string {
 function ActivitySection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-        {title}
-      </h3>
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{title}</h3>
       {children}
     </div>
   );
@@ -960,19 +1102,14 @@ function ActivityPanel({
       {/* Throughput & Errors */}
       <ActivitySection title="Throughput &amp; Errors">
         <StatRow label="Throughput" value={snapshot.throughput.toFixed(1)} unit="req/s" />
-        <StatRow
-          label="Error rate"
-          value={(snapshot.errorRate * 100).toFixed(1)}
-          unit="%"
-        />
+        <StatRow label="Error rate" value={(snapshot.errorRate * 100).toFixed(1)} unit="%" />
       </ActivitySection>
 
       {/* Latency */}
       <ActivitySection title="Latency">
         {isSource ? (
           <ActivityNote>
-            Not applicable — a traffic generator originates requests rather than serving
-            them.
+            Not applicable — a traffic generator originates requests rather than serving them.
           </ActivityNote>
         ) : hasNoCompletions(snapshot) ? (
           <ActivityNote>No completions in this window</ActivityNote>
@@ -996,16 +1133,10 @@ function ActivityPanel({
           />
         )}
         {CONNECTION_TYPES.includes(nodeType) && (
-          <StatRow
-            label="Active connections"
-            value={String(snapshot.activeConnections)}
-          />
+          <StatRow label="Active connections" value={String(snapshot.activeConnections)} />
         )}
         {nodeType === NodeType.MessageQueue && (
-          <StatRow
-            label="Buffered messages"
-            value={String(Math.round(snapshot.bufferOccupancy))}
-          />
+          <StatRow label="Buffered messages" value={String(Math.round(snapshot.bufferOccupancy))} />
         )}
         <div className="mt-1 flex flex-col gap-1">
           <div className="flex items-baseline justify-between text-xs">
@@ -1030,8 +1161,8 @@ function ActivityPanel({
       <ActivitySection title="Little's Law">
         {isSource ? (
           <ActivityNote>
-            Not applicable — Little&apos;s Law describes requests dwelling in a system; a
-            source node holds none.
+            Not applicable — Little&apos;s Law describes requests dwelling in a system; a source
+            node holds none.
           </ActivityNote>
         ) : (
           <>
@@ -1083,9 +1214,7 @@ interface NodeConfigPanelProps {
 }
 
 export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProps) {
-  const node = useTopologyStore((s) =>
-    s.nodes.find((n) => n.id === selectedNodeId),
-  );
+  const node = useTopologyStore((s) => s.nodes.find((n) => n.id === selectedNodeId));
   const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const simState = useSimulationStore((s) => s.simState);
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
@@ -1163,19 +1292,21 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
           <NodeTypeIcon nodeType={nodeData.nodeType} />
         </span>
         <div className="flex flex-1 flex-col">
-          <span className="text-sm font-medium text-gray-200">
-            {nodeData.label}
-          </span>
-          <span className="text-xs text-gray-500">
-            {NODE_TYPE_LABELS[nodeData.nodeType]}
-          </span>
+          <span className="text-sm font-medium text-gray-200">{nodeData.label}</span>
+          <span className="text-xs text-gray-500">{NODE_TYPE_LABELS[nodeData.nodeType]}</span>
         </div>
         <button
           onClick={onClose}
           aria-label="Close configuration panel"
           className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
@@ -1189,9 +1320,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             onClick={() => setTab('config')}
             aria-pressed={tab === 'config'}
             className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              tab === 'config'
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-400 hover:text-gray-200'
+              tab === 'config' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             Config
@@ -1201,9 +1330,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             onClick={() => setTab('activity')}
             aria-pressed={tab === 'activity'}
             className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              tab === 'activity'
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-400 hover:text-gray-200'
+              tab === 'activity' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             Activity
@@ -1325,10 +1452,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
         {/* R32 — routing policy field, shown for any node with 2+ outgoing edges */}
         <div className="mt-3 border-t border-gray-800 pt-3">
-          <RoutingPolicyField
-            nodeId={selectedNodeId}
-            routingPolicy={nodeData.routingPolicy}
-          />
+          <RoutingPolicyField nodeId={selectedNodeId} routingPolicy={nodeData.routingPolicy} />
         </div>
       </div>
 

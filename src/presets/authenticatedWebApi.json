@@ -214,25 +214,133 @@
       }
     ],
     "edges": [
-      { "id": "e-tg1-apigw1", "source": "tg-1", "target": "api-gw-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-apigw1-rl1", "source": "api-gw-1", "target": "rl-1", "protocol": "SYNC", "weight": 1.0 },
+      {
+        "id": "e-tg1-apigw1",
+        "source": "tg-1",
+        "target": "api-gw-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-apigw1-rl1",
+        "source": "api-gw-1",
+        "target": "rl-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
       { "id": "e-rl1-lb1", "source": "rl-1", "target": "lb-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-apigw1-auth1", "source": "api-gw-1", "target": "auth-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-auth1-cacheauth1", "source": "auth-1", "target": "cache-auth-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-apigw1-authz1", "source": "api-gw-1", "target": "authz-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-lb1-app1", "source": "lb-1", "target": "app-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-lb1-app2", "source": "lb-1", "target": "app-2", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-lb1-app3", "source": "lb-1", "target": "app-3", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app1-cache1", "source": "app-1", "target": "cache-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app2-cache1", "source": "app-2", "target": "cache-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app3-cache1", "source": "app-3", "target": "cache-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app1-db1", "source": "app-1", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app2-db1", "source": "app-2", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app3-db1", "source": "app-3", "target": "db-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app1-obj1", "source": "app-1", "target": "obj-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app2-obj1", "source": "app-2", "target": "obj-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-app3-obj1", "source": "app-3", "target": "obj-1", "protocol": "SYNC", "weight": 1.0 },
-      { "id": "e-cache1-db1", "source": "cache-1", "target": "db-1", "protocol": "SYNC", "weight": 1.0 }
+      {
+        "id": "e-apigw1-auth1",
+        "source": "api-gw-1",
+        "target": "auth-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-auth1-cacheauth1",
+        "source": "auth-1",
+        "target": "cache-auth-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-apigw1-authz1",
+        "source": "api-gw-1",
+        "target": "authz-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app1",
+        "source": "lb-1",
+        "target": "app-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app2",
+        "source": "lb-1",
+        "target": "app-2",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-lb1-app3",
+        "source": "lb-1",
+        "target": "app-3",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-cache1",
+        "source": "app-1",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-cache1",
+        "source": "app-2",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-cache1",
+        "source": "app-3",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-db1",
+        "source": "app-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-db1",
+        "source": "app-2",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-db1",
+        "source": "app-3",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app1-obj1",
+        "source": "app-1",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app2-obj1",
+        "source": "app-2",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-app3-obj1",
+        "source": "app-3",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      },
+      {
+        "id": "e-cache1-db1",
+        "source": "cache-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1.0
+      }
     ]
   },
   "chaosTimeline": []

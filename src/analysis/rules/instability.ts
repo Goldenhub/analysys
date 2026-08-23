@@ -10,7 +10,7 @@ import { analysisUtilization } from './bottleneck';
 const YIELD_BATCH_SIZE = 8;
 const SATURATION_THRESHOLD = 0.85;
 const INSTABILITY_WINDOW_COUNT = 5;
-const GROWTH_FLOOR_PCT = 0.20;
+const GROWTH_FLOOR_PCT = 0.2;
 const LITTLES_LAW_DEVIATION_THRESHOLD = 0.05;
 
 // ─── instabilityDepthGrowthRule (Tasks 472-474) ──────────────────
@@ -134,18 +134,34 @@ export const instabilityDepthGrowthRule: AnalysisRule = {
       const lastWindow = completed[completed.length - 1]!;
 
       const evidence: EvidenceEntry[] = [
-        { metricName: 'monitoredDepthNewest', value: newest, unit: 'items', scope: nodeId, primary: true },
+        {
+          metricName: 'monitoredDepthNewest',
+          value: newest,
+          unit: 'items',
+          scope: nodeId,
+          primary: true,
+        },
         { metricName: 'monitoredDepthOldest', value: oldest, unit: 'items', scope: nodeId },
         { metricName: 'growthRate', value: growthRatePerSec, unit: 'items/s', scope: nodeId },
         { metricName: 'netGrowth', value: netGrowth, unit: 'items', scope: nodeId },
       ];
 
       if (projectedTimeMs !== null) {
-        evidence.push({ metricName: 'projectedTimeToBound', value: projectedTimeMs, unit: 'ms', scope: nodeId });
+        evidence.push({
+          metricName: 'projectedTimeToBound',
+          value: projectedTimeMs,
+          unit: 'ms',
+          scope: nodeId,
+        });
       }
 
       if (sustainedUtil !== null) {
-        evidence.push({ metricName: 'sustainedUtilization', value: sustainedUtil, unit: 'fraction', scope: nodeId });
+        evidence.push({
+          metricName: 'sustainedUtilization',
+          value: sustainedUtil,
+          unit: 'fraction',
+          scope: nodeId,
+        });
       }
 
       const constraintParts: string[] = [
@@ -154,7 +170,9 @@ export const instabilityDepthGrowthRule: AnalysisRule = {
       if (projectionNotApplicableReason) {
         constraintParts.push(`projection not applicable: ${projectionNotApplicableReason}`);
       } else if (projectedTimeMs !== null) {
-        constraintParts.push(`projected ${(projectedTimeMs / 1000).toFixed(1)}s to bound while growth rate continues`);
+        constraintParts.push(
+          `projected ${(projectedTimeMs / 1000).toFixed(1)}s to bound while growth rate continues`,
+        );
       }
 
       const constraint = constraintParts.join('; ').slice(0, 500);
@@ -174,7 +192,9 @@ export const instabilityDepthGrowthRule: AnalysisRule = {
             nodeId,
             parameter: boundParam?.parameter ?? 'capacity',
             direction: 'increase',
-            ...(boundParam ? { targetValue: { value: boundParam.value * 2, unit: boundParam.unit } } : {}),
+            ...(boundParam
+              ? { targetValue: { value: boundParam.value * 2, unit: boundParam.unit } }
+              : {}),
           },
           tradeoff: `Increasing ${boundParam?.parameter ?? 'capacity'} delays overflow but does not address the root cause of unbounded growth`,
           lowestCompletedCount: completedCount,
@@ -251,8 +271,19 @@ export const instabilityLittlesLawRule: AnalysisRule = {
           severity: 'Warning',
           subjectNodeIds: [nodeId],
           evidence: [
-            { metricName: 'littlesLawDeviation', value: meanDeviation, unit: 'fraction', scope: nodeId, primary: true },
-            { metricName: 'analysisUtilization', value: analysisUtilization(nodeId, ctx.windows) ?? 0, unit: 'fraction', scope: nodeId },
+            {
+              metricName: 'littlesLawDeviation',
+              value: meanDeviation,
+              unit: 'fraction',
+              scope: nodeId,
+              primary: true,
+            },
+            {
+              metricName: 'analysisUtilization',
+              value: analysisUtilization(nodeId, ctx.windows) ?? 0,
+              unit: 'fraction',
+              scope: nodeId,
+            },
           ],
           constraint: `${ctx.labelOf(nodeId)} exceeds 5% Little's Law deviation across 3 consecutive windows (measured outside Steady_State)`,
           action: {
@@ -332,13 +363,16 @@ export function getDepthGrowthUnstableNodes(ctx: AnalysisContext): Set<string> {
 
     let allIncreasing = true;
     for (let i = 1; i < depths.length; i++) {
-      if (depths[i]! <= depths[i - 1]!) { allIncreasing = false; break; }
+      if (depths[i]! <= depths[i - 1]!) {
+        allIncreasing = false;
+        break;
+      }
     }
     if (!allIncreasing) continue;
 
     const oldest = depths[0]!;
     const newest = depths[depths.length - 1]!;
-    if (oldest > 0 && (newest - oldest) < oldest * GROWTH_FLOOR_PCT) continue;
+    if (oldest > 0 && newest - oldest < oldest * GROWTH_FLOOR_PCT) continue;
     if (oldest === 0 && newest === 0) continue;
 
     unstable.add(nodeId);
@@ -355,11 +389,19 @@ function getDepthBoundParam(
   if (!node) return null;
   switch (node.nodeType) {
     case 'APP_SERVER':
-      return { parameter: 'requestQueueDepth', value: node.config.requestQueueDepth, unit: 'slots' };
+      return {
+        parameter: 'requestQueueDepth',
+        value: node.config.requestQueueDepth,
+        unit: 'slots',
+      };
     case 'MESSAGE_QUEUE':
       return { parameter: 'bufferCapacity', value: node.config.bufferCapacity, unit: 'messages' };
     case 'WORKER_POOL':
-      return { parameter: 'prefetchBufferDepth', value: node.config.prefetchBufferDepth, unit: 'slots' };
+      return {
+        parameter: 'prefetchBufferDepth',
+        value: node.config.prefetchBufferDepth,
+        unit: 'slots',
+      };
     case 'DEAD_LETTER_QUEUE':
       return { parameter: 'capacity', value: node.config.capacity, unit: 'messages' };
     default:

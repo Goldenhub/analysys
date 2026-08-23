@@ -120,11 +120,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis
-          dataKey="timeLabel"
-          tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="#4b5563"
-        />
+        <XAxis dataKey="timeLabel" tick={{ fill: '#9ca3af', fontSize: 10 }} stroke="#4b5563" />
         <YAxis
           tick={{ fill: '#9ca3af', fontSize: 10 }}
           stroke="#4b5563"

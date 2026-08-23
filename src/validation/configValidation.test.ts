@@ -32,7 +32,12 @@ import type { SimulationNode } from '@/types/nodes';
 // ─── TrafficGenerator Config ─────────────────────────────────────
 
 describe('validateTrafficGeneratorConfig', () => {
-  const validConfig = { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 5, spikeDurationSec: 10 };
+  const validConfig = {
+    rps: 100,
+    distribution: Distribution.Poisson,
+    spikeMultiplier: 5,
+    spikeDurationSec: 10,
+  };
 
   it('accepts a valid config', () => {
     const result = validateTrafficGeneratorConfig(validConfig);
@@ -71,7 +76,11 @@ describe('validateTrafficGeneratorConfig', () => {
 // ─── LoadBalancer Config ─────────────────────────────────────────
 
 describe('validateLoadBalancerConfig', () => {
-  const validConfig = { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 };
+  const validConfig = {
+    algorithm: LBAlgorithm.RoundRobin,
+    healthCheckIntervalMs: 5000,
+    evictionThreshold: 3,
+  };
 
   it('accepts a valid config', () => {
     const result = validateLoadBalancerConfig(validConfig);
@@ -97,7 +106,12 @@ describe('validateLoadBalancerConfig', () => {
 // ─── AppServer Config ────────────────────────────────────────────
 
 describe('validateAppServerConfig', () => {
-  const validConfig = { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 };
+  const validConfig = {
+    workerThreadPoolSize: 10,
+    requestQueueDepth: 100,
+    processingTimeMeanMs: 5,
+    processingTimeStdDevMs: 1,
+  };
 
   it('accepts a valid config', () => {
     const result = validateAppServerConfig(validConfig);
@@ -164,7 +178,13 @@ describe('validateCacheConfig', () => {
 // ─── Database Config ─────────────────────────────────────────────
 
 describe('validateDatabaseConfig', () => {
-  const validConfig = { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational };
+  const validConfig = {
+    connectionPoolSize: 20,
+    queryLatencyMeanMs: 10,
+    queryLatencyStdDevMs: 2,
+    lockTimeoutMs: 5000,
+    dbType: DatabaseType.Relational,
+  };
 
   it('accepts a valid config', () => {
     const result = validateDatabaseConfig(validConfig);
@@ -200,7 +220,12 @@ describe('validateDatabaseConfig', () => {
 // ─── MessageQueue Config ─────────────────────────────────────────
 
 describe('validateMessageQueueConfig', () => {
-  const validConfig = { consumerBatchSize: 10, bufferCapacity: 1000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.DropOldest };
+  const validConfig = {
+    consumerBatchSize: 10,
+    bufferCapacity: 1000,
+    backpressureThresholdPct: 80,
+    backpressureStrategy: BackpressureStrategy.DropOldest,
+  };
 
   it('accepts a valid config', () => {
     const result = validateMessageQueueConfig(validConfig);
@@ -268,8 +293,12 @@ describe('validateAuthServiceConfig', () => {
   it('rejects concurrencyLimit of 0 and accepts both of its bounds', () => {
     expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 0 }).valid).toBe(false);
     expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 1 }).valid).toBe(true);
-    expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 10_000 }).valid).toBe(true);
-    expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 10_001 }).valid).toBe(false);
+    expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 10_000 }).valid).toBe(
+      true,
+    );
+    expect(validateAuthServiceConfig({ ...validConfig, concurrencyLimit: 10_001 }).valid).toBe(
+      false,
+    );
   });
 
   it('rejects a non-finite value with a message naming the parameter', () => {
@@ -319,8 +348,12 @@ describe('validateAuthzServiceConfig', () => {
   });
 
   it('accepts policyCacheHitRatio at both bounds', () => {
-    expect(validateAuthzServiceConfig({ ...validConfig, policyCacheHitRatio: 0.0 }).valid).toBe(true);
-    expect(validateAuthzServiceConfig({ ...validConfig, policyCacheHitRatio: 1.0 }).valid).toBe(true);
+    expect(validateAuthzServiceConfig({ ...validConfig, policyCacheHitRatio: 0.0 }).valid).toBe(
+      true,
+    );
+    expect(validateAuthzServiceConfig({ ...validConfig, policyCacheHitRatio: 1.0 }).valid).toBe(
+      true,
+    );
   });
 
   it('accepts queueDepth of 0', () => {
@@ -418,16 +451,24 @@ describe('validateDeadLetterQueueConfig', () => {
     expect(validateDeadLetterQueueConfig({ ...validConfig, capacity: 1 }).valid).toBe(true);
     expect(validateDeadLetterQueueConfig({ ...validConfig, capacity: 1_000_000 }).valid).toBe(true);
     expect(validateDeadLetterQueueConfig({ ...validConfig, capacity: 0 }).valid).toBe(false);
-    expect(validateDeadLetterQueueConfig({ ...validConfig, capacity: 1_000_001 }).valid).toBe(false);
+    expect(validateDeadLetterQueueConfig({ ...validConfig, capacity: 1_000_001 }).valid).toBe(
+      false,
+    );
   });
 
   it('accepts maxRedriveAttempts of 0 — retain without ever redriving', () => {
-    expect(validateDeadLetterQueueConfig({ ...validConfig, maxRedriveAttempts: 0 }).valid).toBe(true);
+    expect(validateDeadLetterQueueConfig({ ...validConfig, maxRedriveAttempts: 0 }).valid).toBe(
+      true,
+    );
   });
 
   it('accepts retentionPeriodMs at its 30-day upper bound', () => {
-    expect(validateDeadLetterQueueConfig({ ...validConfig, retentionPeriodMs: 2_592_000_000 }).valid).toBe(true);
-    expect(validateDeadLetterQueueConfig({ ...validConfig, retentionPeriodMs: 2_592_000_001 }).valid).toBe(false);
+    expect(
+      validateDeadLetterQueueConfig({ ...validConfig, retentionPeriodMs: 2_592_000_000 }).valid,
+    ).toBe(true);
+    expect(
+      validateDeadLetterQueueConfig({ ...validConfig, retentionPeriodMs: 2_592_000_001 }).valid,
+    ).toBe(false);
   });
 
   it('validates the redrive fields in Manual mode too, so switching mode cannot surface an unvalidated value', () => {
@@ -458,12 +499,16 @@ describe('validateObjectStoreConfig', () => {
 
   it('accepts objectSizeMeanKB at 1 and at 10,485,760', () => {
     expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 1 }).valid).toBe(true);
-    expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 10_485_760 }).valid).toBe(true);
+    expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 10_485_760 }).valid).toBe(
+      true,
+    );
   });
 
   it('rejects objectSizeMeanKB of 0 and above its upper bound', () => {
     expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 0 }).valid).toBe(false);
-    expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 10_485_761 }).valid).toBe(false);
+    expect(validateObjectStoreConfig({ ...validConfig, objectSizeMeanKB: 10_485_761 }).valid).toBe(
+      false,
+    );
   });
 
   it('accepts objectSizeStdDevKB of 0 — a fixed object size', () => {
@@ -471,8 +516,12 @@ describe('validateObjectStoreConfig', () => {
   });
 
   it('accepts the fractional throughput lower bound of 0.1 and rejects 0', () => {
-    expect(validateObjectStoreConfig({ ...validConfig, throughputCapacityMBps: 0.1 }).valid).toBe(true);
-    expect(validateObjectStoreConfig({ ...validConfig, throughputCapacityMBps: 0 }).valid).toBe(false);
+    expect(validateObjectStoreConfig({ ...validConfig, throughputCapacityMBps: 0.1 }).valid).toBe(
+      true,
+    );
+    expect(validateObjectStoreConfig({ ...validConfig, throughputCapacityMBps: 0 }).valid).toBe(
+      false,
+    );
   });
 
   it('accepts transferQueueDepth of 0', () => {
@@ -485,9 +534,15 @@ describe('validateObjectStoreConfig', () => {
   });
 
   it('rejects writeLatencyMultiplier below 1.0', () => {
-    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 0.9 }).valid).toBe(false);
-    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 1.0 }).valid).toBe(true);
-    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 100 }).valid).toBe(true);
+    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 0.9 }).valid).toBe(
+      false,
+    );
+    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 1.0 }).valid).toBe(
+      true,
+    );
+    expect(validateObjectStoreConfig({ ...validConfig, writeLatencyMultiplier: 100 }).valid).toBe(
+      true,
+    );
   });
 });
 
@@ -532,7 +587,9 @@ describe('validateSchedulerConfig', () => {
 
   it('accepts maxDeferredTriggers at both bounds and rejects 0', () => {
     expect(validateSchedulerConfig({ ...validConfig, maxDeferredTriggers: 1 }).valid).toBe(true);
-    expect(validateSchedulerConfig({ ...validConfig, maxDeferredTriggers: 1_000 }).valid).toBe(true);
+    expect(validateSchedulerConfig({ ...validConfig, maxDeferredTriggers: 1_000 }).valid).toBe(
+      true,
+    );
     expect(validateSchedulerConfig({ ...validConfig, maxDeferredTriggers: 0 }).valid).toBe(false);
   });
 
@@ -556,7 +613,12 @@ describe('normalizeConfig', () => {
       label: 'App',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { workerThreadPoolSize: 0, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+      config: {
+        workerThreadPoolSize: 0,
+        requestQueueDepth: 100,
+        processingTimeMeanMs: 5,
+        processingTimeStdDevMs: 1,
+      },
     };
     const { node: normalized } = normalizeConfig(node);
     expect(normalized.nodeType).toBe(NodeType.AppServer);
@@ -572,7 +634,13 @@ describe('normalizeConfig', () => {
       label: 'DB',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { connectionPoolSize: 0, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+      config: {
+        connectionPoolSize: 0,
+        queryLatencyMeanMs: 10,
+        queryLatencyStdDevMs: 2,
+        lockTimeoutMs: 5000,
+        dbType: DatabaseType.Relational,
+      },
     };
     const { node: normalized } = normalizeConfig(node);
     if (normalized.nodeType === NodeType.Database) {
@@ -587,7 +655,12 @@ describe('normalizeConfig', () => {
       label: 'Gen',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { rps: -50, distribution: Distribution.Poisson, spikeMultiplier: 5, spikeDurationSec: 10 },
+      config: {
+        rps: -50,
+        distribution: Distribution.Poisson,
+        spikeMultiplier: 5,
+        spikeDurationSec: 10,
+      },
     };
     const { node: normalized } = normalizeConfig(node);
     if (normalized.nodeType === NodeType.TrafficGenerator) {
@@ -617,7 +690,12 @@ describe('normalizeConfig', () => {
       label: 'App',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { workerThreadPoolSize: NaN, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+      config: {
+        workerThreadPoolSize: NaN,
+        requestQueueDepth: 100,
+        processingTimeMeanMs: 5,
+        processingTimeStdDevMs: 1,
+      },
     };
     const { node: normalized } = normalizeConfig(node);
     if (normalized.nodeType === NodeType.AppServer) {
@@ -632,7 +710,12 @@ describe('normalizeConfig', () => {
       label: 'MQ',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { consumerBatchSize: 0, bufferCapacity: 1000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.DropOldest },
+      config: {
+        consumerBatchSize: 0,
+        bufferCapacity: 1000,
+        backpressureThresholdPct: 80,
+        backpressureStrategy: BackpressureStrategy.DropOldest,
+      },
     };
     const { node: normalized } = normalizeConfig(node);
     if (normalized.nodeType === NodeType.MessageQueue) {
@@ -647,7 +730,11 @@ describe('normalizeConfig', () => {
       label: 'LB',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 },
+      config: {
+        algorithm: LBAlgorithm.RoundRobin,
+        healthCheckIntervalMs: 5000,
+        evictionThreshold: 3,
+      },
     };
     const { node: normalized, warnings } = normalizeConfig(node);
     if (normalized.nodeType === NodeType.LoadBalancer) {
@@ -666,7 +753,12 @@ describe('normalizeConfig', () => {
       label: 'Checkout Service',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { workerThreadPoolSize: 5000, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+      config: {
+        workerThreadPoolSize: 5000,
+        requestQueueDepth: 100,
+        processingTimeMeanMs: 5,
+        processingTimeStdDevMs: 1,
+      },
     };
     const { warnings } = normalizeConfig(node);
     expect(warnings).toEqual([
@@ -686,7 +778,12 @@ describe('normalizeConfig', () => {
       label: 'App',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { workerThreadPoolSize: 0, requestQueueDepth: 99_999, processingTimeMeanMs: -5, processingTimeStdDevMs: 1 },
+      config: {
+        workerThreadPoolSize: 0,
+        requestQueueDepth: 99_999,
+        processingTimeMeanMs: -5,
+        processingTimeStdDevMs: 1,
+      },
     };
     const { warnings } = normalizeConfig(node);
     expect(warnings.map((w) => w.field)).toEqual([
@@ -703,7 +800,12 @@ describe('normalizeConfig', () => {
       label: 'App',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { workerThreadPoolSize: NaN, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+      config: {
+        workerThreadPoolSize: NaN,
+        requestQueueDepth: 100,
+        processingTimeMeanMs: 5,
+        processingTimeStdDevMs: 1,
+      },
     };
     const { warnings } = normalizeConfig(node);
     expect(warnings).toHaveLength(1);
@@ -712,7 +814,12 @@ describe('normalizeConfig', () => {
   });
 
   it('does not mutate the node it is given', () => {
-    const config = { workerThreadPoolSize: 0, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 };
+    const config = {
+      workerThreadPoolSize: 0,
+      requestQueueDepth: 100,
+      processingTimeMeanMs: 5,
+      processingTimeStdDevMs: 1,
+    };
     const node: SimulationNode = {
       id: 'app-1',
       nodeType: NodeType.AppServer,

@@ -34,7 +34,9 @@ export function WorkerPoolForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('jobProcessingMeanMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.jobProcessingMeanMs && <span className="text-xs text-red-400">{errors.jobProcessingMeanMs}</span>}
+        {errors.jobProcessingMeanMs && (
+          <span className="text-xs text-red-400">{errors.jobProcessingMeanMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -47,7 +49,9 @@ export function WorkerPoolForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('jobProcessingStdDevMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.jobProcessingStdDevMs && <span className="text-xs text-red-400">{errors.jobProcessingStdDevMs}</span>}
+        {errors.jobProcessingStdDevMs && (
+          <span className="text-xs text-red-400">{errors.jobProcessingStdDevMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -60,7 +64,9 @@ export function WorkerPoolForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('prefetchBufferDepth', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.prefetchBufferDepth && <span className="text-xs text-red-400">{errors.prefetchBufferDepth}</span>}
+        {errors.prefetchBufferDepth && (
+          <span className="text-xs text-red-400">{errors.prefetchBufferDepth}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -77,7 +83,9 @@ export function WorkerPoolForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('jobFailureRate', parseFloat(e.target.value))}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-indigo-500"
         />
-        {errors.jobFailureRate && <span className="text-xs text-red-400">{errors.jobFailureRate}</span>}
+        {errors.jobFailureRate && (
+          <span className="text-xs text-red-400">{errors.jobFailureRate}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -131,7 +139,9 @@ export function WorkerPoolForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('retryBaseDelayMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.retryBaseDelayMs && <span className="text-xs text-red-400">{errors.retryBaseDelayMs}</span>}
+        {errors.retryBaseDelayMs && (
+          <span className="text-xs text-red-400">{errors.retryBaseDelayMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">

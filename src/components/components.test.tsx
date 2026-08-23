@@ -45,9 +45,27 @@ describe('NodePalette', () => {
 
 describe('EventLog', () => {
   const mockEntries: SimEventLogEntry[] = [
-    { id: 1, timestamp: 1000, type: 'REQUEST_ARRIVAL', nodeId: 'node-abc123', message: 'Request arrived' },
-    { id: 2, timestamp: 2000, type: 'REQUEST_PROCESS', nodeId: 'node-def456', message: 'Processing request' },
-    { id: 3, timestamp: 3000, type: 'REQUEST_COMPLETE', nodeId: 'node-abc123', message: 'Request completed' },
+    {
+      id: 1,
+      timestamp: 1000,
+      type: 'REQUEST_ARRIVAL',
+      nodeId: 'node-abc123',
+      message: 'Request arrived',
+    },
+    {
+      id: 2,
+      timestamp: 2000,
+      type: 'REQUEST_PROCESS',
+      nodeId: 'node-def456',
+      message: 'Processing request',
+    },
+    {
+      id: 3,
+      timestamp: 3000,
+      type: 'REQUEST_COMPLETE',
+      nodeId: 'node-abc123',
+      message: 'Request completed',
+    },
   ];
 
   it('renders log entries', () => {

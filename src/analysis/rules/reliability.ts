@@ -8,7 +8,7 @@ import type { AnalysisRule } from './index';
 
 const YIELD_BATCH_SIZE = 8;
 const MIN_NON_SUCCESS_TERMINATIONS = 30;
-const ADMISSION_DOMINANCE_THRESHOLD = 0.20; // 20% excess
+const ADMISSION_DOMINANCE_THRESHOLD = 0.2; // 20% excess
 
 // ─── dlqGrowthRule (Task 477) ────────────────────────────────────
 
@@ -80,8 +80,19 @@ export const dlqGrowthRule: AnalysisRule = {
       const upstream = lastNode?.retainedByUpstreamNode ?? {};
 
       const evidence: EvidenceEntry[] = [
-        { metricName: 'retainedCount', value: depths[depths.length - 1]!, unit: 'messages', scope: nodeId, primary: true },
-        { metricName: 'growthOverWindows', value: depths[depths.length - 1]! - depths[0]!, unit: 'messages', scope: nodeId },
+        {
+          metricName: 'retainedCount',
+          value: depths[depths.length - 1]!,
+          unit: 'messages',
+          scope: nodeId,
+          primary: true,
+        },
+        {
+          metricName: 'growthOverWindows',
+          value: depths[depths.length - 1]! - depths[0]!,
+          unit: 'messages',
+          scope: nodeId,
+        },
       ];
 
       // Add per-upstream attribution (up to 5 to stay within 20-entry limit)
@@ -96,9 +107,10 @@ export const dlqGrowthRule: AnalysisRule = {
       }
 
       const topoNode = ctx.topology.nodes.find((n) => n.id === nodeId);
-      const capacity = topoNode?.nodeType === 'DEAD_LETTER_QUEUE'
-        ? (topoNode.config as { capacity: number }).capacity
-        : null;
+      const capacity =
+        topoNode?.nodeType === 'DEAD_LETTER_QUEUE'
+          ? (topoNode.config as { capacity: number }).capacity
+          : null;
 
       const completedCount = ctx.cumulative.nodeCompletedCounts.get(nodeId) ?? 0;
       const steady = ctx.steadyStateMap.get(nodeId)?.isSteady ?? false;
@@ -116,14 +128,17 @@ export const dlqGrowthRule: AnalysisRule = {
           severity: 'Warning',
           subjectNodeIds: [nodeId],
           evidence,
-          constraint: capacity !== null
-            ? `${ctx.labelOf(nodeId)} bounded by capacity at ${String(capacity)} messages`
-            : `${ctx.labelOf(nodeId)} retained count growing across 3 consecutive windows`,
+          constraint:
+            capacity !== null
+              ? `${ctx.labelOf(nodeId)} bounded by capacity at ${String(capacity)} messages`
+              : `${ctx.labelOf(nodeId)} retained count growing across 3 consecutive windows`,
           action: {
             nodeId,
             parameter: 'capacity',
             direction: 'increase',
-            ...(capacity !== null ? { targetValue: { value: capacity * 2, unit: 'messages' } } : {}),
+            ...(capacity !== null
+              ? { targetValue: { value: capacity * 2, unit: 'messages' } }
+              : {}),
           },
           tradeoff,
           lowestCompletedCount: completedCount,
@@ -208,17 +223,35 @@ export const admissionDominatesRule: AnalysisRule = {
       severity: 'Warning',
       subjectNodeIds: [],
       evidence: [
-        { metricName: 'admissionRate', value: lastRates.admission, unit: 'term/s', scope: SYSTEM_WIDE_SCOPE, primary: true },
-        { metricName: 'capacityReliabilityRate', value: lastRates.capacityReliability, unit: 'term/s', scope: SYSTEM_WIDE_SCOPE },
-        { metricName: 'nonSuccessTerminations', value: totalNonSuccess, unit: 'requests', scope: SYSTEM_WIDE_SCOPE },
+        {
+          metricName: 'admissionRate',
+          value: lastRates.admission,
+          unit: 'term/s',
+          scope: SYSTEM_WIDE_SCOPE,
+          primary: true,
+        },
+        {
+          metricName: 'capacityReliabilityRate',
+          value: lastRates.capacityReliability,
+          unit: 'term/s',
+          scope: SYSTEM_WIDE_SCOPE,
+        },
+        {
+          metricName: 'nonSuccessTerminations',
+          value: totalNonSuccess,
+          unit: 'requests',
+          scope: SYSTEM_WIDE_SCOPE,
+        },
       ],
-      constraint: 'Admission failures dominate capacity/reliability failures by at least 20% across 3 windows',
+      constraint:
+        'Admission failures dominate capacity/reliability failures by at least 20% across 3 windows',
       action: {
         nodeId: '',
         parameter: 'admissionControl',
         direction: 'decrease',
       },
-      tradeoff: 'Relaxing admission control increases load on downstream nodes which may already be near capacity',
+      tradeoff:
+        'Relaxing admission control increases load on downstream nodes which may already be near capacity',
       lowestCompletedCount: ctx.cumulative.systemCompletedCount,
       allSubjectsInSteadyState: false,
       window: { startMs: lastWindow.startMs, endMs: lastWindow.endMs },

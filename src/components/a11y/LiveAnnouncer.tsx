@@ -38,9 +38,7 @@ export function LiveAnnouncer() {
   useEffect(() => {
     if (simState !== prevSimStateRef.current) {
       prevSimStateRef.current = simState;
-      const timeStr = metrics
-        ? formatSimTime(metrics.simulatedTimeMs)
-        : '00:00';
+      const timeStr = metrics ? formatSimTime(metrics.simulatedTimeMs) : '00:00';
 
       let announcement = '';
       switch (simState) {
@@ -110,14 +108,14 @@ export function LiveAnnouncer() {
 
     // Announce: count + category and subject of first in display order
     const first = criticalFindings[0]!;
-    const subjectLabel = first.subjectNodeIds.length > 0
-      ? first.subjectNodeIds[0]!.slice(0, 8)
-      : 'system-wide';
+    const subjectLabel =
+      first.subjectNodeIds.length > 0 ? first.subjectNodeIds[0]!.slice(0, 8) : 'system-wide';
     const category = first.category.replace(/_/g, ' ');
 
-    const message = criticalFindings.length === 1
-      ? `Critical finding: ${category}, ${subjectLabel}`
-      : `${criticalFindings.length} critical findings, first: ${category}, ${subjectLabel}`;
+    const message =
+      criticalFindings.length === 1
+        ? `Critical finding: ${category}, ${subjectLabel}`
+        : `${criticalFindings.length} critical findings, first: ${category}, ${subjectLabel}`;
 
     if (assertiveRef.current) {
       assertiveRef.current.textContent = message;

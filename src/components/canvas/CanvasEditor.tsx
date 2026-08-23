@@ -270,7 +270,6 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
   // ─── Render ────────────────────────────────────────────────────
 
-
   return (
     <div ref={reactFlowWrapper} className="relative h-full w-full">
       <ReactFlow

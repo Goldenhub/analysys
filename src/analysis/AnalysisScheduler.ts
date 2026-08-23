@@ -55,10 +55,7 @@ export function yieldToFrame(): Promise<void> {
  *
  * Returns the suppression entry if any required metric is unavailable, else null.
  */
-function checkSuppression(
-  rule: AnalysisRule,
-  ctx: AnalysisContext,
-): SuppressionEntry | null {
+function checkSuppression(rule: AnalysisRule, ctx: AnalysisContext): SuppressionEntry | null {
   if (rule.requiredMetrics.length === 0) return null;
 
   const latestWindow = ctx.windows[ctx.windows.length - 1];
@@ -78,9 +75,10 @@ function checkSuppression(
   if (affectedLabels.length === 0) return null;
 
   // Find the first unavailable metric name for the suppression record
-  const metricName = rule.requiredMetrics.find((m) => {
-    return latestWindow.nodes.some((n) => isMetricUnavailable(n, m));
-  }) ?? rule.requiredMetrics[0]!;
+  const metricName =
+    rule.requiredMetrics.find((m) => {
+      return latestWindow.nodes.some((n) => isMetricUnavailable(n, m));
+    }) ?? rule.requiredMetrics[0]!;
 
   return {
     ruleId: rule.id,
@@ -92,10 +90,7 @@ function checkSuppression(
 /**
  * Check if a specific metric is not-applicable or absent for a node.
  */
-function isMetricUnavailable(
-  node: NodeMetricsSnapshot,
-  metricName: string,
-): boolean {
+function isMetricUnavailable(node: NodeMetricsSnapshot, metricName: string): boolean {
   if (metricName === 'utilization') {
     return node.utilization.kind === 'not-applicable';
   }

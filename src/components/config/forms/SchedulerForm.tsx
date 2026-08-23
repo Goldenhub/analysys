@@ -34,7 +34,9 @@ export function SchedulerForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('jobsPerTrigger', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.jobsPerTrigger && <span className="text-xs text-red-400">{errors.jobsPerTrigger}</span>}
+        {errors.jobsPerTrigger && (
+          <span className="text-xs text-red-400">{errors.jobsPerTrigger}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -47,7 +49,9 @@ export function SchedulerForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('startOffsetMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.startOffsetMs && <span className="text-xs text-red-400">{errors.startOffsetMs}</span>}
+        {errors.startOffsetMs && (
+          <span className="text-xs text-red-400">{errors.startOffsetMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -86,7 +90,9 @@ export function SchedulerForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('maxDeferredTriggers', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.maxDeferredTriggers && <span className="text-xs text-red-400">{errors.maxDeferredTriggers}</span>}
+        {errors.maxDeferredTriggers && (
+          <span className="text-xs text-red-400">{errors.maxDeferredTriggers}</span>
+        )}
       </div>
     </div>
   );

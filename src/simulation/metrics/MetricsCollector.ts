@@ -1,11 +1,7 @@
 import type { SimulationNode } from '@/types/nodes';
 import { NodeType } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
-import type {
-  MetricsBatchPayload,
-  NodeMetricsSnapshot,
-  UtilizationReading,
-} from '@/types/metrics';
+import type { MetricsBatchPayload, NodeMetricsSnapshot, UtilizationReading } from '@/types/metrics';
 import type { NodeRuntimeState, SimRequest, TerminalStatus } from '../types';
 import { RequestStatus, FAILURE_CLASS_OF, FailureClass } from '../types';
 import { NodeMetricsAccumulator } from './NodeMetricsAccumulator';
@@ -123,7 +119,10 @@ export class MetricsCollector {
       const monitoredDepth = this.analysisAggregates.getMonitoredDepth(nodeId, state);
       const monitoredDepthBound = this.analysisAggregates.getMonitoredDepthBound(nodeId);
       const typeSpecificAnalysis = this.analysisAggregates.getTypeSpecificAnalysisFields(
-        nodeId, state, currentTime, elapsedSinceLastBatch,
+        nodeId,
+        state,
+        currentTime,
+        elapsedSinceLastBatch,
       );
 
       // Task 436: actual window duration; ≤0 marks unavailable
@@ -143,7 +142,12 @@ export class MetricsCollector {
         healthStatus: this.deriveHealthStatus(utilization, errorRate),
         terminalCounts: { ...state.terminalCounts },
         cumulativeTerminalCounts: { ...state.cumulativeTerminalCounts },
-        typeSpecificMetrics: this.computeTypeSpecificMetrics(nodeId, state, currentTime, elapsedSinceLastBatch),
+        typeSpecificMetrics: this.computeTypeSpecificMetrics(
+          nodeId,
+          state,
+          currentTime,
+          elapsedSinceLastBatch,
+        ),
 
         // Analysis aggregate fields
         timeInSystemAtNodeMs: agg.timeInSystemAtNodeMs,
@@ -158,7 +162,8 @@ export class MetricsCollector {
         // Type-specific optional fields (Task 435)
         ...typeSpecificAnalysis,
         branchesDispatched: agg.branchesDispatched > 0 ? agg.branchesDispatched : undefined,
-        forwardedByEdge: Object.keys(agg.forwardedByEdge).length > 0 ? agg.forwardedByEdge : undefined,
+        forwardedByEdge:
+          Object.keys(agg.forwardedByEdge).length > 0 ? agg.forwardedByEdge : undefined,
       };
 
       nodeSnapshots.push(snapshot);
@@ -228,8 +233,14 @@ export class MetricsCollector {
         if (typeof p.getWindowVerifications === 'function') {
           return {
             verifications: (p.getWindowVerifications as () => number)(),
-            cacheHits: typeof p.getWindowCacheHits === 'function' ? (p.getWindowCacheHits as () => number)() : 0,
-            failedVerifications: typeof p.getWindowFailedVerifications === 'function' ? (p.getWindowFailedVerifications as () => number)() : 0,
+            cacheHits:
+              typeof p.getWindowCacheHits === 'function'
+                ? (p.getWindowCacheHits as () => number)()
+                : 0,
+            failedVerifications:
+              typeof p.getWindowFailedVerifications === 'function'
+                ? (p.getWindowFailedVerifications as () => number)()
+                : 0,
           };
         }
         return undefined;
@@ -239,8 +250,12 @@ export class MetricsCollector {
         if (typeof p.getWindowEvaluations === 'function') {
           return {
             evaluations: (p.getWindowEvaluations as () => number)(),
-            cacheHits: typeof p.getWindowCacheHits === 'function' ? (p.getWindowCacheHits as () => number)() : 0,
-            denials: typeof p.getWindowDenials === 'function' ? (p.getWindowDenials as () => number)() : 0,
+            cacheHits:
+              typeof p.getWindowCacheHits === 'function'
+                ? (p.getWindowCacheHits as () => number)()
+                : 0,
+            denials:
+              typeof p.getWindowDenials === 'function' ? (p.getWindowDenials as () => number)() : 0,
           };
         }
         return undefined;

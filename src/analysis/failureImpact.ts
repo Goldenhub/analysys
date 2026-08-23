@@ -110,12 +110,9 @@ export function computeFailureImpact(
   const p99AbsChange = avgP99 - preP99;
 
   // Percentage differences (not applicable where pre-failure value is 0)
-  const successRatePctChange = preSuccessRate !== 0
-    ? (successRateAbsChange / preSuccessRate) * 100
-    : null;
-  const p99PctChange = preP99 !== 0
-    ? (p99AbsChange / preP99) * 100
-    : null;
+  const successRatePctChange =
+    preSuccessRate !== 0 ? (successRateAbsChange / preSuccessRate) * 100 : null;
+  const p99PctChange = preP99 !== 0 ? (p99AbsChange / preP99) * 100 : null;
 
   return {
     hasCompleteWindow: true,

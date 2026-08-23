@@ -51,10 +51,7 @@ function formatTime(ms: number): string {
 
 // ─── Reducer ─────────────────────────────────────────────────────
 
-function dataReducer(
-  state: LatencyDataPoint[],
-  action: LatencyDataPoint,
-): LatencyDataPoint[] {
+function dataReducer(state: LatencyDataPoint[], action: LatencyDataPoint): LatencyDataPoint[] {
   const lastPoint = state[state.length - 1];
   if (lastPoint && lastPoint.time === action.time) return state;
   return [...state, action].slice(-MAX_BUFFER_SIZE);
@@ -118,11 +115,7 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis
-          dataKey="timeLabel"
-          tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="#4b5563"
-        />
+        <XAxis dataKey="timeLabel" tick={{ fill: '#9ca3af', fontSize: 10 }} stroke="#4b5563" />
         <YAxis
           tick={{ fill: '#9ca3af', fontSize: 10 }}
           stroke="#4b5563"
@@ -137,9 +130,7 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
           }}
           labelStyle={{ color: '#9ca3af' }}
         />
-        <Legend
-          wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
-        />
+        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
 
         {/* Chaos event reference lines */}
         {chaosReferenceLines.map((ref) => (
@@ -185,13 +176,7 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
           dot={false}
           activeDot={{ r: 3 }}
         />
-        <Brush
-          dataKey="timeLabel"
-          height={16}
-          stroke="#4b5563"
-          fill="#111827"
-          travellerWidth={8}
-        />
+        <Brush dataKey="timeLabel" height={16} stroke="#4b5563" fill="#111827" travellerWidth={8} />
       </LineChart>
     </ResponsiveContainer>
   );

@@ -207,9 +207,7 @@ describe('simulationStore', () => {
     it('warns when no worker is active', () => {
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       useSimulationStore.getState().sendToWorker({ type: 'PAUSE' });
-      expect(spy).toHaveBeenCalledWith(
-        '[SimStore] sendToWorker called but no worker is active.',
-      );
+      expect(spy).toHaveBeenCalledWith('[SimStore] sendToWorker called but no worker is active.');
       spy.mockRestore();
     });
   });

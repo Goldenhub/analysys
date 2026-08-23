@@ -30,35 +30,166 @@ function makeNode(id: string, nodeType: NodeType): SimulationNode {
 
   switch (nodeType) {
     case NodeType.TrafficGenerator:
-      return { ...base, nodeType, config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          rps: 100,
+          distribution: Distribution.Poisson,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      };
     case NodeType.ApiGateway:
-      return { ...base, nodeType, config: { authLatencyMeanMs: 5, authLatencyStdDevMs: 2, rejectionRate: 0.02 } };
+      return {
+        ...base,
+        nodeType,
+        config: { authLatencyMeanMs: 5, authLatencyStdDevMs: 2, rejectionRate: 0.02 },
+      };
     case NodeType.RateLimiter:
       return { ...base, nodeType, config: { bucketCapacity: 100, refillRatePerSec: 50 } };
     case NodeType.CircuitBreaker:
-      return { ...base, nodeType, config: { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 } };
+      return {
+        ...base,
+        nodeType,
+        config: { errorThreshold: 0.5, openDurationMs: 5000, probeCount: 3 },
+      };
     case NodeType.LoadBalancer:
-      return { ...base, nodeType, config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 5000,
+          evictionThreshold: 3,
+        },
+      };
     case NodeType.AppServer:
-      return { ...base, nodeType, config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
+      };
     case NodeType.Cache:
-      return { ...base, nodeType, config: { hitRatio: 0.9, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 } };
+      return {
+        ...base,
+        nodeType,
+        config: { hitRatio: 0.9, evictionPolicy: EvictionPolicy.LRU, accessLatencyMs: 1 },
+      };
     case NodeType.Database:
-      return { ...base, nodeType, config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      };
     case NodeType.MessageQueue:
-      return { ...base, nodeType, config: { consumerBatchSize: 10, bufferCapacity: 1000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.DropOldest } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          consumerBatchSize: 10,
+          bufferCapacity: 1000,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: BackpressureStrategy.DropOldest,
+        },
+      };
     case NodeType.AuthService:
-      return { ...base, nodeType, config: { verificationMode: VerificationMode.Local, verificationLatencyMeanMs: 3, verificationLatencyStdDevMs: 1, concurrencyLimit: 64, queueDepth: 100, tokenCacheHitRatio: 0.9, credentialFailureRate: 0.01 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          verificationMode: VerificationMode.Local,
+          verificationLatencyMeanMs: 3,
+          verificationLatencyStdDevMs: 1,
+          concurrencyLimit: 64,
+          queueDepth: 100,
+          tokenCacheHitRatio: 0.9,
+          credentialFailureRate: 0.01,
+        },
+      };
     case NodeType.AuthzService:
-      return { ...base, nodeType, config: { policyLatencyMeanMs: 4, policyLatencyStdDevMs: 1.5, policyCacheHitRatio: 0.9, lookupsPerRequest: 1, denyRate: 0.01, concurrencyLimit: 64, queueDepth: 100 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          policyLatencyMeanMs: 4,
+          policyLatencyStdDevMs: 1.5,
+          policyCacheHitRatio: 0.9,
+          lookupsPerRequest: 1,
+          denyRate: 0.01,
+          concurrencyLimit: 64,
+          queueDepth: 100,
+        },
+      };
     case NodeType.WorkerPool:
-      return { ...base, nodeType, config: { concurrency: 8, jobProcessingMeanMs: 200, jobProcessingStdDevMs: 50, prefetchBufferDepth: 100, jobFailureRate: 0.02, maxRetries: 3, retryBackoff: RetryBackoff.Exponential, retryBaseDelayMs: 1000, jobTimeoutMs: 30000 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          concurrency: 8,
+          jobProcessingMeanMs: 200,
+          jobProcessingStdDevMs: 50,
+          prefetchBufferDepth: 100,
+          jobFailureRate: 0.02,
+          maxRetries: 3,
+          retryBackoff: RetryBackoff.Exponential,
+          retryBaseDelayMs: 1000,
+          jobTimeoutMs: 30000,
+        },
+      };
     case NodeType.DeadLetterQueue:
-      return { ...base, nodeType, config: { capacity: 10000, retentionPeriodMs: 86400000, redriveMode: RedriveMode.Manual, redriveIntervalMs: 60000, redriveBatchSize: 10, maxRedriveAttempts: 3 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          capacity: 10000,
+          retentionPeriodMs: 86400000,
+          redriveMode: RedriveMode.Manual,
+          redriveIntervalMs: 60000,
+          redriveBatchSize: 10,
+          maxRedriveAttempts: 3,
+        },
+      };
     case NodeType.ObjectStore:
-      return { ...base, nodeType, config: { objectSizeMeanKB: 256, objectSizeStdDevKB: 64, throughputCapacityMBps: 100, baseLatencyMeanMs: 10, baseLatencyStdDevMs: 3, maxConcurrentTransfers: 64, transferQueueDepth: 100, readFraction: 0.8, writeLatencyMultiplier: 1.5 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          objectSizeMeanKB: 256,
+          objectSizeStdDevKB: 64,
+          throughputCapacityMBps: 100,
+          baseLatencyMeanMs: 10,
+          baseLatencyStdDevMs: 3,
+          maxConcurrentTransfers: 64,
+          transferQueueDepth: 100,
+          readFraction: 0.8,
+          writeLatencyMultiplier: 1.5,
+        },
+      };
     case NodeType.Scheduler:
-      return { ...base, nodeType, config: { intervalMs: 60000, jobsPerTrigger: 50, startOffsetMs: 0, jitterMs: 0, overlapPolicy: OverlapPolicy.Skip, maxDeferredTriggers: 10 } };
+      return {
+        ...base,
+        nodeType,
+        config: {
+          intervalMs: 60000,
+          jobsPerTrigger: 50,
+          startOffsetMs: 0,
+          jitterMs: 0,
+          overlapPolicy: OverlapPolicy.Skip,
+          maxDeferredTriggers: 10,
+        },
+      };
   }
 }
 
@@ -84,9 +215,7 @@ function validate(
   } = {},
 ): ValidationResult {
   const protocol =
-    opts.protocol ??
-    getValidProtocols(source.nodeType, target.nodeType)[0] ??
-    EdgeProtocol.Sync;
+    opts.protocol ?? getValidProtocols(source.nodeType, target.nodeType)[0] ?? EdgeProtocol.Sync;
   const nodes = opts.nodes ?? [source, target];
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   return validateEdgeConnection(source, target, protocol, opts.existingEdges ?? [], nodesById);
@@ -432,13 +561,21 @@ describe('getValidProtocols', () => {
       EdgeProtocol.Async,
     ]);
     expect(getValidProtocols(NodeType.WorkerPool, NodeType.Database)).toEqual([EdgeProtocol.Sync]);
-    expect(getValidProtocols(NodeType.WorkerPool, NodeType.MessageQueue)).toEqual([EdgeProtocol.Async]);
-    expect(getValidProtocols(NodeType.WorkerPool, NodeType.DeadLetterQueue)).toEqual([EdgeProtocol.Async]);
+    expect(getValidProtocols(NodeType.WorkerPool, NodeType.MessageQueue)).toEqual([
+      EdgeProtocol.Async,
+    ]);
+    expect(getValidProtocols(NodeType.WorkerPool, NodeType.DeadLetterQueue)).toEqual([
+      EdgeProtocol.Async,
+    ]);
   });
 
   it('narrows Scheduler per pair the same way', () => {
-    expect(getValidProtocols(NodeType.Scheduler, NodeType.MessageQueue)).toEqual([EdgeProtocol.Async]);
-    expect(getValidProtocols(NodeType.Scheduler, NodeType.WorkerPool)).toEqual([EdgeProtocol.Async]);
+    expect(getValidProtocols(NodeType.Scheduler, NodeType.MessageQueue)).toEqual([
+      EdgeProtocol.Async,
+    ]);
+    expect(getValidProtocols(NodeType.Scheduler, NodeType.WorkerPool)).toEqual([
+      EdgeProtocol.Async,
+    ]);
     expect(getValidProtocols(NodeType.Scheduler, NodeType.AppServer)).toEqual([EdgeProtocol.Sync]);
     expect(getValidProtocols(NodeType.Scheduler, NodeType.ApiGateway)).toEqual([EdgeProtocol.Sync]);
   });

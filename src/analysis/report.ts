@@ -114,7 +114,9 @@ export function exportMarkdown(ctx: ExportContext): string {
         lines.push(`- Node: ${f.action.nodeId}`);
         lines.push(`- ${f.action.direction} ${f.action.parameter}`);
         if (f.action.targetValue) {
-          lines.push(`- Target: ${String(f.action.targetValue.value)} ${f.action.targetValue.unit}`);
+          lines.push(
+            `- Target: ${String(f.action.targetValue.value)} ${f.action.targetValue.unit}`,
+          );
         }
         if (f.action.multiplier !== undefined) {
           lines.push(`- Multiplier: ${String(f.action.multiplier)}`);
@@ -122,7 +124,9 @@ export function exportMarkdown(ctx: ExportContext): string {
       } else {
         lines.push(`- Node: ${f.action.nodeId} (${f.action.nodeType})`);
         lines.push(`- Change: ${f.action.change}`);
-        lines.push(`- Nodes added: ${String(f.action.nodesAdded)}, Edges added: ${String(f.action.edgesAdded)}`);
+        lines.push(
+          `- Nodes added: ${String(f.action.nodesAdded)}, Edges added: ${String(f.action.edgesAdded)}`,
+        );
       }
       lines.push('');
     }
@@ -162,7 +166,12 @@ const REQUIRED_FINDING_FIELDS = [
  * On rejection, the currently displayed Findings are left unchanged.
  * On success, returns Findings in R35.8 display order (Task 462).
  */
-export function importJSON(json: string): { findings: Finding[]; label: { seed: number; simulatedDurationMs: number; offeredLoadRps: number } } | ImportError {
+export function importJSON(json: string):
+  | {
+      findings: Finding[];
+      label: { seed: number; simulatedDurationMs: number; offeredLoadRps: number };
+    }
+  | ImportError {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -221,7 +230,10 @@ export function importJSON(json: string): { findings: Finding[]; label: { seed: 
     }
 
     // Validate category
-    if (typeof f['category'] === 'string' && !FINDING_CATEGORY_ORDER.includes(f['category'] as FindingCategory)) {
+    if (
+      typeof f['category'] === 'string' &&
+      !FINDING_CATEGORY_ORDER.includes(f['category'] as FindingCategory)
+    ) {
       errors.push(`Finding[${String(i)}]: unrecognised category "${f['category'] as string}"`);
     }
 
@@ -231,7 +243,10 @@ export function importJSON(json: string): { findings: Finding[]; label: { seed: 
     }
 
     // Validate confidence
-    if (typeof f['confidence'] === 'string' && !CONFIDENCE_VALUES.includes(f['confidence'] as Confidence)) {
+    if (
+      typeof f['confidence'] === 'string' &&
+      !CONFIDENCE_VALUES.includes(f['confidence'] as Confidence)
+    ) {
       errors.push(`Finding[${String(i)}]: unrecognised confidence "${f['confidence'] as string}"`);
     }
 
@@ -255,10 +270,18 @@ export function importJSON(json: string): { findings: Finding[]; label: { seed: 
     }
     for (let j = 0; j < f.evidence.length; j++) {
       const e = f.evidence[j] as Record<string, unknown> | undefined;
-      if (!e || typeof e['metricName'] !== 'string' || typeof e['value'] !== 'number' || typeof e['unit'] !== 'string' || typeof e['scope'] !== 'string') {
+      if (
+        !e ||
+        typeof e['metricName'] !== 'string' ||
+        typeof e['value'] !== 'number' ||
+        typeof e['unit'] !== 'string' ||
+        typeof e['scope'] !== 'string'
+      ) {
         return {
           message: 'Invalid findings in report',
-          details: [`Finding[${String(i)}].evidence[${String(j)}]: missing required evidence fields (metricName, value, unit, scope)`],
+          details: [
+            `Finding[${String(i)}].evidence[${String(j)}]: missing required evidence fields (metricName, value, unit, scope)`,
+          ],
         };
       }
     }

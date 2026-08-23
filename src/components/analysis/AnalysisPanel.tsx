@@ -99,12 +99,13 @@ export function AnalysisPanel({
   const hasFindings = displayFindings.length > 0;
 
   // Window bounds for display
-  const windowBounds = displayFindings.length > 0
-    ? {
-        start: Math.min(...displayFindings.map((f) => f.window.startMs)),
-        end: Math.max(...displayFindings.map((f) => f.window.endMs)),
-      }
-    : null;
+  const windowBounds =
+    displayFindings.length > 0
+      ? {
+          start: Math.min(...displayFindings.map((f) => f.window.startMs)),
+          end: Math.max(...displayFindings.map((f) => f.window.endMs)),
+        }
+      : null;
 
   // SPOF Findings
   const spofFindings = displayFindings.filter((f) => f.category === 'Single_Point_Of_Failure');
@@ -129,7 +130,9 @@ export function AnalysisPanel({
       // Task 540: Expand collapsed groups containing present subject nodes
       for (const group of subsystemGroups) {
         if (group.collapsed) {
-          const hasSubjectNode = group.memberNodeIds.some((nid: string) => presentIds.includes(nid));
+          const hasSubjectNode = group.memberNodeIds.some((nid: string) =>
+            presentIds.includes(nid),
+          );
           if (hasSubjectNode) {
             setGroupCollapsed(group.id, false);
           }
@@ -150,8 +153,12 @@ export function AnalysisPanel({
 
       const minX = Math.min(...selectedRfNodes.map((n) => n.position.x));
       const minY = Math.min(...selectedRfNodes.map((n) => n.position.y));
-      const maxX = Math.max(...selectedRfNodes.map((n) => n.position.x + (n.measured?.width ?? 150)));
-      const maxY = Math.max(...selectedRfNodes.map((n) => n.position.y + (n.measured?.height ?? 50)));
+      const maxX = Math.max(
+        ...selectedRfNodes.map((n) => n.position.x + (n.measured?.width ?? 150)),
+      );
+      const maxY = Math.max(
+        ...selectedRfNodes.map((n) => n.position.y + (n.measured?.height ?? 50)),
+      );
 
       const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
@@ -218,9 +225,7 @@ export function AnalysisPanel({
     >
       {/* Panel header */}
       <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Analysis
-        </h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Analysis</h2>
         <button
           type="button"
           onClick={() => {
@@ -235,7 +240,11 @@ export function AnalysisPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-800 px-2" role="tablist" aria-label="Analysis sections">
+      <div
+        className="flex border-b border-gray-800 px-2"
+        role="tablist"
+        aria-label="Analysis sections"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -284,7 +293,8 @@ export function AnalysisPanel({
             {/* Offscreen count (Task 541) */}
             {offscreenCount > 0 && (
               <div className="rounded border border-amber-800/50 bg-amber-950/30 px-3 py-1.5 text-[10px] text-amber-300 mb-2">
-                {offscreenCount} subject node{offscreenCount > 1 ? 's' : ''} outside viewport at minimum zoom.
+                {offscreenCount} subject node{offscreenCount > 1 ? 's' : ''} outside viewport at
+                minimum zoom.
               </div>
             )}
 
@@ -381,7 +391,8 @@ function SuppressionList({
             <span className="text-gray-500"> — metric: {s.metricName}</span>
             {s.affectedNodeLabels.length > 0 && (
               <span className="text-gray-500">
-                {' '}affecting: {s.affectedNodeLabels.map((l) => nodeLabels.get(l) ?? l).join(', ')}
+                {' '}
+                affecting: {s.affectedNodeLabels.map((l) => nodeLabels.get(l) ?? l).join(', ')}
               </span>
             )}
           </li>

@@ -40,7 +40,11 @@ export const saturationRule: AnalysisRule = {
       let allSaturated = true;
       for (const w of recent3) {
         const node = w.nodes.find((n) => n.nodeId === nodeId);
-        if (!node || node.utilization.kind !== 'value' || node.utilization.value < SATURATION_THRESHOLD) {
+        if (
+          !node ||
+          node.utilization.kind !== 'value' ||
+          node.utilization.value < SATURATION_THRESHOLD
+        ) {
           allSaturated = false;
           break;
         }
@@ -70,9 +74,20 @@ export const saturationRule: AnalysisRule = {
           severity: 'Critical',
           subjectNodeIds: [nodeId],
           evidence: [
-            { metricName: 'sustainedUtilization', value: sustainedUtilization, unit: 'fraction', scope: nodeId, primary: true },
+            {
+              metricName: 'sustainedUtilization',
+              value: sustainedUtilization,
+              unit: 'fraction',
+              scope: nodeId,
+              primary: true,
+            },
             { metricName: 'runLength', value: runLength, unit: 'windows', scope: nodeId },
-            { metricName: 'analysisUtilization', value: analysisUtilization(nodeId, ctx.windows) ?? 0, unit: 'fraction', scope: nodeId },
+            {
+              metricName: 'analysisUtilization',
+              value: analysisUtilization(nodeId, ctx.windows) ?? 0,
+              unit: 'fraction',
+              scope: nodeId,
+            },
           ],
           constraint: boundParam
             ? `${ctx.labelOf(nodeId)} bounded by ${boundParam.parameter} at ${String(boundParam.value)} ${boundParam.unit}`
@@ -114,7 +129,11 @@ function computeMaximalRun(
   // Work backwards from the most recent
   for (let i = completedWindows.length - 1; i >= 0; i--) {
     const node = completedWindows[i]!.nodes.find((n) => n.nodeId === nodeId);
-    if (!node || node.utilization.kind !== 'value' || node.utilization.value < SATURATION_THRESHOLD) {
+    if (
+      !node ||
+      node.utilization.kind !== 'value' ||
+      node.utilization.value < SATURATION_THRESHOLD
+    ) {
       break;
     }
     sum += node.utilization.value;
@@ -133,9 +152,17 @@ function getBoundingParam(
   if (!node) return null;
   switch (node.nodeType) {
     case 'APP_SERVER':
-      return { parameter: 'workerThreadPoolSize', value: node.config.workerThreadPoolSize, unit: 'threads' };
+      return {
+        parameter: 'workerThreadPoolSize',
+        value: node.config.workerThreadPoolSize,
+        unit: 'threads',
+      };
     case 'DATABASE':
-      return { parameter: 'connectionPoolSize', value: node.config.connectionPoolSize, unit: 'connections' };
+      return {
+        parameter: 'connectionPoolSize',
+        value: node.config.connectionPoolSize,
+        unit: 'connections',
+      };
     case 'RATE_LIMITER':
       return { parameter: 'refillRatePerSec', value: node.config.refillRatePerSec, unit: 'req/s' };
     case 'AUTH_SERVICE':
@@ -147,7 +174,11 @@ function getBoundingParam(
     case 'MESSAGE_QUEUE':
       return { parameter: 'bufferCapacity', value: node.config.bufferCapacity, unit: 'messages' };
     case 'OBJECT_STORE':
-      return { parameter: 'maxConcurrentTransfers', value: node.config.maxConcurrentTransfers, unit: 'transfers' };
+      return {
+        parameter: 'maxConcurrentTransfers',
+        value: node.config.maxConcurrentTransfers,
+        unit: 'transfers',
+      };
     default:
       return null;
   }

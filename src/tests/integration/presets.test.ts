@@ -17,7 +17,15 @@ import { referencePresets, type ReferencePreset } from '@/presets/index';
 
 function runPreset(preset: ReferencePreset): Promise<{
   batches: MetricsBatchPayload[];
-  summary: { totalEvents: number; totalRequests: number; successRate: number; avgEndToEndLatencyMs: number; simulatedDurationMs: number; wallClockDurationMs: number; eventsPerSecond: number } | null;
+  summary: {
+    totalEvents: number;
+    totalRequests: number;
+    successRate: number;
+    avgEndToEndLatencyMs: number;
+    simulatedDurationMs: number;
+    wallClockDurationMs: number;
+    eventsPerSecond: number;
+  } | null;
 }> {
   const config: SimulationEngineConfig = {
     topology: preset.topology,
@@ -35,7 +43,9 @@ function runPreset(preset: ReferencePreset): Promise<{
 
   engine.setCallbacks({
     onMetricsBatch: (payload) => batches.push(payload),
-    onComplete: (s) => { summary = s; },
+    onComplete: (s) => {
+      summary = s;
+    },
   });
 
   return engine.run().then(() => ({ batches, summary }));
@@ -62,8 +72,10 @@ describe('Integration: Reference preset bottleneck analysis', () => {
 
         expect(bottleneckNode).toBeDefined();
         // Bottleneck node should have processed requests
-        const totalCounts = Object.values(bottleneckNode!.cumulativeTerminalCounts)
-          .reduce((sum, c) => sum + (c as number), 0);
+        const totalCounts = Object.values(bottleneckNode!.cumulativeTerminalCounts).reduce(
+          (sum, c) => sum + (c as number),
+          0,
+        );
         expect(totalCounts).toBeGreaterThan(0);
       },
     );
@@ -74,18 +86,14 @@ describe('Integration: Reference preset bottleneck analysis', () => {
 
 describe('Integration: Reference preset dominant terminal status', () => {
   for (const preset of referencePresets) {
-    it(
-      `"${preset.name}" produces terminal events under load`,
-      { timeout: 60_000 },
-      async () => {
-        const { batches, summary } = await runPreset(preset);
+    it(`"${preset.name}" produces terminal events under load`, { timeout: 60_000 }, async () => {
+      const { batches, summary } = await runPreset(preset);
 
-        expect(batches.length).toBeGreaterThan(0);
-        expect(summary).not.toBeNull();
-        // The preset should produce requests under its offered load
-        expect(summary!.totalRequests).toBeGreaterThan(0);
-      },
-    );
+      expect(batches.length).toBeGreaterThan(0);
+      expect(summary).not.toBeNull();
+      // The preset should produce requests under its offered load
+      expect(summary!.totalRequests).toBeGreaterThan(0);
+    });
   }
 });
 

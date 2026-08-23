@@ -21,7 +21,10 @@ export function AppServerNode({ id, data }: NodeProps<AnalysysNode>) {
   const healthClass = nodeStatus ? healthColors[nodeStatus] : 'border-violet-600';
 
   // Queue depth gauge as a ratio visualization
-  const queueFillPct = Math.min(100, (config.workerThreadPoolSize / config.requestQueueDepth) * 100);
+  const queueFillPct = Math.min(
+    100,
+    (config.workerThreadPoolSize / config.requestQueueDepth) * 100,
+  );
 
   const healthLabel = nodeStatus ?? 'nominal';
 
@@ -49,18 +52,14 @@ export function AppServerNode({ id, data }: NodeProps<AnalysysNode>) {
           <circle cx="6" cy="6" r="1" fill="currentColor" />
           <circle cx="6" cy="18" r="1" fill="currentColor" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Queue Depth Gauge */}
       <div className="mt-1.5">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-gray-400">Queue</span>
-          <span className="text-[10px] text-violet-300">
-            {config.requestQueueDepth}
-          </span>
+          <span className="text-[10px] text-violet-300">{config.requestQueueDepth}</span>
         </div>
         <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
           <div

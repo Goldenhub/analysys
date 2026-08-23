@@ -29,7 +29,8 @@ export interface SimulationEngineConfig {
 // ─── Main Thread → Worker Messages ──────────────────────────────
 
 export interface ChaosEventPayload {
-  chaosType: 'FLUSH_CACHE' | 'DROP_DB' | 'SPIKE_TRAFFIC' | 'DLQ_REDRIVE' | 'DISABLE_NODE' | 'REDRIVE_DLQ';
+  chaosType:
+    'FLUSH_CACHE' | 'DROP_DB' | 'SPIKE_TRAFFIC' | 'DLQ_REDRIVE' | 'DISABLE_NODE' | 'REDRIVE_DLQ';
   targetNodeId?: string;
   durationMs: number;
   params: Record<string, unknown>;
@@ -92,7 +93,10 @@ export type WorkerToMainMessage =
   | { type: 'EVENT_LOG'; payload: SimEventLogEntry[] }
   | { type: 'SIM_COMPLETE'; payload: SimulationSummary }
   | { type: 'ERROR'; payload: { message: string; stack?: string } }
-  | { type: 'NODE_STATE_CHANGE'; payload: { nodeId: string; unreachable: boolean; atSimTimeMs: number } }
+  | {
+      type: 'NODE_STATE_CHANGE';
+      payload: { nodeId: string; unreachable: boolean; atSimTimeMs: number };
+    }
   | { type: 'SWEEP_STEP_COMPLETE'; payload: SweepStepCompletePayload };
 
 // ─── Sweep Step Complete Payload (R38) ───────────────────────────

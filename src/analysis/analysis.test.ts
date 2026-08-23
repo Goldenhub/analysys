@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { round6, AnalysisError } from '@/utils/round6';
-import { FindingBuilder, FindingResultMap, deriveFindingId, deriveConfidence } from './FindingBuilder';
+import {
+  FindingBuilder,
+  FindingResultMap,
+  deriveFindingId,
+  deriveConfidence,
+} from './FindingBuilder';
 import { AnalysisWindowStore, checkSteadyState } from './AnalysisWindowStore';
 import { exportJSON, importJSON, isImportError } from './report';
 import { sortFindingsForDisplay } from '@/store/analysisStore';
@@ -48,11 +53,22 @@ describe('FindingBuilder', () => {
     severity: 'Warning' as const,
     subjectNodeIds: ['node-b', 'node-a'],
     evidence: [
-      { metricName: 'utilization', value: 0.85123456789, unit: 'fraction', scope: 'node-a', primary: true as const },
+      {
+        metricName: 'utilization',
+        value: 0.85123456789,
+        unit: 'fraction',
+        scope: 'node-a',
+        primary: true as const,
+      },
       { metricName: 'throughput', value: 100.999999999, unit: 'req/s', scope: 'node-b' },
     ],
     constraint: 'Node exceeds 85% utilization threshold',
-    action: { nodeId: 'node-a', parameter: 'workerThreadPoolSize', direction: 'increase' as const, multiplier: 1.5 },
+    action: {
+      nodeId: 'node-a',
+      parameter: 'workerThreadPoolSize',
+      direction: 'increase' as const,
+      multiplier: 1.5,
+    },
     tradeoff: 'Increased memory usage from additional worker threads',
     lowestCompletedCount: 250,
     allSubjectsInSteadyState: true,
@@ -104,9 +120,7 @@ describe('FindingBuilder', () => {
   it('rejects zero primary evidence entries', () => {
     const bad = {
       ...baseFinding,
-      evidence: [
-        { metricName: 'a', value: 1, unit: 'x', scope: 's' },
-      ],
+      evidence: [{ metricName: 'a', value: 1, unit: 'x', scope: 's' }],
     };
     expect(() => FindingBuilder.build(bad)).toThrow('exactly one primary');
   });
@@ -114,9 +128,7 @@ describe('FindingBuilder', () => {
   it('rejects unit strings outside 1–20 characters', () => {
     const bad = {
       ...baseFinding,
-      evidence: [
-        { metricName: 'a', value: 1, unit: '', scope: 's', primary: true as const },
-      ],
+      evidence: [{ metricName: 'a', value: 1, unit: '', scope: 's', primary: true as const }],
     };
     expect(() => FindingBuilder.build(bad)).toThrow('unit must be 1–20 chars');
   });
@@ -132,7 +144,15 @@ describe('FindingResultMap', () => {
       category: 'Bottleneck',
       severity: 'Warning',
       subjectNodeIds: ['node-a'],
-      evidence: [{ metricName: 'util', value: 0.9, unit: 'fraction', scope: 'node-a', primary: true as const }],
+      evidence: [
+        {
+          metricName: 'util',
+          value: 0.9,
+          unit: 'fraction',
+          scope: 'node-a',
+          primary: true as const,
+        },
+      ],
       constraint: 'High utilization',
       action: { nodeId: 'node-a', parameter: 'pool', direction: 'increase' },
       tradeoff: 'More memory',
@@ -145,7 +165,15 @@ describe('FindingResultMap', () => {
       category: 'Bottleneck',
       severity: 'Critical',
       subjectNodeIds: ['node-a'],
-      evidence: [{ metricName: 'util', value: 0.95, unit: 'fraction', scope: 'node-a', primary: true as const }],
+      evidence: [
+        {
+          metricName: 'util',
+          value: 0.95,
+          unit: 'fraction',
+          scope: 'node-a',
+          primary: true as const,
+        },
+      ],
       constraint: 'Very high utilization',
       action: { nodeId: 'node-a', parameter: 'pool', direction: 'increase' },
       tradeoff: 'More memory',
@@ -205,7 +233,12 @@ describe('AnalysisWindowStore', () => {
       store.pushBatch({
         simulatedTimeMs: i * 500,
         nodes: [],
-        systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 },
+        systemWide: {
+          totalThroughput: 100,
+          endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+          totalErrorRate: 0,
+          activeRequests: 0,
+        },
       });
     }
     expect(store.windows.length).toBe(16);
@@ -217,29 +250,75 @@ describe('AnalysisWindowStore', () => {
     store.pushBatch({
       simulatedTimeMs: 500,
       nodes: [],
-      systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 },
+      systemWide: {
+        totalThroughput: 100,
+        endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
     });
     // Zero-duration window (same timestamp)
     store.pushBatch({
       simulatedTimeMs: 500,
       nodes: [],
-      systemWide: { totalThroughput: 0, endToEndLatency: { p50: 0, p90: 0, p99: 0 }, totalErrorRate: 0, activeRequests: 0 },
+      systemWide: {
+        totalThroughput: 0,
+        endToEndLatency: { p50: 0, p90: 0, p99: 0 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
     });
     expect(store.completedWindowCount).toBe(1);
   });
 
   it('reports hasMinimumWindows only at ≥3 completed windows', () => {
     const store = new AnalysisWindowStore();
-    store.pushBatch({ simulatedTimeMs: 500, nodes: [], systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 } });
-    store.pushBatch({ simulatedTimeMs: 1000, nodes: [], systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 } });
+    store.pushBatch({
+      simulatedTimeMs: 500,
+      nodes: [],
+      systemWide: {
+        totalThroughput: 100,
+        endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
+    });
+    store.pushBatch({
+      simulatedTimeMs: 1000,
+      nodes: [],
+      systemWide: {
+        totalThroughput: 100,
+        endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
+    });
     expect(store.hasMinimumWindows).toBe(false);
-    store.pushBatch({ simulatedTimeMs: 1500, nodes: [], systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 } });
+    store.pushBatch({
+      simulatedTimeMs: 1500,
+      nodes: [],
+      systemWide: {
+        totalThroughput: 100,
+        endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
+    });
     expect(store.hasMinimumWindows).toBe(true);
   });
 
   it('resets all state', () => {
     const store = new AnalysisWindowStore();
-    store.pushBatch({ simulatedTimeMs: 500, nodes: [], systemWide: { totalThroughput: 100, endToEndLatency: { p50: 10, p90: 50, p99: 100 }, totalErrorRate: 0, activeRequests: 0 } });
+    store.pushBatch({
+      simulatedTimeMs: 500,
+      nodes: [],
+      systemWide: {
+        totalThroughput: 100,
+        endToEndLatency: { p50: 10, p90: 50, p99: 100 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
+    });
     store.reset();
     expect(store.windows.length).toBe(0);
     expect(store.completedWindowCount).toBe(0);
@@ -254,39 +333,42 @@ describe('checkSteadyState', () => {
       startMs: 0,
       endMs: durationMs,
       durationMs,
-      nodes: [{
-        nodeId: 'n1',
-        timestamp: 0,
-        throughput: 0,
-        errorRate: 0,
-        latencyPercentiles: { p50: 0, p90: 0, p99: 0 },
-        queueDepth,
-        activeConnections: 0,
-        bufferOccupancy: 0,
-        utilization: { kind: 'value' as const, value: 0.5, idle: false },
-        littlesLaw: { nodeId: 'n1', L: 0, lambda: 0, W: 0, deviation: 0, isStable: true },
-        healthStatus: 'green' as const,
-        terminalCounts: {},
-        cumulativeTerminalCounts: {},
-        arrivalCount,
-        departureCount: arrivalCount,
-        timeInSystemAtNodeMs: 0,
-        pathTimeInSystemMs: 0,
-        terminatedThroughNodeCount: 0,
-        monitoredDepth: null,
-        monitoredDepthBound: null,
-        durationMs,
-      }],
-      systemWide: { totalThroughput: 0, endToEndLatency: { p50: 0, p90: 0, p99: 0 }, totalErrorRate: 0, activeRequests: 0 },
+      nodes: [
+        {
+          nodeId: 'n1',
+          timestamp: 0,
+          throughput: 0,
+          errorRate: 0,
+          latencyPercentiles: { p50: 0, p90: 0, p99: 0 },
+          queueDepth,
+          activeConnections: 0,
+          bufferOccupancy: 0,
+          utilization: { kind: 'value' as const, value: 0.5, idle: false },
+          littlesLaw: { nodeId: 'n1', L: 0, lambda: 0, W: 0, deviation: 0, isStable: true },
+          healthStatus: 'green' as const,
+          terminalCounts: {},
+          cumulativeTerminalCounts: {},
+          arrivalCount,
+          departureCount: arrivalCount,
+          timeInSystemAtNodeMs: 0,
+          pathTimeInSystemMs: 0,
+          terminatedThroughNodeCount: 0,
+          monitoredDepth: null,
+          monitoredDepthBound: null,
+          durationMs,
+        },
+      ],
+      systemWide: {
+        totalThroughput: 0,
+        endToEndLatency: { p50: 0, p90: 0, p99: 0 },
+        totalErrorRate: 0,
+        activeRequests: 0,
+      },
     };
   }
 
   it('detects steady state with stable arrival rate and queue depth', () => {
-    const windows = [
-      makeWindow(100, 10),
-      makeWindow(100, 10),
-      makeWindow(100, 10),
-    ];
+    const windows = [makeWindow(100, 10), makeWindow(100, 10), makeWindow(100, 10)];
     const result = checkSteadyState('n1', windows);
     expect(result.isSteady).toBe(true);
   });
@@ -319,11 +401,22 @@ describe('report round-trip', () => {
         severity: 'Critical',
         subjectNodeIds: ['node-001'],
         evidence: [
-          { metricName: 'utilization', value: 0.92345678, unit: 'fraction', scope: 'node-001', primary: true as const },
+          {
+            metricName: 'utilization',
+            value: 0.92345678,
+            unit: 'fraction',
+            scope: 'node-001',
+            primary: true as const,
+          },
           { metricName: 'throughput', value: 523.456789, unit: 'req/s', scope: 'node-001' },
         ],
         constraint: 'Node utilization exceeds 85% sustained threshold',
-        action: { nodeId: 'node-001', parameter: 'workerThreadPoolSize', direction: 'increase', multiplier: 2.0 },
+        action: {
+          nodeId: 'node-001',
+          parameter: 'workerThreadPoolSize',
+          direction: 'increase',
+          multiplier: 2.0,
+        },
         tradeoff: 'Increased memory usage from additional worker threads',
         lowestCompletedCount: 500,
         allSubjectsInSteadyState: true,
@@ -335,10 +428,21 @@ describe('report round-trip', () => {
         severity: 'Warning',
         subjectNodeIds: ['node-002', 'node-003'],
         evidence: [
-          { metricName: 'utilization', value: 0.87, unit: 'fraction', scope: 'node-002', primary: true as const },
+          {
+            metricName: 'utilization',
+            value: 0.87,
+            unit: 'fraction',
+            scope: 'node-002',
+            primary: true as const,
+          },
         ],
         constraint: 'Sustained utilization above 85% over 3 windows',
-        action: { nodeId: 'node-002', parameter: 'connectionPoolSize', direction: 'increase', targetValue: { value: 200, unit: 'connections' } },
+        action: {
+          nodeId: 'node-002',
+          parameter: 'connectionPoolSize',
+          direction: 'increase',
+          targetValue: { value: 200, unit: 'connections' },
+        },
         tradeoff: 'Additional database connections consume server file descriptors',
         lowestCompletedCount: 45,
         allSubjectsInSteadyState: false,
@@ -350,10 +454,22 @@ describe('report round-trip', () => {
         severity: 'Critical',
         subjectNodeIds: ['node-004'],
         evidence: [
-          { metricName: 'blastRadius', value: 0.75, unit: 'fraction', scope: 'node-004', primary: true as const },
+          {
+            metricName: 'blastRadius',
+            value: 0.75,
+            unit: 'fraction',
+            scope: 'node-004',
+            primary: true as const,
+          },
         ],
         constraint: 'Removing this node disconnects 75% of traffic',
-        action: { nodeId: 'node-004', nodeType: NodeType.LoadBalancer, change: 'add-redundant-instance-behind-a-Load_Balancer-node', nodesAdded: 1, edgesAdded: 2 },
+        action: {
+          nodeId: 'node-004',
+          nodeType: NodeType.LoadBalancer,
+          change: 'add-redundant-instance-behind-a-Load_Balancer-node',
+          nodesAdded: 1,
+          edgesAdded: 2,
+        },
         tradeoff: 'Additional infrastructure cost for redundancy',
         lowestCompletedCount: 300,
         allSubjectsInSteadyState: true,
@@ -424,18 +540,20 @@ describe('report round-trip', () => {
   it('rejects out-of-set category', () => {
     const json = JSON.stringify({
       schemaVersion: 1,
-      findings: [{
-        id: 'x',
-        category: 'InvalidCategory',
-        severity: 'Warning',
-        confidence: 'High',
-        subjectNodeIds: [],
-        evidence: [{ metricName: 'a', value: 1, unit: 'x', scope: 's', primary: true }],
-        constraint: 'c',
-        action: { nodeId: 'n', parameter: 'p', direction: 'increase' },
-        tradeoff: 't',
-        window: { startMs: 0, endMs: 500 },
-      }],
+      findings: [
+        {
+          id: 'x',
+          category: 'InvalidCategory',
+          severity: 'Warning',
+          confidence: 'High',
+          subjectNodeIds: [],
+          evidence: [{ metricName: 'a', value: 1, unit: 'x', scope: 's', primary: true }],
+          constraint: 'c',
+          action: { nodeId: 'n', parameter: 'p', direction: 'increase' },
+          tradeoff: 't',
+          window: { startMs: 0, endMs: 500 },
+        },
+      ],
     });
     const result = importJSON(json);
     expect(isImportError(result)).toBe(true);
@@ -446,18 +564,20 @@ describe('report round-trip', () => {
   it('rejects out-of-set severity', () => {
     const json = JSON.stringify({
       schemaVersion: 1,
-      findings: [{
-        id: 'x',
-        category: 'Bottleneck',
-        severity: 'Extreme',
-        confidence: 'High',
-        subjectNodeIds: [],
-        evidence: [{ metricName: 'a', value: 1, unit: 'x', scope: 's', primary: true }],
-        constraint: 'c',
-        action: { nodeId: 'n', parameter: 'p', direction: 'increase' },
-        tradeoff: 't',
-        window: { startMs: 0, endMs: 500 },
-      }],
+      findings: [
+        {
+          id: 'x',
+          category: 'Bottleneck',
+          severity: 'Extreme',
+          confidence: 'High',
+          subjectNodeIds: [],
+          evidence: [{ metricName: 'a', value: 1, unit: 'x', scope: 's', primary: true }],
+          constraint: 'c',
+          action: { nodeId: 'n', parameter: 'p', direction: 'increase' },
+          tradeoff: 't',
+          window: { startMs: 0, endMs: 500 },
+        },
+      ],
     });
     const result = importJSON(json);
     expect(isImportError(result)).toBe(true);
@@ -479,15 +599,30 @@ describe('sortFindingsForDisplay', () => {
 
   it('within same category, sorts by severity', () => {
     const f1 = { id: 'a', category: 'Bottleneck', severity: 'Info', confidence: 'High' } as Finding;
-    const f2 = { id: 'b', category: 'Bottleneck', severity: 'Critical', confidence: 'High' } as Finding;
+    const f2 = {
+      id: 'b',
+      category: 'Bottleneck',
+      severity: 'Critical',
+      confidence: 'High',
+    } as Finding;
     const sorted = sortFindingsForDisplay([f1, f2]);
     expect(sorted[0]!.severity).toBe('Critical');
     expect(sorted[1]!.severity).toBe('Info');
   });
 
   it('tie-breaks by ascending stable identifier', () => {
-    const f1 = { id: 'z', category: 'Bottleneck', severity: 'Warning', confidence: 'High' } as Finding;
-    const f2 = { id: 'a', category: 'Bottleneck', severity: 'Warning', confidence: 'High' } as Finding;
+    const f1 = {
+      id: 'z',
+      category: 'Bottleneck',
+      severity: 'Warning',
+      confidence: 'High',
+    } as Finding;
+    const f2 = {
+      id: 'a',
+      category: 'Bottleneck',
+      severity: 'Warning',
+      confidence: 'High',
+    } as Finding;
     const sorted = sortFindingsForDisplay([f1, f2]);
     expect(sorted[0]!.id).toBe('a');
     expect(sorted[1]!.id).toBe('z');

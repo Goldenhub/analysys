@@ -104,7 +104,9 @@ describe('SimulationEngine', () => {
 
     let completed = false;
     engine.setCallbacks({
-      onComplete: () => { completed = true; },
+      onComplete: () => {
+        completed = true;
+      },
     });
 
     await engine.run();
@@ -139,8 +141,16 @@ describe('SimulationEngine', () => {
     let summary1: Record<string, unknown> | null = null;
     let summary2: Record<string, unknown> | null = null;
 
-    engine1.setCallbacks({ onComplete: (s) => { summary1 = s as Record<string, unknown>; } });
-    engine2.setCallbacks({ onComplete: (s) => { summary2 = s as Record<string, unknown>; } });
+    engine1.setCallbacks({
+      onComplete: (s) => {
+        summary1 = s as Record<string, unknown>;
+      },
+    });
+    engine2.setCallbacks({
+      onComplete: (s) => {
+        summary2 = s as Record<string, unknown>;
+      },
+    });
 
     await engine1.run();
     await engine2.run();
@@ -229,7 +239,12 @@ describe('SimulationEngine', () => {
         label: 'Gen 1',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 500,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'lb-1',
@@ -237,7 +252,11 @@ describe('SimulationEngine', () => {
         label: 'LB',
         position: { x: 100, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 1000, evictionThreshold: 3 },
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 1000,
+          evictionThreshold: 3,
+        },
       },
       {
         id: 'app-1',
@@ -245,7 +264,12 @@ describe('SimulationEngine', () => {
         label: 'App 1',
         position: { x: 200, y: -50 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'app-2',
@@ -253,7 +277,12 @@ describe('SimulationEngine', () => {
         label: 'App 2',
         position: { x: 200, y: 50 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
@@ -261,7 +290,13 @@ describe('SimulationEngine', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 50, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 50,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
@@ -302,7 +337,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
       },
       {
         id: 'cache-1',
@@ -318,7 +358,13 @@ describe('SimulationEngine', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
@@ -361,7 +407,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
+        config: {
+          rps: 200,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
       },
       {
         id: 'cache-1',
@@ -377,7 +428,13 @@ describe('SimulationEngine', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
@@ -428,7 +485,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 20, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 20,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'cache-1',
@@ -444,7 +506,13 @@ describe('SimulationEngine', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
@@ -464,7 +532,9 @@ describe('SimulationEngine', () => {
     let summary: { totalRequests: number; successRate: number } | null = null;
     engine.setCallbacks({
       onMetricsBatch: (b) => batches.push(b),
-      onComplete: (s) => { summary = s; },
+      onComplete: (s) => {
+        summary = s;
+      },
     });
 
     await engine.run();
@@ -507,7 +577,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'mq-1',
@@ -553,7 +628,9 @@ describe('SimulationEngine', () => {
     let summary: { totalRequests: number; successRate: number } | null = null;
     engine.setCallbacks({
       onMetricsBatch: (b) => batches.push(b),
-      onComplete: (s) => { summary = s; },
+      onComplete: (s) => {
+        summary = s;
+      },
     });
 
     await engine.run();
@@ -563,8 +640,7 @@ describe('SimulationEngine', () => {
     // (1) Messages actually reached the consumer. If the enqueue marks the
     // request Success, every drained message is rejected by the InFlight guard
     // in handleRequestRoute and the AppServer never sees a single one.
-    const appThroughput = batches
-      .map((b) => b.nodes.find((n) => n.nodeId === 'app-1')!.throughput);
+    const appThroughput = batches.map((b) => b.nodes.find((n) => n.nodeId === 'app-1')!.throughput);
     expect(Math.max(...appThroughput)).toBeGreaterThan(0);
 
     // (2) No in-flight leak: the count must not creep toward totalRequests.
@@ -588,7 +664,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 500, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 500,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'mq-1',
@@ -634,7 +715,9 @@ describe('SimulationEngine', () => {
     let summary: { totalRequests: number } | null = null;
     engine.setCallbacks({
       onMetricsBatch: (b) => batches.push(b),
-      onComplete: (s) => { summary = s; },
+      onComplete: (s) => {
+        summary = s;
+      },
     });
 
     await engine.run();
@@ -665,7 +748,12 @@ describe('SimulationEngine', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 200,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'cb-1',
@@ -681,7 +769,13 @@ describe('SimulationEngine', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 

@@ -50,9 +50,7 @@ export function TrafficGeneratorNode({ id, data }: NodeProps<AnalysysNode>) {
           <path d="M4.93 19.07l2.83-2.83" />
           <path d="M16.24 7.76l2.83-2.83" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* RPS Metric */}

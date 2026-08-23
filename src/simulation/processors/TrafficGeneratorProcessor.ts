@@ -12,11 +12,7 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    _event: SimEvent,
-    _request: SimRequest,
-    _context: ProcessorContext,
-  ): void {
+  onRequestArrived(_event: SimEvent, _request: SimRequest, _context: ProcessorContext): void {
     // Traffic generators don't receive requests from upstream — they generate them.
     // This is a no-op; request generation is handled by the engine's arrival scheduling.
   }
@@ -68,11 +64,7 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
   }
 
   /** Schedule the next arrival event from this generator */
-  scheduleNextArrival(
-    nodeId: string,
-    currentTime: number,
-    context: ProcessorContext,
-  ): void {
+  scheduleNextArrival(nodeId: string, currentTime: number, context: ProcessorContext): void {
     const rng = context.getRNG();
     const interArrival = this.computeInterArrival(rng);
     if (!isFinite(interArrival)) return;

@@ -15,11 +15,7 @@ export class CacheProcessor implements NodeProcessor {
     this.originalHitRatio = config.hitRatio;
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 

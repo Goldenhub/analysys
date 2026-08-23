@@ -20,7 +20,7 @@ const UTILIZATION_TOLERANCE = 0.001;
 const CO_LIMITING_THRESHOLD = 0.05;
 
 /** No-constraint upper bound (R36.4). */
-const NO_CONSTRAINT_THRESHOLD = 0.60;
+const NO_CONSTRAINT_THRESHOLD = 0.6;
 
 // ─── Analysis Utilization (Task 465) ─────────────────────────────
 
@@ -58,10 +58,7 @@ export function analysisUtilization(
  * Compute Latency_Share: timeInSystemAtNodeMs / pathTimeInSystemMs × 100.
  * Returns null (not applicable) when pathTimeInSystemMs is 0.
  */
-export function latencyShare(
-  nodeId: string,
-  windows: readonly NodeMetricsWindow[],
-): number | null {
+export function latencyShare(nodeId: string, windows: readonly NodeMetricsWindow[]): number | null {
   const completed = windows.filter((w) => w.durationMs > 0);
   const recent3 = completed.slice(-3);
   if (recent3.length < 3) return null;
@@ -205,9 +202,17 @@ function getBoundingParamForNode(
 ): { parameter: string; value: number; unit: string } | null {
   switch (node.nodeType) {
     case 'APP_SERVER':
-      return { parameter: 'workerThreadPoolSize', value: node.config.workerThreadPoolSize, unit: 'threads' };
+      return {
+        parameter: 'workerThreadPoolSize',
+        value: node.config.workerThreadPoolSize,
+        unit: 'threads',
+      };
     case 'DATABASE':
-      return { parameter: 'connectionPoolSize', value: node.config.connectionPoolSize, unit: 'connections' };
+      return {
+        parameter: 'connectionPoolSize',
+        value: node.config.connectionPoolSize,
+        unit: 'connections',
+      };
     case 'RATE_LIMITER':
       return { parameter: 'refillRatePerSec', value: node.config.refillRatePerSec, unit: 'req/s' };
     case 'CACHE':
@@ -221,7 +226,11 @@ function getBoundingParamForNode(
     case 'MESSAGE_QUEUE':
       return { parameter: 'bufferCapacity', value: node.config.bufferCapacity, unit: 'messages' };
     case 'OBJECT_STORE':
-      return { parameter: 'maxConcurrentTransfers', value: node.config.maxConcurrentTransfers, unit: 'transfers' };
+      return {
+        parameter: 'maxConcurrentTransfers',
+        value: node.config.maxConcurrentTransfers,
+        unit: 'transfers',
+      };
     case 'CIRCUIT_BREAKER':
       return { parameter: 'probeCount', value: node.config.probeCount, unit: 'requests' };
     default:
@@ -275,7 +284,9 @@ export const bottleneckRankRule: AnalysisRule = {
     let designated: RankedNode;
     let selectionRule: 'utilization' | 'latencyShare';
 
-    const saturated = eligible.filter((n) => n.utilization !== null && n.utilization >= BOTTLENECK_THRESHOLD);
+    const saturated = eligible.filter(
+      (n) => n.utilization !== null && n.utilization >= BOTTLENECK_THRESHOLD,
+    );
     if (saturated.length > 0) {
       designated = saturated[0]!; // Already sorted by ranking
       selectionRule = 'utilization';
@@ -306,11 +317,27 @@ export const bottleneckRankRule: AnalysisRule = {
 
     // Build the 6 evidence entries
     const evidence: EvidenceEntry[] = [
-      { metricName: 'analysisUtilization', value: util, unit: 'fraction', scope: nodeId, primary: true },
+      {
+        metricName: 'analysisUtilization',
+        value: util,
+        unit: 'fraction',
+        scope: nodeId,
+        primary: true,
+      },
       { metricName: 'latencyShare', value: ls, unit: 'percent', scope: nodeId },
       { metricName: 'throughput', value: tp, unit: 'req/s', scope: nodeId },
-      { metricName: 'selectionRule', value: selectionRule === 'utilization' ? 1 : 0, unit: 'flag', scope: nodeId },
-      { metricName: 'boundingParameter', value: bounding?.value ?? 0, unit: bounding?.unit ?? 'n/a', scope: nodeId },
+      {
+        metricName: 'selectionRule',
+        value: selectionRule === 'utilization' ? 1 : 0,
+        unit: 'flag',
+        scope: nodeId,
+      },
+      {
+        metricName: 'boundingParameter',
+        value: bounding?.value ?? 0,
+        unit: bounding?.unit ?? 'n/a',
+        scope: nodeId,
+      },
       { metricName: 'completedCount', value: completedCount, unit: 'requests', scope: nodeId },
     ];
 
@@ -320,7 +347,7 @@ export const bottleneckRankRule: AnalysisRule = {
 
     const tradeoff = `Reducing ${ctx.labelOf(nodeId)}'s contribution to 0 ms reduces end-to-end p99 by at most ${ls.toFixed(1)}%`;
 
-    const severity = util >= BOTTLENECK_THRESHOLD ? 'Critical' as const : 'Warning' as const;
+    const severity = util >= BOTTLENECK_THRESHOLD ? ('Critical' as const) : ('Warning' as const);
 
     const finding = FindingBuilder.build({
       ruleId: 'bottleneck.rank',
@@ -386,9 +413,25 @@ export const bottleneckCoLimitingRule: AnalysisRule = {
       const window = lastWindowSpan(ctx);
 
       const evidence: EvidenceEntry[] = [
-        { metricName: 'analysisUtilization', value: node.utilization!, unit: 'fraction', scope: node.nodeId, primary: true },
-        { metricName: 'latencyShare', value: node.latencySharePct ?? 0, unit: 'percent', scope: node.nodeId },
-        { metricName: 'bottleneckUtilization', value: bottleneckUtil, unit: 'fraction', scope: bottleneck.nodeId },
+        {
+          metricName: 'analysisUtilization',
+          value: node.utilization!,
+          unit: 'fraction',
+          scope: node.nodeId,
+          primary: true,
+        },
+        {
+          metricName: 'latencyShare',
+          value: node.latencySharePct ?? 0,
+          unit: 'percent',
+          scope: node.nodeId,
+        },
+        {
+          metricName: 'bottleneckUtilization',
+          value: bottleneckUtil,
+          unit: 'fraction',
+          scope: bottleneck.nodeId,
+        },
       ];
 
       const constraint = bounding
@@ -437,7 +480,9 @@ export const bottleneckNoConstraintRule: AnalysisRule = {
     if (eligible.length === 0) return [];
 
     // Check: every applicable (eligible) node below 0.60
-    const allBelow = eligible.every((n) => n.utilization !== null && n.utilization < NO_CONSTRAINT_THRESHOLD);
+    const allBelow = eligible.every(
+      (n) => n.utilization !== null && n.utilization < NO_CONSTRAINT_THRESHOLD,
+    );
     if (!allBelow) return [];
 
     // Also require no instability (check if any node has growing depth)
@@ -449,7 +494,10 @@ export const bottleneckNoConstraintRule: AnalysisRule = {
 
     const window = lastWindowSpan(ctx);
     const completedCount = lowestCompletedCount([], ctx);
-    const steady = allSubjectsSteady(eligible.map((n) => n.nodeId), ctx);
+    const steady = allSubjectsSteady(
+      eligible.map((n) => n.nodeId),
+      ctx,
+    );
 
     const finding = FindingBuilder.build({
       ruleId: 'bottleneck.no-constraint',
@@ -457,7 +505,13 @@ export const bottleneckNoConstraintRule: AnalysisRule = {
       severity: 'Info',
       subjectNodeIds: [],
       evidence: [
-        { metricName: 'maxUtilization', value: eligible[0]?.utilization ?? 0, unit: 'fraction', scope: SYSTEM_WIDE_SCOPE, primary: true },
+        {
+          metricName: 'maxUtilization',
+          value: eligible[0]?.utilization ?? 0,
+          unit: 'fraction',
+          scope: SYSTEM_WIDE_SCOPE,
+          primary: true,
+        },
       ],
       constraint: 'No node exceeds 60% utilization and no instability detected',
       action: {
@@ -537,7 +591,9 @@ export const bottleneckNoneEligibleRule: AnalysisRule = {
     yield;
 
     const excluded = ranked.filter((n) => !n.eligible);
-    const naCount = excluded.filter((n) => n.exclusionReason === 'not-applicable utilization').length;
+    const naCount = excluded.filter(
+      (n) => n.exclusionReason === 'not-applicable utilization',
+    ).length;
     const zeroArrivalCount = excluded.filter((n) => n.exclusionReason === 'zero arrivals').length;
 
     const window = lastWindowSpan(ctx);
@@ -549,8 +605,19 @@ export const bottleneckNoneEligibleRule: AnalysisRule = {
       severity: 'Info',
       subjectNodeIds: [],
       evidence: [
-        { metricName: 'excludedNotApplicable', value: naCount, unit: 'nodes', scope: SYSTEM_WIDE_SCOPE, primary: true },
-        { metricName: 'excludedZeroArrivals', value: zeroArrivalCount, unit: 'nodes', scope: SYSTEM_WIDE_SCOPE },
+        {
+          metricName: 'excludedNotApplicable',
+          value: naCount,
+          unit: 'nodes',
+          scope: SYSTEM_WIDE_SCOPE,
+          primary: true,
+        },
+        {
+          metricName: 'excludedZeroArrivals',
+          value: zeroArrivalCount,
+          unit: 'nodes',
+          scope: SYSTEM_WIDE_SCOPE,
+        },
       ],
       constraint: `${String(naCount)} excluded for not-applicable utilization, ${String(zeroArrivalCount)} excluded for zero arrivals`,
       action: {

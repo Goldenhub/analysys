@@ -100,7 +100,7 @@ export function comparisonUtilizationRule(
   matchedNodes: Array<{ nodeIdA: string; nodeIdB: string; nodeType: string; label: string }>,
 ): Finding[] {
   const findings: Finding[] = [];
-  const UTILIZATION_THRESHOLD = 0.10;
+  const UTILIZATION_THRESHOLD = 0.1;
 
   for (const match of matchedNodes) {
     const nodeA = runA.perNode[match.nodeIdA];

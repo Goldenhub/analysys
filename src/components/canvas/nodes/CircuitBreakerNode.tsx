@@ -44,9 +44,7 @@ export function CircuitBreakerNode({ id, data }: NodeProps<AnalysysNode>) {
           <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
           <path d="M12 2v10" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Error Threshold Display */}

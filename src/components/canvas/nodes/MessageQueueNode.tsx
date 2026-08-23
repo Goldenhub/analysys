@@ -48,9 +48,7 @@ export function MessageQueueNode({ id, data }: NodeProps<AnalysysNode>) {
           <rect x="3" y="10" width="18" height="4" rx="1" />
           <rect x="3" y="17" width="18" height="4" rx="1" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Buffer Gauge */}

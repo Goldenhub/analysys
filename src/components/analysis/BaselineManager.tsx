@@ -104,10 +104,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
   }
 
   return (
-    <section
-      aria-label="Baseline Manager"
-      className="flex flex-col gap-2 p-4"
-    >
+    <section aria-label="Baseline Manager" className="flex flex-col gap-2 p-4">
       <h2 className="text-sm font-semibold text-zinc-300">Stored Baselines</h2>
 
       {error && (
@@ -119,12 +116,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
       {baselines.length === 0 ? (
         <p className="text-xs text-zinc-500">No baselines stored.</p>
       ) : (
-        <ul
-          ref={listRef}
-          role="list"
-          aria-label="Baseline list"
-          className="flex flex-col gap-1"
-        >
+        <ul ref={listRef} role="list" aria-label="Baseline list" className="flex flex-col gap-1">
           {baselines.map((b) => (
             <li
               key={b.name}
@@ -167,8 +159,8 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
           className="mt-2 p-3 rounded bg-zinc-900 border border-zinc-600 text-xs"
         >
           <p className="text-zinc-300 mb-2">
-            Unsaved changes exist. Reusing baseline &ldquo;{confirmingReuse}&rdquo; will
-            replace the current topology. Continue?
+            Unsaved changes exist. Reusing baseline &ldquo;{confirmingReuse}&rdquo; will replace the
+            current topology. Continue?
           </p>
           <div className="flex gap-2">
             <button

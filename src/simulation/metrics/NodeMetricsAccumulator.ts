@@ -120,7 +120,7 @@ export class NodeMetricsAccumulator {
       const totalDuration = this.lastEventTime - this.windowStartTime;
       if (totalDuration > 0) {
         const ratio = removedDuration / totalDuration;
-        this.weightedOccupancySum *= (1 - ratio);
+        this.weightedOccupancySum *= 1 - ratio;
       }
     }
 

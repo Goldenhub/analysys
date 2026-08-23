@@ -31,10 +31,7 @@ const CATEGORY = 'Single_Point_Of_Failure' as const;
 
 // ─── Helper: Determine Structural Action ─────────────────────────
 
-function buildStructuralAction(
-  nodeId: string,
-  node: SimulationNode | undefined,
-): StructuralAction {
+function buildStructuralAction(nodeId: string, node: SimulationNode | undefined): StructuralAction {
   const nodeType = node?.nodeType ?? NodeType.AppServer;
   // Default recommendation: add a redundant instance behind a Load_Balancer
   return {
@@ -78,9 +75,10 @@ export const spofRule: AnalysisRule = {
 
     // Get the latest completed window for the Finding time range
     const completedWindows = windows.filter((w) => w.durationMs > 0);
-    const latestWindow = completedWindows.length > 0
-      ? completedWindows[completedWindows.length - 1]!
-      : { startMs: 0, endMs: 0 };
+    const latestWindow =
+      completedWindows.length > 0
+        ? completedWindows[completedWindows.length - 1]!
+        : { startMs: 0, endMs: 0 };
 
     const findings: Finding[] = [];
 
@@ -95,9 +93,8 @@ export const spofRule: AnalysisRule = {
       if (hasCompletedRun) {
         // Use cumulative counts for blast radius
         const cumulativeNodeCount = cumulative.nodeCompletedCounts.get(spof.nodeId) ?? 0;
-        const blastRadius = systemTerminatedCount > 0
-          ? (cumulativeNodeCount / systemTerminatedCount) * 100
-          : 0;
+        const blastRadius =
+          systemTerminatedCount > 0 ? (cumulativeNodeCount / systemTerminatedCount) * 100 : 0;
 
         evidence.push({
           metricName: 'Blast_Radius',
@@ -114,7 +111,7 @@ export const spofRule: AnalysisRule = {
         value: spof.fanIn,
         unit: 'count',
         scope: spof.nodeId,
-        ...(hasCompletedRun ? {} : { primary: true } as { primary: true }),
+        ...(hasCompletedRun ? {} : ({ primary: true } as { primary: true })),
       });
 
       // Losing source count
@@ -143,9 +140,8 @@ export const spofRule: AnalysisRule = {
       }
 
       // Truncate constraint to 500 chars
-      const truncatedConstraint = constraintText.length > 500
-        ? constraintText.slice(0, 497) + '...'
-        : constraintText;
+      const truncatedConstraint =
+        constraintText.length > 500 ? constraintText.slice(0, 497) + '...' : constraintText;
 
       const tradeoff = buildTradeoff(action.nodesAdded);
 

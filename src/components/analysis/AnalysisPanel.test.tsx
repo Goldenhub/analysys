@@ -37,7 +37,9 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     category: 'Bottleneck',
     severity: 'Warning',
     subjectNodeIds: ['node-1'],
-    evidence: [{ metricName: 'utilization', value: 0.92, unit: 'fraction', scope: 'node-1', primary: true }],
+    evidence: [
+      { metricName: 'utilization', value: 0.92, unit: 'fraction', scope: 'node-1', primary: true },
+    ],
     constraint: 'Node utilization exceeds threshold',
     action: { nodeId: 'node-1', parameter: 'threads', direction: 'increase' as const },
     tradeoff: 'Increasing threads consumes more memory',
@@ -158,7 +160,14 @@ describe('ComparisonTable header association', () => {
     nameB: 'Baseline B',
     systemMetrics: [
       { metric: 'p99', unit: 'ms', valueA: 100, valueB: 150, absoluteDiff: 50, percentDiff: 50 },
-      { metric: 'throughput', unit: 'req/s', valueA: 500, valueB: 450, absoluteDiff: -50, percentDiff: -10 },
+      {
+        metric: 'throughput',
+        unit: 'req/s',
+        valueA: 500,
+        valueB: 450,
+        absoluteDiff: -50,
+        percentDiff: -10,
+      },
     ],
     perNode: [],
     unmatchedNodes: [],
@@ -262,7 +271,9 @@ describe('Critical Finding announcement via LiveAnnouncer', () => {
     ];
 
     // First window: announce new critical findings
-    const newCritical = findings.filter((f) => f.severity === 'Critical' && !announcedIds.has(f.id));
+    const newCritical = findings.filter(
+      (f) => f.severity === 'Critical' && !announcedIds.has(f.id),
+    );
     expect(newCritical.length).toBe(2);
     for (const f of newCritical) announcedIds.add(f.id);
 
@@ -273,7 +284,9 @@ describe('Critical Finding announcement via LiveAnnouncer', () => {
     // Third window with a new finding: only the new one
     const newFinding = makeFinding({ id: 'crit-3', severity: 'Critical' });
     const thirdFindings = [...findings, newFinding];
-    const thirdPass = thirdFindings.filter((f) => f.severity === 'Critical' && !announcedIds.has(f.id));
+    const thirdPass = thirdFindings.filter(
+      (f) => f.severity === 'Critical' && !announcedIds.has(f.id),
+    );
     expect(thirdPass.length).toBe(1);
     expect(thirdPass[0]!.id).toBe('crit-3');
   });
@@ -289,7 +302,9 @@ describe('Critical Finding announcement via LiveAnnouncer', () => {
 
     // Previously-announced finding should now be announced again
     const findings: Finding[] = [makeFinding({ id: 'crit-1', severity: 'Critical' })];
-    const newCritical = findings.filter((f) => f.severity === 'Critical' && !announcedIds.has(f.id));
+    const newCritical = findings.filter(
+      (f) => f.severity === 'Critical' && !announcedIds.has(f.id),
+    );
     expect(newCritical.length).toBe(1);
   });
 });

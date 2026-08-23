@@ -58,7 +58,12 @@ function v1Schema(): AnalysysFileSchema {
           nodeType: NodeType.TrafficGenerator,
           label: 'Traffic',
           position: { x: 10, y: 20 },
-          config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 10 },
+          config: {
+            rps: 100,
+            distribution: Distribution.Poisson,
+            spikeMultiplier: 1,
+            spikeDurationSec: 10,
+          },
         },
       ],
       edges: [
@@ -86,7 +91,12 @@ function v2SchemaFull(): AnalysysFileSchema {
           label: 'Traffic Gen',
           position: { x: 10, y: 20 },
           routingPolicy: RoutingPolicy.RoundRobin,
-          config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 2, spikeDurationSec: 5 },
+          config: {
+            rps: 200,
+            distribution: Distribution.Uniform,
+            spikeMultiplier: 2,
+            spikeDurationSec: 5,
+          },
         },
         {
           id: 'n2',
@@ -94,7 +104,12 @@ function v2SchemaFull(): AnalysysFileSchema {
           label: 'App Server',
           position: { x: 100, y: 50 },
           routingPolicy: RoutingPolicy.First,
-          config: { workerThreadPoolSize: 32, requestQueueDepth: 200, processingTimeMeanMs: 25, processingTimeStdDevMs: 10 },
+          config: {
+            workerThreadPoolSize: 32,
+            requestQueueDepth: 200,
+            processingTimeMeanMs: 25,
+            processingTimeStdDevMs: 10,
+          },
         },
       ],
       edges: [
@@ -133,7 +148,9 @@ describe('validateAnalysysSchema', () => {
     void _;
     const result = validateAnalysysSchema(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('schemaVersion') && e.includes('absent'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('schemaVersion') && e.includes('absent'))).toBe(
+      true,
+    );
   });
 
   it('rejects non-integer schemaVersion (R34.9)', () => {
@@ -230,9 +247,7 @@ describe('serialize (version 2)', () => {
   it('includes subsystemGroups in the serialized output (Task 420)', () => {
     const topo = {
       ...validTopology(),
-      subsystemGroups: [
-        { id: 'g1', name: 'Backend', memberNodeIds: ['n1'], collapsed: true },
-      ],
+      subsystemGroups: [{ id: 'g1', name: 'Backend', memberNodeIds: ['n1'], collapsed: true }],
     } as unknown as AnalysysFileSchema['topology'];
     const json = serialize(topo, 'grouped');
     const parsed = JSON.parse(json);
@@ -391,7 +406,8 @@ describe('getLocalStorageUsageBytes (UTF-8 measurement)', () => {
   it('calculates correct UTF-8 bytes for ASCII content', () => {
     localStorage.setItem('key1', 'value1');
     // ASCII: 1 byte per character
-    const expected = new TextEncoder().encode('key1').length + new TextEncoder().encode('value1').length;
+    const expected =
+      new TextEncoder().encode('key1').length + new TextEncoder().encode('value1').length;
     expect(getLocalStorageUsageBytes()).toBe(expected);
   });
 

@@ -71,10 +71,7 @@ export class SchedulerProcessor implements NodeProcessor {
   /**
    * Called by the engine when a SchedulerTrigger event fires.
    */
-  onSchedulerTrigger(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onSchedulerTrigger(event: SimEvent, context: ProcessorContext): void {
     const triggerIdx = event.payload.triggerIndex as number;
     this.lastEmittedIds = [];
 
@@ -117,7 +114,9 @@ export class SchedulerProcessor implements NodeProcessor {
               timestamp: event.timestamp,
               nodeId: event.nodeId,
               requestId: '',
-              payload: { reason: `deferred-trigger-overflow at ${label} (fire time: ${event.timestamp})` },
+              payload: {
+                reason: `deferred-trigger-overflow at ${label} (fire time: ${event.timestamp})`,
+              },
             });
           } else {
             this.deferred.push(triggerIdx);
@@ -155,11 +154,7 @@ export class SchedulerProcessor implements NodeProcessor {
    * onRequestArrived — Scheduler is a source node, requests are emitted not received.
    * This is a no-op; if somehow a request routes here, record and release.
    */
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
     context.recordArrival(event.nodeId, request.id, event.timestamp);

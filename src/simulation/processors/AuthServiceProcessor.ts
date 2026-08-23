@@ -33,11 +33,7 @@ export class AuthServiceProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -63,11 +59,7 @@ export class AuthServiceProcessor implements NodeProcessor {
   /**
    * Called by the engine when a VerificationComplete event fires.
    */
-  onVerificationComplete(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onVerificationComplete(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     this.windowVerifications++;
 
     if (this.config.verificationMode === VerificationMode.Introspection) {
@@ -215,7 +207,10 @@ export class AuthServiceProcessor implements NodeProcessor {
     const rng = context.getRNG();
     const latency = Math.max(
       0,
-      rng.normalPositive(this.config.verificationLatencyMeanMs, this.config.verificationLatencyStdDevMs),
+      rng.normalPositive(
+        this.config.verificationLatencyMeanMs,
+        this.config.verificationLatencyStdDevMs,
+      ),
     );
     request.accumulatedLatencyMs += latency;
 

@@ -108,17 +108,36 @@ export const workerPoolConcurrencyRule: AnalysisRule = {
           severity: 'Warning',
           subjectNodeIds: [nodeId],
           evidence: [
-            { metricName: 'requiredConcurrency', value: requiredConcurrency, unit: 'slots', scope: nodeId, primary: true },
-            { metricName: 'configuredConcurrency', value: configuredConcurrency, unit: 'slots', scope: nodeId },
+            {
+              metricName: 'requiredConcurrency',
+              value: requiredConcurrency,
+              unit: 'slots',
+              scope: nodeId,
+              primary: true,
+            },
+            {
+              metricName: 'configuredConcurrency',
+              value: configuredConcurrency,
+              unit: 'slots',
+              scope: nodeId,
+            },
             { metricName: 'arrivalRate', value: arrivalRatePerSec, unit: 'req/s', scope: nodeId },
-            { metricName: 'meanProcessingTime', value: meanProcessingTimeSec, unit: 's', scope: nodeId },
+            {
+              metricName: 'meanProcessingTime',
+              value: meanProcessingTimeSec,
+              unit: 's',
+              scope: nodeId,
+            },
           ],
           constraint,
           action: {
             nodeId,
             parameter: 'concurrency',
             direction: 'increase',
-            targetValue: { value: Math.min(requiredConcurrency, MAX_WORKER_POOL_CONCURRENCY), unit: 'slots' },
+            targetValue: {
+              value: Math.min(requiredConcurrency, MAX_WORKER_POOL_CONCURRENCY),
+              unit: 'slots',
+            },
           },
           tradeoff: `Increasing concurrency at ${ctx.labelOf(nodeId)} consumes more memory per active job`,
           lowestCompletedCount: completedCount,
@@ -147,7 +166,12 @@ export interface SweepKneeContext {
   /** Per-node utilization at the knee step (from the step's final analysis window). */
   nodeUtilizations: Map<string, number>;
   /** Nodes that reached saturation (utilization ≥ 0.85) during the knee step. */
-  saturatedNodes: Array<{ nodeId: string; utilization: number; boundParam: string; boundValue: number }>;
+  saturatedNodes: Array<{
+    nodeId: string;
+    utilization: number;
+    boundParam: string;
+    boundValue: number;
+  }>;
   /** Service objective. */
   objective: { maxP99LatencyMs: number; maxErrorRate: number };
 }
@@ -160,10 +184,7 @@ export interface SweepKneeContext {
  * plus which Service_Objective condition was violated with its observed value and
  * configured limit.
  */
-export function sweepKneeRule(
-  ctx: AnalysisContext,
-  kneeCtx: SweepKneeContext,
-): Finding | null {
+export function sweepKneeRule(ctx: AnalysisContext, kneeCtx: SweepKneeContext): Finding | null {
   const { kneePoint, kneeStepResult, saturatedNodes, nodeUtilizations, objective } = kneeCtx;
 
   if (saturatedNodes.length > 0) {

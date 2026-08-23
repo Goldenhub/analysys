@@ -8,19 +8,60 @@ import type { SimulationEngineConfig } from '@/types/messages';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
-function makeNode(id: string, type: NodeType, label: string, policy: RoutingPolicy): SimulationNode {
+function makeNode(
+  id: string,
+  type: NodeType,
+  label: string,
+  policy: RoutingPolicy,
+): SimulationNode {
   const base = { id, nodeType: type, label, position: { x: 0, y: 0 }, routingPolicy: policy };
   switch (type) {
     case NodeType.TrafficGenerator:
-      return { ...base, nodeType: type, config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 } };
+      return {
+        ...base,
+        nodeType: type,
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
+      };
     case NodeType.AppServer:
-      return { ...base, nodeType: type, config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 } };
+      return {
+        ...base,
+        nodeType: type,
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
+      };
     case NodeType.Database:
-      return { ...base, nodeType: type, config: { connectionPoolSize: 10, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: 'RELATIONAL' as never } };
+      return {
+        ...base,
+        nodeType: type,
+        config: {
+          connectionPoolSize: 10,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: 'RELATIONAL' as never,
+        },
+      };
     case NodeType.RateLimiter:
-      return { ...base, nodeType: type, config: { bucketCapacity: 10000, refillRatePerSec: 10000 } };
+      return {
+        ...base,
+        nodeType: type,
+        config: { bucketCapacity: 10000, refillRatePerSec: 10000 },
+      };
     case NodeType.Cache:
-      return { ...base, nodeType: type, config: { hitRatio: 0.0, evictionPolicy: 'LRU' as never, accessLatencyMs: 1 } };
+      return {
+        ...base,
+        nodeType: type,
+        config: { hitRatio: 0.0, evictionPolicy: 'LRU' as never, accessLatencyMs: 1 },
+      };
   }
   return base as SimulationNode;
 }
@@ -29,7 +70,11 @@ function makeEdge(id: string, source: string, target: string, weight = 1.0): Edg
   return { id, source, target, protocol: EdgeProtocol.Sync, weight };
 }
 
-function buildConfig(nodes: SimulationNode[], edges: EdgeData[], seed = 42): SimulationEngineConfig {
+function buildConfig(
+  nodes: SimulationNode[],
+  edges: EdgeData[],
+  seed = 42,
+): SimulationEngineConfig {
   return {
     topology: { nodes, edges },
     seed,
@@ -55,8 +100,8 @@ describe('Routing Policies', () => {
       ];
       const edges: EdgeData[] = [
         makeEdge('e1', 'gen', 'rl'),
-        makeEdge('e2', 'rl', 'app-a'),  // index 0 for rl
-        makeEdge('e3', 'rl', 'app-b'),  // index 1 for rl
+        makeEdge('e2', 'rl', 'app-a'), // index 0 for rl
+        makeEdge('e3', 'rl', 'app-b'), // index 1 for rl
         makeEdge('e4', 'app-a', 'db'),
         makeEdge('e5', 'app-b', 'db'),
       ];
@@ -111,10 +156,14 @@ describe('Routing Policies', () => {
       let successCount2 = 0;
 
       engine1.setCallbacks({
-        onComplete: (s) => { successCount1 = s.totalRequests; },
+        onComplete: (s) => {
+          successCount1 = s.totalRequests;
+        },
       });
       engine2.setCallbacks({
-        onComplete: (s) => { successCount2 = s.totalRequests; },
+        onComplete: (s) => {
+          successCount2 = s.totalRequests;
+        },
       });
 
       await engine1.run();
@@ -201,7 +250,9 @@ describe('Routing Policies', () => {
       let run2Total = 0;
 
       engine.setCallbacks({
-        onComplete: (s) => { run1Total = s.totalRequests; },
+        onComplete: (s) => {
+          run1Total = s.totalRequests;
+        },
       });
       await engine.run();
       expect(run1Total).toBeGreaterThan(0);
@@ -209,7 +260,9 @@ describe('Routing Policies', () => {
       // Reset and run again with same seed — should produce identical results
       engine.reset();
       engine.setCallbacks({
-        onComplete: (s) => { run2Total = s.totalRequests; },
+        onComplete: (s) => {
+          run2Total = s.totalRequests;
+        },
       });
       await engine.run();
 
@@ -300,7 +353,7 @@ describe('Routing Policies', () => {
       // app-a should get roughly 75% of traffic (allow 20% tolerance for variance)
       const ratioA = appAThroughput / total;
       expect(ratioA).toBeGreaterThan(0.55); // At minimum, more than half
-      expect(ratioA).toBeLessThan(0.95);    // Not all of it
+      expect(ratioA).toBeLessThan(0.95); // Not all of it
       // app-b should get some traffic
       expect(appBThroughput).toBeGreaterThan(0);
     });

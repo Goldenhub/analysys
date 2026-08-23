@@ -19,14 +19,23 @@ function v1Record(): SerializedTopology {
         nodeType: NodeType.TrafficGenerator,
         label: 'Traffic',
         position: { x: 10, y: 20 },
-        config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 10 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Poisson,
+          spikeMultiplier: 1,
+          spikeDurationSec: 10,
+        },
       } as any,
       {
         id: 'n2',
         nodeType: NodeType.LoadBalancer,
         label: 'LB',
         position: { x: 50, y: 60 },
-        config: { algorithm: LBAlgorithm.RoundRobin, healthCheckIntervalMs: 5000, evictionThreshold: 3 },
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 5000,
+          evictionThreshold: 3,
+        },
       } as any,
     ],
     edges: [
@@ -50,7 +59,12 @@ function v2Record(): SerializedTopologyV2 {
         label: 'Traffic Gen',
         position: { x: 10, y: 20 },
         routingPolicy: RoutingPolicy.RoundRobin,
-        config: { rps: 200, distribution: Distribution.Uniform, spikeMultiplier: 2, spikeDurationSec: 5 },
+        config: {
+          rps: 200,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 2,
+          spikeDurationSec: 5,
+        },
       },
       {
         id: 'n2',
@@ -58,7 +72,12 @@ function v2Record(): SerializedTopologyV2 {
         label: 'App Server',
         position: { x: 100, y: 50 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 32, requestQueueDepth: 200, processingTimeMeanMs: 25, processingTimeStdDevMs: 10 },
+        config: {
+          workerThreadPoolSize: 32,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 25,
+          processingTimeStdDevMs: 10,
+        },
       },
     ],
     edges: [
@@ -70,9 +89,7 @@ function v2Record(): SerializedTopologyV2 {
         weight: 2.5,
       },
     ],
-    subsystemGroups: [
-      { id: 'g1', name: 'Backend', memberNodeIds: ['n1', 'n2'], collapsed: false },
-    ],
+    subsystemGroups: [{ id: 'g1', name: 'Backend', memberNodeIds: ['n1', 'n2'], collapsed: false }],
   } as any;
 }
 
@@ -166,7 +183,12 @@ describe('applyV2Defaults', () => {
           label: 'Server',
           position: { x: 0, y: 0 },
           // routingPolicy intentionally absent
-          config: { workerThreadPoolSize: 16, requestQueueDepth: 100, processingTimeMeanMs: 50, processingTimeStdDevMs: 15 },
+          config: {
+            workerThreadPoolSize: 16,
+            requestQueueDepth: 100,
+            processingTimeMeanMs: 50,
+            processingTimeStdDevMs: 15,
+          },
         },
       ],
       edges: [],
@@ -181,9 +203,7 @@ describe('applyV2Defaults', () => {
     const record: any = {
       schemaVersion: 2,
       nodes: [],
-      edges: [
-        { id: 'e1', source: 'n1', target: 'n2', protocol: 'SYNC' },
-      ],
+      edges: [{ id: 'e1', source: 'n1', target: 'n2', protocol: 'SYNC' }],
       subsystemGroups: [],
     };
     const { topology, warnings } = applyV2Defaults(record);

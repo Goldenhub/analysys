@@ -22,7 +22,12 @@ export interface SpofListProps {
 
 // ─── SpofList (Task 552) ─────────────────────────────────────────
 
-export function SpofList({ spofFindings, exclusions, spofDesignations = [], nodeLabels }: SpofListProps) {
+export function SpofList({
+  spofFindings,
+  exclusions,
+  spofDesignations = [],
+  nodeLabels,
+}: SpofListProps) {
   const resolveLabel = (id: string) => nodeLabels.get(id) ?? id.slice(0, 8);
 
   const hasSpofs = spofFindings.length > 0 || spofDesignations.length > 0;
@@ -37,7 +42,8 @@ export function SpofList({ spofFindings, exclusions, spofDesignations = [], node
 
         {!hasSpofs ? (
           <div className="rounded border border-green-900/50 bg-green-950/30 px-3 py-2 text-xs text-green-400">
-            Every source retains a path to at least one terminal under any single-node removal. No single points of failure detected.
+            Every source retains a path to at least one terminal under any single-node removal. No
+            single points of failure detected.
           </div>
         ) : (
           <ul className="flex flex-col gap-1.5" role="list" aria-label="SPOF nodes">
@@ -51,8 +57,7 @@ export function SpofList({ spofFindings, exclusions, spofDesignations = [], node
                   <span className="text-gray-500 text-[10px]">Fan-in: {spof.fanIn}</span>
                 </div>
                 <p className="text-gray-400 text-[10px] mt-0.5">
-                  Removal disconnects:{' '}
-                  {spof.losingSources.map((s) => resolveLabel(s)).join(', ')}
+                  Removal disconnects: {spof.losingSources.map((s) => resolveLabel(s)).join(', ')}
                 </p>
               </li>
             ))}
@@ -65,7 +70,9 @@ export function SpofList({ spofFindings, exclusions, spofDesignations = [], node
                   <span className="text-red-300 font-medium">
                     {finding.subjectNodeIds.map((id) => resolveLabel(id)).join(', ')}
                   </span>
-                  <span className={`text-[10px] ${finding.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'}`}>
+                  <span
+                    className={`text-[10px] ${finding.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'}`}
+                  >
                     {finding.severity}
                   </span>
                 </div>

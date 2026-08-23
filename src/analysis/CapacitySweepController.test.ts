@@ -14,11 +14,7 @@ import {
   DEFAULT_SWEEP_CONFIG,
   MAX_GENERATOR_RPS,
 } from './CapacitySweepController';
-import type {
-  SweepConfig,
-  SweepStepResult,
-  GeneratorInfo,
-} from './CapacitySweepController';
+import type { SweepConfig, SweepStepResult, GeneratorInfo } from './CapacitySweepController';
 
 // ─── roundHalfUp ────────────────────────────────────────────────
 
@@ -175,13 +171,22 @@ describe('validateSweepConfig', () => {
   });
 
   it('rejects warmUpMs above durationPerStepMs - 1', () => {
-    const config: SweepConfig = { ...DEFAULT_SWEEP_CONFIG, durationPerStepMs: 5000, warmUpMs: 5000 };
+    const config: SweepConfig = {
+      ...DEFAULT_SWEEP_CONFIG,
+      durationPerStepMs: 5000,
+      warmUpMs: 5000,
+    };
     const errors = validateSweepConfig(config);
     expect(errors.some((e) => e.parameter === 'warmUpMs')).toBe(true);
   });
 
   it('rejects a range that cannot yield stepCount distinct values', () => {
-    const config: SweepConfig = { ...DEFAULT_SWEEP_CONFIG, startRps: 100, endRps: 102, stepCount: 5 };
+    const config: SweepConfig = {
+      ...DEFAULT_SWEEP_CONFIG,
+      startRps: 100,
+      endRps: 102,
+      stepCount: 5,
+    };
     const errors = validateSweepConfig(config);
     const stepError = errors.find((e) => e.parameter === 'stepCount');
     expect(stepError).toBeDefined();
@@ -189,7 +194,12 @@ describe('validateSweepConfig', () => {
   });
 
   it('names the requested count and highest workable count in the error', () => {
-    const config: SweepConfig = { ...DEFAULT_SWEEP_CONFIG, startRps: 100, endRps: 105, stepCount: 10 };
+    const config: SweepConfig = {
+      ...DEFAULT_SWEEP_CONFIG,
+      startRps: 100,
+      endRps: 105,
+      stepCount: 10,
+    };
     const errors = validateSweepConfig(config);
     const stepError = errors.find((e) => e.parameter === 'stepCount');
     expect(stepError).toBeDefined();
@@ -293,18 +303,14 @@ describe('validateTopologyForSweep', () => {
   });
 
   it('rejects topology with configured RPS sum of 0', () => {
-    const generators: GeneratorInfo[] = [
-      { id: 'gen1', label: 'G1', configuredRps: 0 },
-    ];
+    const generators: GeneratorInfo[] = [{ id: 'gen1', label: 'G1', configuredRps: 0 }];
     const error = validateTopologyForSweep(generators);
     expect(error).not.toBeNull();
     expect(error!.message).toContain('0');
   });
 
   it('accepts valid topology', () => {
-    const generators: GeneratorInfo[] = [
-      { id: 'gen1', label: 'G1', configuredRps: 100 },
-    ];
+    const generators: GeneratorInfo[] = [{ id: 'gen1', label: 'G1', configuredRps: 100 }];
     const error = validateTopologyForSweep(generators);
     expect(error).toBeNull();
   });
@@ -439,10 +445,7 @@ describe('determineSweepResults', () => {
   });
 
   it('handles no evaluated steps', () => {
-    const steps = [
-      makeStep(0, 100, 'not-evaluated'),
-      makeStep(1, 200, 'not-evaluated'),
-    ];
+    const steps = [makeStep(0, 100, 'not-evaluated'), makeStep(1, 200, 'not-evaluated')];
     const result = determineSweepResults(steps, config);
     expect(result.kneePoint).toBeNull();
     expect(result.sustainableLoad.offeredRps).toBeNull();

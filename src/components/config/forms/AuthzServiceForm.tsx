@@ -20,7 +20,9 @@ export function AuthzServiceForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('policyLatencyMeanMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.policyLatencyMeanMs && <span className="text-xs text-red-400">{errors.policyLatencyMeanMs}</span>}
+        {errors.policyLatencyMeanMs && (
+          <span className="text-xs text-red-400">{errors.policyLatencyMeanMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -33,7 +35,9 @@ export function AuthzServiceForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('policyLatencyStdDevMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.policyLatencyStdDevMs && <span className="text-xs text-red-400">{errors.policyLatencyStdDevMs}</span>}
+        {errors.policyLatencyStdDevMs && (
+          <span className="text-xs text-red-400">{errors.policyLatencyStdDevMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -50,7 +54,9 @@ export function AuthzServiceForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('policyCacheHitRatio', parseFloat(e.target.value))}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-indigo-500"
         />
-        {errors.policyCacheHitRatio && <span className="text-xs text-red-400">{errors.policyCacheHitRatio}</span>}
+        {errors.policyCacheHitRatio && (
+          <span className="text-xs text-red-400">{errors.policyCacheHitRatio}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -63,7 +69,9 @@ export function AuthzServiceForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('lookupsPerRequest', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.lookupsPerRequest && <span className="text-xs text-red-400">{errors.lookupsPerRequest}</span>}
+        {errors.lookupsPerRequest && (
+          <span className="text-xs text-red-400">{errors.lookupsPerRequest}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -93,7 +101,9 @@ export function AuthzServiceForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('concurrencyLimit', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.concurrencyLimit && <span className="text-xs text-red-400">{errors.concurrencyLimit}</span>}
+        {errors.concurrencyLimit && (
+          <span className="text-xs text-red-400">{errors.concurrencyLimit}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">

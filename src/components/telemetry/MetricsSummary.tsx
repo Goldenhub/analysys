@@ -1,8 +1,4 @@
-import type {
-  MetricsBatchPayload,
-  NodeMetricsSnapshot,
-  UtilizationReading,
-} from '@/types/metrics';
+import type { MetricsBatchPayload, NodeMetricsSnapshot, UtilizationReading } from '@/types/metrics';
 import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -22,9 +18,12 @@ function formatSimTime(ms: number): string {
 
 function healthBadge(status: 'green' | 'yellow' | 'red'): string {
   switch (status) {
-    case 'green': return '🟢';
-    case 'yellow': return '🟡';
-    case 'red': return '🔴';
+    case 'green':
+      return '🟢';
+    case 'yellow':
+      return '🟡';
+    case 'red':
+      return '🔴';
   }
 }
 
@@ -154,16 +153,11 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
             </thead>
             <tbody>
               {nodes.map((node: NodeMetricsSnapshot) => (
-                <tr
-                  key={node.nodeId}
-                  className="border-b border-gray-800 hover:bg-gray-800/40"
-                >
+                <tr key={node.nodeId} className="border-b border-gray-800 hover:bg-gray-800/40">
                   <td className="px-3 py-1.5 text-gray-300" title={node.nodeId}>
                     {labelFor(node.nodeId)}
                   </td>
-                  <td className="px-3 py-1.5">
-                    {healthBadge(node.healthStatus)}
-                  </td>
+                  <td className="px-3 py-1.5">{healthBadge(node.healthStatus)}</td>
                   <td className="px-3 py-1.5 text-gray-200">
                     {node.throughput.toFixed(1)} <span className="text-gray-500">req/s</span>
                   </td>
@@ -171,7 +165,8 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
                     {(node.errorRate * 100).toFixed(1)} <span className="text-gray-500">%</span>
                   </td>
                   <td className="px-3 py-1.5 text-gray-200">
-                    {node.latencyPercentiles.p50.toFixed(1)} <span className="text-gray-500">ms</span>
+                    {node.latencyPercentiles.p50.toFixed(1)}{' '}
+                    <span className="text-gray-500">ms</span>
                   </td>
                   <td className="px-3 py-1.5 text-gray-200">
                     {node.queueDepth} <span className="text-gray-500">items</span>
@@ -188,7 +183,8 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
           </table>
         </div>
         <p className="mt-2 text-[10px] text-gray-500">
-          Throughput = requests processed per second at this node. Utilization = % of node capacity in use. Queue = requests waiting to be processed.
+          Throughput = requests processed per second at this node. Utilization = % of node capacity
+          in use. Queue = requests waiting to be processed.
         </p>
       </div>
     </div>

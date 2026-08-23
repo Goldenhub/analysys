@@ -71,7 +71,11 @@ interface TopologyActions {
 
   // Serialization
   getTopologySnapshot: () => { nodes: SimulationNode[]; edges: EdgeData[] };
-  loadTopology: (nodes: AnalysysNode[], edges: AnalysysEdge[], subsystemGroups?: SubsystemGroup[]) => void;
+  loadTopology: (
+    nodes: AnalysysNode[],
+    edges: AnalysysEdge[],
+    subsystemGroups?: SubsystemGroup[],
+  ) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -129,9 +133,7 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     set((state) => ({
       ...pushHistory(state),
       nodes: state.nodes.map((n) =>
-        n.id === nodeId
-          ? { ...n, position, data: { ...n.data, position } }
-          : n,
+        n.id === nodeId ? { ...n, position, data: { ...n.data, position } } : n,
       ),
     })),
 
@@ -158,9 +160,7 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       // gets an equal share, so the Weighted policy never sees an undefined weight.
       edges: [
         ...state.edges,
-        edge.data
-          ? { ...edge, data: { ...edge.data, weight: edge.data.weight ?? 1.0 } }
-          : edge,
+        edge.data ? { ...edge, data: { ...edge.data, weight: edge.data.weight ?? 1.0 } } : edge,
       ],
     })),
 
@@ -174,20 +174,14 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     set((state) => ({
       ...pushHistory(state),
       edges: state.edges.map((e) =>
-        e.id === edgeId
-          ? { ...e, data: { ...e.data!, protocol } }
-          : e,
+        e.id === edgeId ? { ...e, data: { ...e.data!, protocol } } : e,
       ),
     })),
 
   updateEdgeWeight: (edgeId, weight) =>
     set((state) => ({
       ...pushHistory(state),
-      edges: state.edges.map((e) =>
-        e.id === edgeId
-          ? { ...e, data: { ...e.data!, weight } }
-          : e,
-      ),
+      edges: state.edges.map((e) => (e.id === edgeId ? { ...e, data: { ...e.data!, weight } } : e)),
     })),
 
   updateNodeRoutingPolicy: (nodeId, policy) =>
@@ -267,9 +261,7 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     set((s) => ({
       ...pushHistory(s),
       subsystemGroups: s.subsystemGroups.map((g) =>
-        g.id === groupId
-          ? { ...g, memberNodeIds: [...g.memberNodeIds, ...nodeIds] }
-          : g,
+        g.id === groupId ? { ...g, memberNodeIds: [...g.memberNodeIds, ...nodeIds] } : g,
       ),
     }));
     return null;

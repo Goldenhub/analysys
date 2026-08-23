@@ -87,8 +87,19 @@ export const schedulerCollisionRule: AnalysisRule = {
             severity: 'Warning',
             subjectNodeIds: [nodeA.id, nodeB.id],
             evidence: [
-              { metricName: 'consecutiveCollisions', value: collisions, unit: 'events', scope: nodeA.id, primary: true },
-              { metricName: 'collisionWindowMs', value: COLLISION_WINDOW_MS, unit: 'ms', scope: nodeA.id },
+              {
+                metricName: 'consecutiveCollisions',
+                value: collisions,
+                unit: 'events',
+                scope: nodeA.id,
+                primary: true,
+              },
+              {
+                metricName: 'collisionWindowMs',
+                value: COLLISION_WINDOW_MS,
+                unit: 'ms',
+                scope: nodeA.id,
+              },
             ],
             constraint: `${ctx.labelOf(nodeA.id)} and ${ctx.labelOf(nodeB.id)} have ${String(collisions)} consecutive coinciding triggers within ${String(COLLISION_WINDOW_MS)} ms`,
             action: {

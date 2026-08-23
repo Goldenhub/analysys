@@ -37,12 +37,15 @@ export function GroupToolbar({ selectedNodeIds }: { selectedNodeIds: string[] })
     }
   }, [createGroup, selectedNodeIds]);
 
-  const handleRenameStart = useCallback((groupId: string) => {
-    const group = subsystemGroups.find((g) => g.id === groupId);
-    setRenaming(groupId);
-    setNewName(group?.name ?? '');
-    setError(null);
-  }, [subsystemGroups]);
+  const handleRenameStart = useCallback(
+    (groupId: string) => {
+      const group = subsystemGroups.find((g) => g.id === groupId);
+      setRenaming(groupId);
+      setNewName(group?.name ?? '');
+      setError(null);
+    },
+    [subsystemGroups],
+  );
 
   const handleRenameSubmit = useCallback(() => {
     if (!renaming) return;
@@ -55,44 +58,59 @@ export function GroupToolbar({ selectedNodeIds }: { selectedNodeIds: string[] })
     }
   }, [renaming, newName, renameGroup]);
 
-  const handleCollapse = useCallback((groupId: string) => {
-    setGroupCollapsed(groupId, true);
-    setError(null);
-  }, [setGroupCollapsed]);
-
-  const handleExpand = useCallback((groupId: string) => {
-    setGroupCollapsed(groupId, false);
-    setError(null);
-  }, [setGroupCollapsed]);
-
-  const handleAddToGroup = useCallback((groupId: string) => {
-    // Add selected nodes that don't already belong to this group
-    const group = subsystemGroups.find((g) => g.id === groupId);
-    const toAdd = selectedNodeIds.filter((id) => !group?.memberNodeIds.includes(id));
-    if (toAdd.length === 0) return;
-    const result = addNodesToGroup(groupId, toAdd);
-    if (result) {
-      const msg = result.nodeLabels
-        ? `${result.constraint} Conflicting nodes: ${result.nodeLabels.join(', ')}`
-        : result.constraint;
-      setError(msg);
-    } else {
+  const handleCollapse = useCallback(
+    (groupId: string) => {
+      setGroupCollapsed(groupId, true);
       setError(null);
-    }
-  }, [addNodesToGroup, selectedNodeIds, subsystemGroups]);
+    },
+    [setGroupCollapsed],
+  );
 
-  const handleRemoveFromGroup = useCallback((groupId: string) => {
-    const group = subsystemGroups.find((g) => g.id === groupId);
-    const toRemove = selectedNodeIds.filter((id) => group?.memberNodeIds.includes(id));
-    if (toRemove.length === 0) return;
-    removeNodesFromGroup(groupId, toRemove);
-    setError(null);
-  }, [removeNodesFromGroup, selectedNodeIds, subsystemGroups]);
+  const handleExpand = useCallback(
+    (groupId: string) => {
+      setGroupCollapsed(groupId, false);
+      setError(null);
+    },
+    [setGroupCollapsed],
+  );
 
-  const handleDelete = useCallback((groupId: string) => {
-    deleteGroup(groupId);
-    setError(null);
-  }, [deleteGroup]);
+  const handleAddToGroup = useCallback(
+    (groupId: string) => {
+      // Add selected nodes that don't already belong to this group
+      const group = subsystemGroups.find((g) => g.id === groupId);
+      const toAdd = selectedNodeIds.filter((id) => !group?.memberNodeIds.includes(id));
+      if (toAdd.length === 0) return;
+      const result = addNodesToGroup(groupId, toAdd);
+      if (result) {
+        const msg = result.nodeLabels
+          ? `${result.constraint} Conflicting nodes: ${result.nodeLabels.join(', ')}`
+          : result.constraint;
+        setError(msg);
+      } else {
+        setError(null);
+      }
+    },
+    [addNodesToGroup, selectedNodeIds, subsystemGroups],
+  );
+
+  const handleRemoveFromGroup = useCallback(
+    (groupId: string) => {
+      const group = subsystemGroups.find((g) => g.id === groupId);
+      const toRemove = selectedNodeIds.filter((id) => group?.memberNodeIds.includes(id));
+      if (toRemove.length === 0) return;
+      removeNodesFromGroup(groupId, toRemove);
+      setError(null);
+    },
+    [removeNodesFromGroup, selectedNodeIds, subsystemGroups],
+  );
+
+  const handleDelete = useCallback(
+    (groupId: string) => {
+      deleteGroup(groupId);
+      setError(null);
+    },
+    [deleteGroup],
+  );
 
   // Determine which groups the selected nodes belong to for showing relevant actions
 
@@ -123,7 +141,10 @@ export function GroupToolbar({ selectedNodeIds }: { selectedNodeIds: string[] })
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleRenameSubmit();
-                  if (e.key === 'Escape') { setRenaming(null); setError(null); }
+                  if (e.key === 'Escape') {
+                    setRenaming(null);
+                    setError(null);
+                  }
                 }}
                 className="flex-1 rounded bg-gray-900 px-1 py-0.5 text-[10px] text-white border border-gray-600 focus:outline-none focus:border-indigo-400"
                 aria-label={`New name for group ${group.name}`}

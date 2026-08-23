@@ -65,10 +65,7 @@ export function EventLog({ entries }: EventLogProps) {
   const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
 
   // Limit to last 500 entries
-  const limitedEntries = useMemo(
-    () => entries.slice(-MAX_ENTRIES),
-    [entries],
-  );
+  const limitedEntries = useMemo(() => entries.slice(-MAX_ENTRIES), [entries]);
 
   // Get unique event types and node IDs for filters
   const eventTypes = useMemo(() => {
@@ -146,9 +143,7 @@ export function EventLog({ entries }: EventLogProps) {
             </option>
           ))}
         </select>
-        <span className="ml-auto text-[10px] text-gray-500">
-          {filteredEntries.length} events
-        </span>
+        <span className="ml-auto text-[10px] text-gray-500">{filteredEntries.length} events</span>
       </div>
 
       {/* Scrollable Log */}
@@ -167,9 +162,7 @@ export function EventLog({ entries }: EventLogProps) {
             <div
               key={entry.id}
               className={`border-b border-gray-800 px-2 py-1 text-[10px] cursor-pointer ${
-                isChaos
-                  ? 'bg-red-950/30 border-red-900/30'
-                  : 'hover:bg-gray-800/50'
+                isChaos ? 'bg-red-950/30 border-red-900/30' : 'hover:bg-gray-800/50'
               } ${isExpanded ? 'bg-gray-800/70' : ''}`}
               onClick={() => setSelectedEntryId(isExpanded ? null : entry.id)}
               role="button"
@@ -186,13 +179,8 @@ export function EventLog({ entries }: EventLogProps) {
                 <span className="shrink-0 font-mono text-gray-500">
                   {formatSimTime(entry.timestamp)}
                 </span>
-                <span className="shrink-0 w-4 text-center">
-                  {EVENT_ICONS[entry.type] ?? '•'}
-                </span>
-                <span
-                  className="shrink-0 max-w-[70px] truncate text-blue-400"
-                  title={entry.nodeId}
-                >
+                <span className="shrink-0 w-4 text-center">{EVENT_ICONS[entry.type] ?? '•'}</span>
+                <span className="shrink-0 max-w-[70px] truncate text-blue-400" title={entry.nodeId}>
                   {labelFor(entry.nodeId)}
                 </span>
                 <span className={isExpanded ? 'text-gray-300' : 'truncate text-gray-300'}>

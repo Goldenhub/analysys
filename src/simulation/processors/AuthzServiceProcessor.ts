@@ -35,11 +35,7 @@ export class AuthzServiceProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -63,11 +59,7 @@ export class AuthzServiceProcessor implements NodeProcessor {
   /**
    * Called by the engine when a PolicyEvaluated event fires.
    */
-  onPolicyEvaluated(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onPolicyEvaluated(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const rng = context.getRNG();
 
     // Draw 2 — policy cache hit test
@@ -150,11 +142,7 @@ export class AuthzServiceProcessor implements NodeProcessor {
   /**
    * Draw 3 — deny test (R24.6). Applied only after all lookups have settled successfully.
    */
-  private applyDenyTest(
-    request: SimRequest,
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  private applyDenyTest(request: SimRequest, event: SimEvent, context: ProcessorContext): void {
     const rng = context.getRNG();
     // Draw 3 — deny rate
     if (rng.next() < this.config.denyRate) {
@@ -264,7 +252,8 @@ export class AuthzServiceProcessor implements NodeProcessor {
    * Per-window amplification ratio: lookup calls issued / requests admitted.
    * Reported as not-applicable when no request was admitted (R24.10).
    */
-  getAmplificationRatio(): { kind: 'value'; value: number } | { kind: 'not-applicable'; reason: string } {
+  getAmplificationRatio():
+    { kind: 'value'; value: number } | { kind: 'not-applicable'; reason: string } {
     if (this.windowRequestsAdmitted === 0) {
       return { kind: 'not-applicable', reason: 'no requests admitted this window' };
     }

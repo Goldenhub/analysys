@@ -77,15 +77,17 @@ function App() {
           <div className="ml-auto flex items-center gap-4" tabIndex={5} aria-label="Chaos controls">
             <ChaosPanel />
             {selectedNodeId && (
-              <span className="text-xs text-gray-400">
-                Selected: {selectedNodeId.slice(0, 8)}…
-              </span>
+              <span className="text-xs text-gray-400">Selected: {selectedNodeId.slice(0, 8)}…</span>
             )}
           </div>
         </header>
 
         {/* Canvas Area (tabIndex 2) — with Analysis Panel alongside */}
-        <main className="relative flex flex-1 overflow-hidden" tabIndex={2} aria-label="Topology canvas">
+        <main
+          className="relative flex flex-1 overflow-hidden"
+          tabIndex={2}
+          aria-label="Topology canvas"
+        >
           <div className="flex-1 relative">
             <CanvasEditor onNodeSelect={setSelectedNodeId} />
           </div>
@@ -99,10 +101,7 @@ function App() {
 
       {/* Right Sidebar — Node Configuration Panel (tabIndex 3) */}
       {selectedNodeId && (
-        <NodeConfigPanel
-          selectedNodeId={selectedNodeId}
-          onClose={() => setSelectedNodeId(null)}
-        />
+        <NodeConfigPanel selectedNodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
       )}
     </div>
   );
@@ -119,10 +118,5 @@ function AnalysisPanelWrapper() {
 
   if (!isOpen) return null;
 
-  return (
-    <AnalysisPanel
-      openerRef={openerRef}
-      onClose={close}
-    />
-  );
+  return <AnalysisPanel openerRef={openerRef} onClose={close} />;
 }

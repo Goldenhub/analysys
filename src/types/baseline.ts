@@ -101,9 +101,7 @@ export function validateBaselineName(
 /**
  * Validate the 5-record limit.
  */
-export function validateBaselineLimit(
-  existingNames: string[],
-): BaselineValidationError | null {
+export function validateBaselineLimit(existingNames: string[]): BaselineValidationError | null {
   if (existingNames.length >= BASELINE_MAX_RECORDS) {
     return {
       constraint: `At most ${BASELINE_MAX_RECORDS} baseline records allowed. Delete one to save a new baseline.`,

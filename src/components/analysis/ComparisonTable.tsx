@@ -17,7 +17,8 @@ function formatDiff(diff: MetricDifference): string {
 function diffColorClass(diff: MetricDifference): string {
   if (diff.absoluteDiff === 0) return 'text-gray-400';
   // For error rates and latency, increase is bad (red); for throughput, increase is good (green)
-  const isNegativeMetric = diff.metric.includes('error') || diff.metric.includes('latency') || diff.metric.startsWith('p');
+  const isNegativeMetric =
+    diff.metric.includes('error') || diff.metric.includes('latency') || diff.metric.startsWith('p');
   if (isNegativeMetric) {
     return diff.absoluteDiff > 0 ? 'text-red-400' : 'text-green-400';
   }
@@ -38,7 +39,9 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
       {/* Comparison label */}
       <div className="text-xs text-gray-400">
         {result.label.kind === 'controlled' ? (
-          <span className="text-green-400">Controlled comparison — identical seed, duration, and offered load.</span>
+          <span className="text-green-400">
+            Controlled comparison — identical seed, duration, and offered load.
+          </span>
         ) : (
           <span className="text-amber-400">
             Uncontrolled comparison — differs in:{' '}
@@ -48,11 +51,7 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
       </div>
 
       {/* System metrics table */}
-      <table
-        aria-label={tableName}
-        className="w-full text-xs border-collapse"
-        role="table"
-      >
+      <table aria-label={tableName} className="w-full text-xs border-collapse" role="table">
         <caption className="sr-only">{tableName}</caption>
         <thead>
           <tr className="border-b border-gray-700">
@@ -82,9 +81,7 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
               <td className="text-right py-1 px-2 text-gray-300">
                 {formatValue(diff.valueB, diff.unit)}
               </td>
-              <td className={`text-right py-1 px-2 ${diffColorClass(diff)}`}>
-                {formatDiff(diff)}
-              </td>
+              <td className={`text-right py-1 px-2 ${diffColorClass(diff)}`}>{formatDiff(diff)}</td>
             </tr>
           ))}
         </tbody>
@@ -107,19 +104,35 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
               >
                 <thead>
                   <tr className="border-b border-gray-800">
-                    <th scope="col" className="text-left py-0.5 px-1 text-gray-500">Metric</th>
-                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">{result.nameA}</th>
-                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">{result.nameB}</th>
-                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">Diff</th>
+                    <th scope="col" className="text-left py-0.5 px-1 text-gray-500">
+                      Metric
+                    </th>
+                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">
+                      {result.nameA}
+                    </th>
+                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">
+                      {result.nameB}
+                    </th>
+                    <th scope="col" className="text-right py-0.5 px-1 text-gray-500">
+                      Diff
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {node.metrics.map((diff) => (
                     <tr key={diff.metric} className="border-b border-gray-800/50">
-                      <th scope="row" className="text-left py-0.5 px-1 text-gray-400 font-normal">{diff.metric}</th>
-                      <td className="text-right py-0.5 px-1 text-gray-400">{formatValue(diff.valueA, diff.unit)}</td>
-                      <td className="text-right py-0.5 px-1 text-gray-400">{formatValue(diff.valueB, diff.unit)}</td>
-                      <td className={`text-right py-0.5 px-1 ${diffColorClass(diff)}`}>{formatDiff(diff)}</td>
+                      <th scope="row" className="text-left py-0.5 px-1 text-gray-400 font-normal">
+                        {diff.metric}
+                      </th>
+                      <td className="text-right py-0.5 px-1 text-gray-400">
+                        {formatValue(diff.valueA, diff.unit)}
+                      </td>
+                      <td className="text-right py-0.5 px-1 text-gray-400">
+                        {formatValue(diff.valueB, diff.unit)}
+                      </td>
+                      <td className={`text-right py-0.5 px-1 ${diffColorClass(diff)}`}>
+                        {formatDiff(diff)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -138,7 +151,8 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
           <ul className="text-xs text-gray-400">
             {result.unmatchedNodes.map((n) => (
               <li key={`${n.nodeId}-${n.presentIn}`} className="py-0.5">
-                {n.label} ({n.nodeType}) — only in {n.presentIn === 'A' ? result.nameA : result.nameB}
+                {n.label} ({n.nodeType}) — only in{' '}
+                {n.presentIn === 'A' ? result.nameA : result.nameB}
               </li>
             ))}
           </ul>

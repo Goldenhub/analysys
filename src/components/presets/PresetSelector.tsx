@@ -15,10 +15,7 @@ import type { AnalysysNode } from '@/types/nodes';
 import type { AnalysysEdge } from '@/types/edges';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
-import {
-  DEFAULT_MAX_HOPS_PER_REQUEST,
-  DEFAULT_METRICS_INTERVAL_MS,
-} from '@/types/messages';
+import { DEFAULT_MAX_HOPS_PER_REQUEST, DEFAULT_METRICS_INTERVAL_MS } from '@/types/messages';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -136,15 +133,7 @@ export function PresetSelector() {
 
       setIsOpen(false);
     },
-    [
-      hasCanvasChanges,
-      simState,
-      sendToWorker,
-      resetMetrics,
-      loadTopology,
-      initWorker,
-      setSimState,
-    ],
+    [hasCanvasChanges, simState, sendToWorker, resetMetrics, loadTopology, initWorker, setSimState],
   );
 
   const handleSaveCustom = useCallback(() => {
@@ -180,12 +169,8 @@ export function PresetSelector() {
                   className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
                   onClick={() => loadPreset(preset)}
                 >
-                  <span className="block text-sm font-medium text-gray-200">
-                    {preset.name}
-                  </span>
-                  <span className="block text-xs text-gray-500 mt-0.5">
-                    {preset.description}
-                  </span>
+                  <span className="block text-sm font-medium text-gray-200">{preset.name}</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">{preset.description}</span>
                 </button>
               </li>
             ))}
@@ -204,14 +189,14 @@ export function PresetSelector() {
                   className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
                   onClick={() => loadPreset(preset)}
                 >
-                  <span className="block text-sm font-medium text-gray-200">
-                    {preset.name}
-                  </span>
-                  <span className="block text-xs text-gray-500 mt-0.5">
-                    {preset.description}
-                  </span>
+                  <span className="block text-sm font-medium text-gray-200">{preset.name}</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">{preset.description}</span>
                   <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400">
-                    <span>Bottleneck: {preset.topology.nodes.find((n) => n.id === preset.expectedBottleneckNodeId)?.label ?? preset.expectedBottleneckNodeId}</span>
+                    <span>
+                      Bottleneck:{' '}
+                      {preset.topology.nodes.find((n) => n.id === preset.expectedBottleneckNodeId)
+                        ?.label ?? preset.expectedBottleneckNodeId}
+                    </span>
                     <span>Status: {preset.expectedDominantTerminalStatus}</span>
                     <span>Duration: {preset.simulatedDurationMs / 1000}s</span>
                     <span>Load: {preset.totalOfferedRps} RPS</span>
@@ -245,9 +230,7 @@ export function PresetSelector() {
                         setIsOpen(false);
                       }}
                     >
-                      <span className="block text-sm font-medium text-gray-200">
-                        {entry.name}
-                      </span>
+                      <span className="block text-sm font-medium text-gray-200">{entry.name}</span>
                       <span className="block text-xs text-gray-500 mt-0.5">
                         {new Date(entry.timestamp).toLocaleDateString()}
                       </span>
@@ -300,11 +283,7 @@ export function PresetSelector() {
 
       {/* Click outside to close */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} aria-hidden="true" />
       )}
 
       {/* Name dialog is inline in the dropdown above */}

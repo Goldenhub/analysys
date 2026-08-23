@@ -51,9 +51,7 @@ export function LoadBalancerNode({ id, data }: NodeProps<AnalysysNode>) {
           <path d="M7 7l-4 5 4 5" />
           <path d="M17 7l4 5-4 5" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Algorithm Badge */}

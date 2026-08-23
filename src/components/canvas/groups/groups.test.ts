@@ -86,9 +86,18 @@ describe('Subsystem Grouping', () => {
     it('createGroup rejects when node already in a group', () => {
       const nodes = [createTestNode('a'), createTestNode('b'), createTestNode('c')];
       const group: SubsystemGroup = {
-        id: 'g1', name: 'Group 1', memberNodeIds: ['a'], collapsed: false,
+        id: 'g1',
+        name: 'Group 1',
+        memberNodeIds: ['a'],
+        collapsed: false,
       };
-      useTopologyStore.setState({ nodes, edges: [], subsystemGroups: [group], past: [], future: [] });
+      useTopologyStore.setState({
+        nodes,
+        edges: [],
+        subsystemGroups: [group],
+        past: [],
+        future: [],
+      });
 
       const result = useTopologyStore.getState().createGroup(['a', 'b']);
       expect(result).not.toBeNull();
@@ -98,9 +107,18 @@ describe('Subsystem Grouping', () => {
     it('createGroup rejects when max groups reached', () => {
       const nodes = Array.from({ length: 42 }, (_, i) => createTestNode(`n${i}`));
       const groups = Array.from({ length: 20 }, (_, i) => ({
-        id: `g${i}`, name: `Group ${i}`, memberNodeIds: [`n${i * 2}`, `n${i * 2 + 1}`], collapsed: false,
+        id: `g${i}`,
+        name: `Group ${i}`,
+        memberNodeIds: [`n${i * 2}`, `n${i * 2 + 1}`],
+        collapsed: false,
       }));
-      useTopologyStore.setState({ nodes, edges: [], subsystemGroups: groups, past: [], future: [] });
+      useTopologyStore.setState({
+        nodes,
+        edges: [],
+        subsystemGroups: groups,
+        past: [],
+        future: [],
+      });
 
       const result = useTopologyStore.getState().createGroup(['n40', 'n41']);
       expect(result).not.toBeNull();
@@ -128,19 +146,37 @@ describe('Subsystem Grouping', () => {
     });
 
     it('renameGroup rejects case-insensitive duplicates', () => {
-      const nodes = [createTestNode('a'), createTestNode('b'), createTestNode('c'), createTestNode('d')];
+      const nodes = [
+        createTestNode('a'),
+        createTestNode('b'),
+        createTestNode('c'),
+        createTestNode('d'),
+      ];
       useTopologyStore.setState({ nodes, edges: [], subsystemGroups: [], past: [], future: [] });
       useTopologyStore.getState().createGroup(['a', 'b']);
       useTopologyStore.getState().createGroup(['c', 'd']);
       const groups = useTopologyStore.getState().subsystemGroups;
-      const err = useTopologyStore.getState().renameGroup(groups[1].id, groups[0].name.toUpperCase());
+      const err = useTopologyStore
+        .getState()
+        .renameGroup(groups[1].id, groups[0].name.toUpperCase());
       expect(err).toContain('conflicts');
     });
 
     it('removeNode drops node from group and deletes group with < 2 members', () => {
       const nodes = [createTestNode('a'), createTestNode('b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: false };
-      useTopologyStore.setState({ nodes, edges: [], subsystemGroups: [group], past: [], future: [] });
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: false,
+      };
+      useTopologyStore.setState({
+        nodes,
+        edges: [],
+        subsystemGroups: [group],
+        past: [],
+        future: [],
+      });
 
       useTopologyStore.getState().removeNode('a');
       // Group should be deleted (only 1 member left)
@@ -152,7 +188,12 @@ describe('Subsystem Grouping', () => {
     it('deleteGroup retains all nodes and edges at their stored positions', () => {
       const nodes = [createTestNode('a'), createTestNode('b')];
       const edges = [createTestEdge('e1', 'a', 'b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
       useTopologyStore.setState({ nodes, edges, subsystemGroups: [group], past: [], future: [] });
 
       const positionsBefore = nodes.map((n) => ({ id: n.id, pos: { ...n.position } }));
@@ -170,7 +211,12 @@ describe('Subsystem Grouping', () => {
     it('removeNodesFromGroup retains nodes at positions', () => {
       const nodes = [createTestNode('a'), createTestNode('b'), createTestNode('c')];
       const edges = [createTestEdge('e1', 'a', 'b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b', 'c'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b', 'c'],
+        collapsed: true,
+      };
       useTopologyStore.setState({ nodes, edges, subsystemGroups: [group], past: [], future: [] });
 
       useTopologyStore.getState().removeNodesFromGroup('g1', ['a']);
@@ -185,8 +231,19 @@ describe('Subsystem Grouping', () => {
         { ...createTestNode('b'), position: { x: 200, y: 200 } },
         { ...createTestNode('c'), position: { x: 300, y: 300 } },
       ] as AnalysysNode[];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
-      useTopologyStore.setState({ nodes, edges: [], subsystemGroups: [group], past: [], future: [] });
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
+      useTopologyStore.setState({
+        nodes,
+        edges: [],
+        subsystemGroups: [group],
+        past: [],
+        future: [],
+      });
 
       useTopologyStore.getState().dragGroup('g1', 50, -30);
 
@@ -202,7 +259,12 @@ describe('Subsystem Grouping', () => {
     it('sends no group information on INIT', () => {
       const nodes = [createTestNode('a'), createTestNode('b')];
       const edges = [createTestEdge('e1', 'a', 'b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
       useTopologyStore.setState({ nodes, edges, subsystemGroups: [group], past: [], future: [] });
 
       const snapshot = useTopologyStore.getState().getTopologySnapshot();
@@ -222,15 +284,22 @@ describe('Subsystem Grouping', () => {
       const snap1 = useTopologyStore.getState().getTopologySnapshot();
 
       // With collapsed group
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
       useTopologyStore.setState({ nodes, edges, subsystemGroups: [group], past: [], future: [] });
       const snap2 = useTopologyStore.getState().getTopologySnapshot();
 
       // With expanded group
       useTopologyStore.setState({
-        nodes, edges,
+        nodes,
+        edges,
         subsystemGroups: [{ ...group, collapsed: false }],
-        past: [], future: [],
+        past: [],
+        future: [],
       });
       const snap3 = useTopologyStore.getState().getTopologySnapshot();
 
@@ -245,7 +314,12 @@ describe('Subsystem Grouping', () => {
         { ...createTestNode('a'), position: { x: 0, y: 0 } },
         { ...createTestNode('b'), position: { x: 100, y: 100 } },
       ] as AnalysysNode[];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
 
       const result = computeCollapsedView(nodes, [], [group]);
       expect(result.nodes).toHaveLength(1);
@@ -256,7 +330,12 @@ describe('Subsystem Grouping', () => {
 
     it('omits member nodes when collapsed', () => {
       const nodes = [createTestNode('a'), createTestNode('b'), createTestNode('c')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
 
       const result = computeCollapsedView(nodes, [], [group]);
       // 'c' is not in the group, plus the group node
@@ -268,7 +347,12 @@ describe('Subsystem Grouping', () => {
     it('omits internal edges (both endpoints in same group)', () => {
       const nodes = [createTestNode('a'), createTestNode('b')];
       const edges = [createTestEdge('e1', 'a', 'b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
 
       const result = computeCollapsedView(nodes, edges, [group]);
       expect(result.edges).toHaveLength(0);
@@ -276,11 +360,13 @@ describe('Subsystem Grouping', () => {
 
     it('merges boundary edges sharing group, external node, and direction', () => {
       const nodes = [createTestNode('a'), createTestNode('b'), createTestNode('ext')];
-      const edges = [
-        createTestEdge('e1', 'a', 'ext'),
-        createTestEdge('e2', 'b', 'ext'),
-      ];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: true };
+      const edges = [createTestEdge('e1', 'a', 'ext'), createTestEdge('e2', 'b', 'ext')];
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: true,
+      };
 
       const result = computeCollapsedView(nodes, edges, [group]);
       // Should be one merged edge
@@ -293,7 +379,12 @@ describe('Subsystem Grouping', () => {
     it('returns original topology when no groups are collapsed', () => {
       const nodes = [createTestNode('a'), createTestNode('b')];
       const edges = [createTestEdge('e1', 'a', 'b')];
-      const group: SubsystemGroup = { id: 'g1', name: 'G', memberNodeIds: ['a', 'b'], collapsed: false };
+      const group: SubsystemGroup = {
+        id: 'g1',
+        name: 'G',
+        memberNodeIds: ['a', 'b'],
+        collapsed: false,
+      };
 
       const result = computeCollapsedView(nodes, edges, [group]);
       expect(result.nodes).toBe(nodes);
@@ -311,12 +402,16 @@ describe('Subsystem Grouping', () => {
     });
 
     it('validateGroupName rejects case-insensitive duplicate', () => {
-      const groups: SubsystemGroup[] = [{ id: 'g1', name: 'Backend', memberNodeIds: ['a', 'b'], collapsed: false }];
+      const groups: SubsystemGroup[] = [
+        { id: 'g1', name: 'Backend', memberNodeIds: ['a', 'b'], collapsed: false },
+      ];
       expect(validateGroupName('BACKEND', groups)).toContain('conflicts');
     });
 
     it('validateGroupName allows same group to keep its own name', () => {
-      const groups: SubsystemGroup[] = [{ id: 'g1', name: 'Backend', memberNodeIds: ['a', 'b'], collapsed: false }];
+      const groups: SubsystemGroup[] = [
+        { id: 'g1', name: 'Backend', memberNodeIds: ['a', 'b'], collapsed: false },
+      ];
       expect(validateGroupName('Backend', groups, 'g1')).toBeNull();
     });
 
@@ -334,9 +429,14 @@ describe('Subsystem Grouping', () => {
 
   describe('Import normalisation', () => {
     it('truncates name past 40 characters', () => {
-      const groups: SubsystemGroup[] = [{
-        id: 'g1', name: 'a'.repeat(50), memberNodeIds: ['a', 'b'], collapsed: false,
-      }];
+      const groups: SubsystemGroup[] = [
+        {
+          id: 'g1',
+          name: 'a'.repeat(50),
+          memberNodeIds: ['a', 'b'],
+          collapsed: false,
+        },
+      ];
       const { groups: result, warnings } = normaliseImportedGroups(groups, new Set(['a', 'b']));
       expect(result[0].name.length).toBe(40);
       expect(warnings.some((w) => w.violation.includes('exceeds'))).toBe(true);
@@ -353,18 +453,28 @@ describe('Subsystem Grouping', () => {
     });
 
     it('drops absent member identifiers', () => {
-      const groups: SubsystemGroup[] = [{
-        id: 'g1', name: 'G', memberNodeIds: ['a', 'b', 'missing'], collapsed: false,
-      }];
+      const groups: SubsystemGroup[] = [
+        {
+          id: 'g1',
+          name: 'G',
+          memberNodeIds: ['a', 'b', 'missing'],
+          collapsed: false,
+        },
+      ];
       const { groups: result, warnings } = normaliseImportedGroups(groups, new Set(['a', 'b']));
       expect(result[0].memberNodeIds).toEqual(['a', 'b']);
       expect(warnings.some((w) => w.violation.includes('absent'))).toBe(true);
     });
 
     it('drops group with fewer than 2 valid members', () => {
-      const groups: SubsystemGroup[] = [{
-        id: 'g1', name: 'G', memberNodeIds: ['a', 'missing1', 'missing2'], collapsed: false,
-      }];
+      const groups: SubsystemGroup[] = [
+        {
+          id: 'g1',
+          name: 'G',
+          memberNodeIds: ['a', 'missing1', 'missing2'],
+          collapsed: false,
+        },
+      ];
       const { groups: result, warnings } = normaliseImportedGroups(groups, new Set(['a']));
       expect(result).toHaveLength(0);
       expect(warnings.some((w) => w.appliedChange === 'Dropped group')).toBe(true);
@@ -372,7 +482,9 @@ describe('Subsystem Grouping', () => {
 
     it('keeps first 50 members in stored order', () => {
       const ids = Array.from({ length: 60 }, (_, i) => `n${i}`);
-      const groups: SubsystemGroup[] = [{ id: 'g1', name: 'G', memberNodeIds: ids, collapsed: false }];
+      const groups: SubsystemGroup[] = [
+        { id: 'g1', name: 'G', memberNodeIds: ids, collapsed: false },
+      ];
       const { groups: result } = normaliseImportedGroups(groups, new Set(ids));
       expect(result[0].memberNodeIds).toHaveLength(50);
       expect(result[0].memberNodeIds[0]).toBe('n0');
@@ -380,9 +492,14 @@ describe('Subsystem Grouping', () => {
     });
 
     it('drops duplicate member identifiers', () => {
-      const groups: SubsystemGroup[] = [{
-        id: 'g1', name: 'G', memberNodeIds: ['a', 'a', 'b', 'b'], collapsed: false,
-      }];
+      const groups: SubsystemGroup[] = [
+        {
+          id: 'g1',
+          name: 'G',
+          memberNodeIds: ['a', 'a', 'b', 'b'],
+          collapsed: false,
+        },
+      ];
       const { groups: result } = normaliseImportedGroups(groups, new Set(['a', 'b']));
       expect(result[0].memberNodeIds).toEqual(['a', 'b']);
     });
@@ -392,7 +509,10 @@ describe('Subsystem Grouping', () => {
         { id: 'g1', name: 'G1', memberNodeIds: ['a', 'b'], collapsed: false },
         { id: 'g2', name: 'G2', memberNodeIds: ['b', 'c'], collapsed: false },
       ];
-      const { groups: result, warnings } = normaliseImportedGroups(groups, new Set(['a', 'b', 'c']));
+      const { groups: result, warnings } = normaliseImportedGroups(
+        groups,
+        new Set(['a', 'b', 'c']),
+      );
       // 'b' should be dropped from second group since it's already in first
       expect(result[0].memberNodeIds).toContain('b');
       // Second group might be dropped (only 'c' left = 1 member)

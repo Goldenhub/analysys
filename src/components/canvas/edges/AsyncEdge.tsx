@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  type EdgeProps,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { AnalysysEdge } from '@/types/edges';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';

@@ -18,7 +18,10 @@ function shortenId(id: string): string {
 }
 
 /** Resolve a subject node ID to a display label. */
-function resolveLabel(nodeId: string, nodesMap: Map<string, SimulationNode>): { label: string; present: boolean } {
+function resolveLabel(
+  nodeId: string,
+  nodesMap: Map<string, SimulationNode>,
+): { label: string; present: boolean } {
   const node = nodesMap.get(nodeId);
   if (node) {
     return { label: node.label || shortenId(nodeId), present: true };
@@ -90,9 +93,7 @@ export function FindingCard({ finding, isActive, onActivate }: FindingCardProps)
         <span className={SEVERITY_STYLES[finding.severity] ?? 'text-gray-300'}>
           {finding.severity}
         </span>
-        <span className="text-gray-500 text-[10px]">
-          Confidence: {finding.confidence}
-        </span>
+        <span className="text-gray-500 text-[10px]">Confidence: {finding.confidence}</span>
       </div>
 
       {/* Subject nodes (Task 539) */}
@@ -130,7 +131,9 @@ export function FindingCard({ finding, isActive, onActivate }: FindingCardProps)
 
       {/* Window bounds */}
       <div className="flex items-center gap-3 text-[10px] text-gray-500 mt-1">
-        <span>Window: {windowStart} ms – {windowEnd} ms</span>
+        <span>
+          Window: {windowStart} ms – {windowEnd} ms
+        </span>
         <span>ID: {finding.id}</span>
       </div>
     </article>

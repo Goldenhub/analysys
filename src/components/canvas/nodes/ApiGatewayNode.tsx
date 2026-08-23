@@ -45,17 +45,13 @@ export function ApiGatewayNode({ id, data }: NodeProps<AnalysysNode>) {
           <path d="M10 17l5-5-5-5" />
           <path d="M15 12H3" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Auth Latency Display */}
       <div className="mt-1.5 flex items-center justify-between">
         <span className="text-[10px] text-gray-400">Auth</span>
-        <span className="text-xs font-semibold text-sky-300">
-          {config.authLatencyMeanMs}ms
-        </span>
+        <span className="text-xs font-semibold text-sky-300">{config.authLatencyMeanMs}ms</span>
       </div>
 
       {/* Target Handle (left) */}

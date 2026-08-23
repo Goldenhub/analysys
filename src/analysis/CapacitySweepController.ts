@@ -215,12 +215,7 @@ export function validateSweepConfig(config: SweepConfig): SweepValidationError[]
   const errors: SweepValidationError[] = [];
 
   // ── Helper for numeric checks ──
-  function checkNumeric(
-    name: string,
-    value: unknown,
-    min: number,
-    max: number,
-  ): boolean {
+  function checkNumeric(name: string, value: unknown, min: number, max: number): boolean {
     if (value === null || value === undefined || value === '') {
       errors.push({ parameter: name, message: `${name} is required` });
       return false;
@@ -591,9 +586,7 @@ export function processSweepCompletion(
  * Validate that the topology contains at least one Traffic_Generator and
  * that the configured RPS sum is not 0.
  */
-export function validateTopologyForSweep(
-  generators: GeneratorInfo[],
-): SweepValidationError | null {
+export function validateTopologyForSweep(generators: GeneratorInfo[]): SweepValidationError | null {
   if (generators.length === 0) {
     return {
       parameter: 'topology',
@@ -642,10 +635,7 @@ export class CapacitySweepController {
   private readonly seed: number;
   private stepLoads: number[] = [];
 
-  constructor(
-    generators: GeneratorInfo[],
-    seed: number,
-  ) {
+  constructor(generators: GeneratorInfo[], seed: number) {
     this.generators = generators;
     this.seed = seed;
   }

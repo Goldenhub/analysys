@@ -43,16 +43,12 @@ export function SchedulerNode({ id, data }: NodeProps<AnalysysNode>) {
         >
           <path d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       <div className="mt-1.5 flex items-center justify-between">
         <span className="text-[10px] text-gray-400">Interval</span>
-        <span className="text-xs font-semibold text-orange-300">
-          {intervalSec}s
-        </span>
+        <span className="text-xs font-semibold text-orange-300">{intervalSec}s</span>
       </div>
 
       <Handle

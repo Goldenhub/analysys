@@ -1,6 +1,12 @@
 import type { AppServerConfig } from '@/types/nodes';
 import type { UtilizationReading } from '@/types/metrics';
-import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext, NodeRuntimeState } from '../types';
+import type {
+  NodeProcessor,
+  SimEvent,
+  SimRequest,
+  ProcessorContext,
+  NodeRuntimeState,
+} from '../types';
 import { SimEventType, RequestStatus } from '../types';
 
 export class AppServerProcessor implements NodeProcessor {
@@ -11,11 +17,7 @@ export class AppServerProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -73,11 +75,7 @@ export class AppServerProcessor implements NodeProcessor {
    * Called by the engine when a RequestProcess event fires.
    * Releases the worker and routes downstream.
    */
-  onProcessComplete(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onProcessComplete(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 

@@ -73,11 +73,22 @@ export const headroomRule: AnalysisRule = {
       const lastWindow = completed[completed.length - 1]!;
 
       const evidence: EvidenceEntry[] = [
-        { metricName: 'headroom', value: headroomPct, unit: 'percent', scope: nodeId, primary: true },
+        {
+          metricName: 'headroom',
+          value: headroomPct,
+          unit: 'percent',
+          scope: nodeId,
+          primary: true,
+        },
         { metricName: 'analysisUtilization', value: util, unit: 'fraction', scope: nodeId },
       ];
       if (boundParam) {
-        evidence.push({ metricName: 'boundingParameter', value: boundParam.value, unit: boundParam.unit, scope: nodeId });
+        evidence.push({
+          metricName: 'boundingParameter',
+          value: boundParam.value,
+          unit: boundParam.unit,
+          scope: nodeId,
+        });
       }
 
       findings.push(
@@ -95,7 +106,8 @@ export const headroomRule: AnalysisRule = {
             parameter: boundParam?.parameter ?? 'capacity',
             direction: 'increase',
           },
-          tradeoff: 'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
+          tradeoff:
+            'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
           lowestCompletedCount: completedCount,
           allSubjectsInSteadyState: steady,
           window: { startMs: lastWindow.startMs, endMs: lastWindow.endMs },
@@ -173,9 +185,20 @@ function computeSystemHeadroom(
       severity: 'Info',
       subjectNodeIds: [],
       evidence: [
-        { metricName: 'systemHeadroomPct', value: 0, unit: 'percent', scope: SYSTEM_WIDE_SCOPE, primary: true },
+        {
+          metricName: 'systemHeadroomPct',
+          value: 0,
+          unit: 'percent',
+          scope: SYSTEM_WIDE_SCOPE,
+          primary: true,
+        },
         { metricName: 'systemHeadroomRps', value: 0, unit: 'req/s', scope: SYSTEM_WIDE_SCOPE },
-        { metricName: 'holdingNodeUtilization', value: U, unit: 'fraction', scope: holdingNode.nodeId },
+        {
+          metricName: 'holdingNodeUtilization',
+          value: U,
+          unit: 'fraction',
+          scope: holdingNode.nodeId,
+        },
       ],
       constraint: `${ctx.labelOf(holdingNode.nodeId)} at ${(U * 100).toFixed(1)}% utilization; system at capacity`,
       action: {
@@ -183,7 +206,8 @@ function computeSystemHeadroom(
         parameter: 'capacity',
         direction: 'increase',
       },
-      tradeoff: 'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
+      tradeoff:
+        'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
       lowestCompletedCount: completedCount,
       allSubjectsInSteadyState: false,
       window: { startMs: lastWindow.startMs, endMs: lastWindow.endMs },
@@ -191,7 +215,7 @@ function computeSystemHeadroom(
   }
 
   // Task 484: normal system headroom
-  const headroomFraction = (SATURATION_THRESHOLD / U) - 1;
+  const headroomFraction = SATURATION_THRESHOLD / U - 1;
   const headroomPct = headroomFraction * 100;
   const headroomRps = offeredLoadRps * headroomFraction;
 
@@ -201,9 +225,25 @@ function computeSystemHeadroom(
     severity: 'Info',
     subjectNodeIds: [],
     evidence: [
-      { metricName: 'systemHeadroomPct', value: headroomPct, unit: 'percent', scope: SYSTEM_WIDE_SCOPE, primary: true },
-      { metricName: 'systemHeadroomRps', value: headroomRps, unit: 'req/s', scope: SYSTEM_WIDE_SCOPE },
-      { metricName: 'holdingNodeUtilization', value: U, unit: 'fraction', scope: holdingNode.nodeId },
+      {
+        metricName: 'systemHeadroomPct',
+        value: headroomPct,
+        unit: 'percent',
+        scope: SYSTEM_WIDE_SCOPE,
+        primary: true,
+      },
+      {
+        metricName: 'systemHeadroomRps',
+        value: headroomRps,
+        unit: 'req/s',
+        scope: SYSTEM_WIDE_SCOPE,
+      },
+      {
+        metricName: 'holdingNodeUtilization',
+        value: U,
+        unit: 'fraction',
+        scope: holdingNode.nodeId,
+      },
       { metricName: 'offeredLoad', value: offeredLoadRps, unit: 'req/s', scope: SYSTEM_WIDE_SCOPE },
     ],
     constraint: `${ctx.labelOf(holdingNode.nodeId)} holds at ${(U * 100).toFixed(1)}% utilization with offered load ${offeredLoadRps.toFixed(1)} RPS`,
@@ -212,7 +252,8 @@ function computeSystemHeadroom(
       parameter: 'capacity',
       direction: 'increase',
     },
-    tradeoff: 'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
+    tradeoff:
+      'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
     lowestCompletedCount: completedCount,
     allSubjectsInSteadyState: false,
     window: { startMs: lastWindow.startMs, endMs: lastWindow.endMs },
@@ -235,7 +276,13 @@ function buildNotApplicableFinding(
     severity: 'Info',
     subjectNodeIds: [],
     evidence: [
-      { metricName: 'systemHeadroomPct', value: 0, unit: 'percent', scope: SYSTEM_WIDE_SCOPE, primary: true },
+      {
+        metricName: 'systemHeadroomPct',
+        value: 0,
+        unit: 'percent',
+        scope: SYSTEM_WIDE_SCOPE,
+        primary: true,
+      },
     ],
     constraint: `System headroom not applicable: ${reason}`,
     action: {
@@ -243,7 +290,8 @@ function buildNotApplicableFinding(
       parameter: 'capacity',
       direction: 'increase',
     },
-    tradeoff: 'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
+    tradeoff:
+      'Assumes proportional growth of the highest-utilization node and that no other node saturates sooner; a Capacity_Sweep produces a measured Sustainable_Load in its place',
     lowestCompletedCount: ctx.cumulative.systemCompletedCount,
     allSubjectsInSteadyState: false,
     window,
@@ -258,9 +306,17 @@ function getBoundingParam(
   if (!node) return null;
   switch (node.nodeType) {
     case 'APP_SERVER':
-      return { parameter: 'workerThreadPoolSize', value: node.config.workerThreadPoolSize, unit: 'threads' };
+      return {
+        parameter: 'workerThreadPoolSize',
+        value: node.config.workerThreadPoolSize,
+        unit: 'threads',
+      };
     case 'DATABASE':
-      return { parameter: 'connectionPoolSize', value: node.config.connectionPoolSize, unit: 'connections' };
+      return {
+        parameter: 'connectionPoolSize',
+        value: node.config.connectionPoolSize,
+        unit: 'connections',
+      };
     case 'RATE_LIMITER':
       return { parameter: 'refillRatePerSec', value: node.config.refillRatePerSec, unit: 'req/s' };
     case 'AUTH_SERVICE':
@@ -272,7 +328,11 @@ function getBoundingParam(
     case 'MESSAGE_QUEUE':
       return { parameter: 'bufferCapacity', value: node.config.bufferCapacity, unit: 'messages' };
     case 'OBJECT_STORE':
-      return { parameter: 'maxConcurrentTransfers', value: node.config.maxConcurrentTransfers, unit: 'transfers' };
+      return {
+        parameter: 'maxConcurrentTransfers',
+        value: node.config.maxConcurrentTransfers,
+        unit: 'transfers',
+      };
     default:
       return null;
   }

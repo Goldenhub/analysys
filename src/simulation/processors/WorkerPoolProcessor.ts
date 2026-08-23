@@ -25,9 +25,7 @@ export interface BackpressureAwareConsumer {
 }
 
 /** Type guard for BackpressureAwareConsumer. */
-export function isBackpressureAware(
-  processor: unknown,
-): processor is BackpressureAwareConsumer {
+export function isBackpressureAware(processor: unknown): processor is BackpressureAwareConsumer {
   return (
     processor != null &&
     typeof processor === 'object' &&
@@ -84,11 +82,7 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
     return Math.max(0, executingRoom + prefetchRoom);
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -130,20 +124,14 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
    * Called by the engine when a JobAdmit event fires.
    * Used to admit retry-waiting and prefetch Jobs when concurrency frees up.
    */
-  onJobAdmit(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onJobAdmit(event: SimEvent, context: ProcessorContext): void {
     this.tryAdmitNext(event.nodeId, event.timestamp, context);
   }
 
   /**
    * Called by the engine when a JobAttemptComplete event fires.
    */
-  onJobAttemptComplete(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onJobAttemptComplete(event: SimEvent, context: ProcessorContext): void {
     const requestId = event.requestId;
     const eventEpoch = event.payload.epoch as number;
 
@@ -285,10 +273,7 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
   /**
    * Called by the engine when a JobTimeout event fires.
    */
-  onJobTimeout(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onJobTimeout(event: SimEvent, context: ProcessorContext): void {
     const requestId = event.requestId;
     const eventEpoch = event.payload.epoch as number;
 
@@ -323,10 +308,7 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
   /**
    * Called by the engine when a JobRetryReady event fires (backoff has elapsed).
    */
-  onJobRetryReady(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onJobRetryReady(event: SimEvent, context: ProcessorContext): void {
     const requestId = event.requestId;
 
     // Remove from retryWaiting
@@ -361,11 +343,7 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
    * Try to admit the next Job: first any retry-waiting whose readyAt has elapsed,
    * then prefetch in FIFO order (R25.2).
    */
-  private tryAdmitNext(
-    nodeId: string,
-    timestamp: number,
-    context: ProcessorContext,
-  ): void {
+  private tryAdmitNext(nodeId: string, timestamp: number, context: ProcessorContext): void {
     while (this.executing.size < this.config.concurrency) {
       // First: retry-waiting Jobs whose readyAt has elapsed, in ascending readyAt
       const readyIdx = this.retryWaiting.findIndex((r) => r.readyAt <= timestamp);

@@ -188,69 +188,69 @@ export interface MessageQueueConfig {
 /** Identity verification service — Requirement 23. */
 export interface AuthServiceConfig {
   verificationMode: VerificationMode;
-  verificationLatencyMeanMs: number;    // 0–60,000
-  verificationLatencyStdDevMs: number;  // 0–30,000
-  concurrencyLimit: number;             // 1–10,000
-  queueDepth: number;                   // 0–10,000
-  tokenCacheHitRatio: number;           // 0.0–1.0, applied only in Introspection mode
-  credentialFailureRate: number;        // 0.0–1.0
+  verificationLatencyMeanMs: number; // 0–60,000
+  verificationLatencyStdDevMs: number; // 0–30,000
+  concurrencyLimit: number; // 1–10,000
+  queueDepth: number; // 0–10,000
+  tokenCacheHitRatio: number; // 0.0–1.0, applied only in Introspection mode
+  credentialFailureRate: number; // 0.0–1.0
 }
 
 /** Policy evaluation service — Requirement 24. */
 export interface AuthzServiceConfig {
-  policyLatencyMeanMs: number;          // 0–60,000
-  policyLatencyStdDevMs: number;        // 0–30,000
-  policyCacheHitRatio: number;          // 0.0–1.0
-  lookupsPerRequest: number;            // 1–50
-  denyRate: number;                     // 0.0–1.0
-  concurrencyLimit: number;             // 1–10,000
-  queueDepth: number;                   // 0–10,000
+  policyLatencyMeanMs: number; // 0–60,000
+  policyLatencyStdDevMs: number; // 0–30,000
+  policyCacheHitRatio: number; // 0.0–1.0
+  lookupsPerRequest: number; // 1–50
+  denyRate: number; // 0.0–1.0
+  concurrencyLimit: number; // 1–10,000
+  queueDepth: number; // 0–10,000
 }
 
 /** Fixed-concurrency job consumer with a retry policy — Requirement 25. */
 export interface WorkerPoolConfig {
-  concurrency: number;                  // 1–10,000
-  jobProcessingMeanMs: number;          // 0–600,000
-  jobProcessingStdDevMs: number;        // 0–300,000
-  prefetchBufferDepth: number;          // 0–10,000
-  jobFailureRate: number;               // 0.0–1.0
-  maxRetries: number;                   // 0–10
+  concurrency: number; // 1–10,000
+  jobProcessingMeanMs: number; // 0–600,000
+  jobProcessingStdDevMs: number; // 0–300,000
+  prefetchBufferDepth: number; // 0–10,000
+  jobFailureRate: number; // 0.0–1.0
+  maxRetries: number; // 0–10
   retryBackoff: RetryBackoff;
-  retryBaseDelayMs: number;             // 1–300,000
-  jobTimeoutMs: number;                 // 1–600,000
+  retryBaseDelayMs: number; // 1–300,000
+  jobTimeoutMs: number; // 1–600,000
 }
 
 /** Terminal retention for retry-exhausted jobs — Requirement 26. */
 export interface DeadLetterQueueConfig {
-  capacity: number;                     // 1–1,000,000
-  retentionPeriodMs: number;            // 1–2,592,000,000
+  capacity: number; // 1–1,000,000
+  retentionPeriodMs: number; // 1–2,592,000,000
   redriveMode: RedriveMode;
-  redriveIntervalMs: number;            // 1–300,000
-  redriveBatchSize: number;             // 1–10,000
-  maxRedriveAttempts: number;           // 0–10
+  redriveIntervalMs: number; // 1–300,000
+  redriveBatchSize: number; // 1–10,000
+  maxRedriveAttempts: number; // 0–10
 }
 
 /** Size- and bandwidth-bound object storage — Requirement 27. */
 export interface ObjectStoreConfig {
-  objectSizeMeanKB: number;             // 1–10,485,760
-  objectSizeStdDevKB: number;           // 0–10,485,760
-  throughputCapacityMBps: number;       // 0.1–100,000
-  baseLatencyMeanMs: number;            // 0–60,000
-  baseLatencyStdDevMs: number;          // 0–30,000
-  maxConcurrentTransfers: number;       // 1–100,000
-  transferQueueDepth: number;           // 0–10,000
-  readFraction: number;                 // 0.0–1.0
-  writeLatencyMultiplier: number;       // 1.0–100.0
+  objectSizeMeanKB: number; // 1–10,485,760
+  objectSizeStdDevKB: number; // 0–10,485,760
+  throughputCapacityMBps: number; // 0.1–100,000
+  baseLatencyMeanMs: number; // 0–60,000
+  baseLatencyStdDevMs: number; // 0–30,000
+  maxConcurrentTransfers: number; // 1–100,000
+  transferQueueDepth: number; // 0–10,000
+  readFraction: number; // 0.0–1.0
+  writeLatencyMultiplier: number; // 1.0–100.0
 }
 
 /** Periodic job trigger — Requirement 28. */
 export interface SchedulerConfig {
-  intervalMs: number;                   // 100–86,400,000
-  jobsPerTrigger: number;               // 1–100,000
-  startOffsetMs: number;                // 0–86,400,000
-  jitterMs: number;                     // 0–86,400,000
+  intervalMs: number; // 100–86,400,000
+  jobsPerTrigger: number; // 1–100,000
+  startOffsetMs: number; // 0–86,400,000
+  jitterMs: number; // 0–86,400,000
   overlapPolicy: OverlapPolicy;
-  maxDeferredTriggers: number;          // 1–1,000
+  maxDeferredTriggers: number; // 1–1,000
 }
 
 // ─── Composed Node Types (Discriminated Union) ───────────────────

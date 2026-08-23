@@ -83,15 +83,11 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
           <rect x="3" y="3" width="18" height="18" rx="3" />
           <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
         </svg>
-        <span className="truncate text-xs font-semibold text-gray-100">
-          {groupData.groupName}
-        </span>
+        <span className="truncate text-xs font-semibold text-gray-100">{groupData.groupName}</span>
       </div>
 
       {/* Member count */}
-      <div className="mt-1 text-[10px] text-gray-400">
-        {groupData.memberCount} nodes
-      </div>
+      <div className="mt-1 text-[10px] text-gray-400">{groupData.memberCount} nodes</div>
 
       {/* Telemetry badges (R33.14, R33.15, R33.16) */}
       {hasMetrics ? (
@@ -103,11 +99,15 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
             {summedErrors.toFixed(0)} errors
           </span>
           {groupHealth ? (
-            <span className={`rounded px-1.5 py-0.5 font-medium ${
-              groupHealth === 'red' ? 'bg-red-900/50 text-red-300' :
-              groupHealth === 'yellow' ? 'bg-yellow-900/50 text-yellow-300' :
-              'bg-green-900/50 text-green-300'
-            }`}>
+            <span
+              className={`rounded px-1.5 py-0.5 font-medium ${
+                groupHealth === 'red'
+                  ? 'bg-red-900/50 text-red-300'
+                  : groupHealth === 'yellow'
+                    ? 'bg-yellow-900/50 text-yellow-300'
+                    : 'bg-green-900/50 text-green-300'
+              }`}
+            >
               {groupHealth}
             </span>
           ) : (
@@ -125,7 +125,9 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
       {/* Expand button */}
       <button
         onClick={handleExpand}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleExpand(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleExpand();
+        }}
         className="mt-1.5 w-full rounded bg-indigo-800/50 px-2 py-0.5 text-[10px] text-indigo-300 hover:bg-indigo-700/50 focus:outline-none focus:ring-1 focus:ring-indigo-400"
         aria-label={`Expand group ${groupData.groupName}`}
       >
@@ -133,16 +135,8 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
       </button>
 
       {/* Connection handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-indigo-400 !w-2 !h-2"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-indigo-400 !w-2 !h-2"
-      />
+      <Handle type="target" position={Position.Left} className="!bg-indigo-400 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-indigo-400 !w-2 !h-2" />
     </div>
   );
 }

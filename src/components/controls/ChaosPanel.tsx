@@ -94,16 +94,18 @@ export function ChaosPanel() {
   );
 
   const allNodes = useMemo(
-    () => nodes.filter((n) => {
-      const nt = (n.data as { nodeType: string }).nodeType;
-      // All 15 node types are eligible for DISABLE_NODE
-      return Object.values(NodeType).includes(nt as NodeType);
-    }),
+    () =>
+      nodes.filter((n) => {
+        const nt = (n.data as { nodeType: string }).nodeType;
+        // All 15 node types are eligible for DISABLE_NODE
+        return Object.values(NodeType).includes(nt as NodeType);
+      }),
     [nodes],
   );
 
   const dlqNodes = useMemo(
-    () => nodes.filter((n) => (n.data as { nodeType: string }).nodeType === NodeType.DeadLetterQueue),
+    () =>
+      nodes.filter((n) => (n.data as { nodeType: string }).nodeType === NodeType.DeadLetterQueue),
     [nodes],
   );
 
@@ -148,12 +150,16 @@ export function ChaosPanel() {
 
       const latencyChange =
         beforeSnapshot.latencyP99 > 0
-          ? ((metrics.systemWide.endToEndLatency.p99 - beforeSnapshot.latencyP99) / beforeSnapshot.latencyP99) * 100
+          ? ((metrics.systemWide.endToEndLatency.p99 - beforeSnapshot.latencyP99) /
+              beforeSnapshot.latencyP99) *
+            100
           : 0;
 
       const throughputChange =
         beforeSnapshot.throughput > 0
-          ? ((metrics.systemWide.totalThroughput - beforeSnapshot.throughput) / beforeSnapshot.throughput) * 100
+          ? ((metrics.systemWide.totalThroughput - beforeSnapshot.throughput) /
+              beforeSnapshot.throughput) *
+            100
           : 0;
 
       return {
@@ -240,7 +246,15 @@ export function ChaosPanel() {
     addChaosEffect(effect);
     captureMetricsSnapshot(effect.id);
     scheduleEffectRemoval(effect);
-  }, [sendToWorker, dbNodes, selectedDbNodeId, addChaosEffect, captureMetricsSnapshot, scheduleEffectRemoval, currentSimTime]);
+  }, [
+    sendToWorker,
+    dbNodes,
+    selectedDbNodeId,
+    addChaosEffect,
+    captureMetricsSnapshot,
+    scheduleEffectRemoval,
+    currentSimTime,
+  ]);
 
   const handleSpikeTraffic = useCallback(() => {
     const effect: ActiveChaosEffect = {
@@ -269,7 +283,9 @@ export function ChaosPanel() {
   const handleDisableNode = useCallback(() => {
     if (!selectedDisableNodeId) return;
     const targetNode = allNodes.find((n) => n.id === selectedDisableNodeId);
-    const label = targetNode ? (targetNode.data as { label?: string }).label || targetNode.id.slice(0, 8) : selectedDisableNodeId.slice(0, 8);
+    const label = targetNode
+      ? (targetNode.data as { label?: string }).label || targetNode.id.slice(0, 8)
+      : selectedDisableNodeId.slice(0, 8);
 
     const effect: ActiveChaosEffect = {
       id: `disable-node-${Date.now()}`,
@@ -294,7 +310,16 @@ export function ChaosPanel() {
     addChaosEffect(effect);
     captureMetricsSnapshot(effect.id);
     scheduleEffectRemoval(effect);
-  }, [sendToWorker, selectedDisableNodeId, disableDurationMs, allNodes, addChaosEffect, captureMetricsSnapshot, scheduleEffectRemoval, currentSimTime]);
+  }, [
+    sendToWorker,
+    selectedDisableNodeId,
+    disableDurationMs,
+    allNodes,
+    addChaosEffect,
+    captureMetricsSnapshot,
+    scheduleEffectRemoval,
+    currentSimTime,
+  ]);
 
   const handleRedriveDlq = useCallback(() => {
     const targetId = dlqNodes.length === 1 && dlqNodes[0] ? dlqNodes[0].id : selectedDlqNodeId;
@@ -372,7 +397,9 @@ export function ChaosPanel() {
             <Button
               variant="outline"
               size="sm"
-              disabled={chaosDisabled || (dbNodes.length > 1 && !selectedDbNodeId) || dbNodes.length === 0}
+              disabled={
+                chaosDisabled || (dbNodes.length > 1 && !selectedDbNodeId) || dbNodes.length === 0
+              }
               onClick={handleDropDb}
               title={CHAOS_TOOLTIPS.dropDb}
               className="border-red-700 text-red-400 hover:bg-red-900/30 hover:text-red-300 disabled:border-gray-700 disabled:text-gray-500"
@@ -423,7 +450,9 @@ export function ChaosPanel() {
               min={100}
               max={600000}
               value={disableDurationMs}
-              onChange={(e) => setDisableDurationMs(Math.max(100, Math.min(600000, Number(e.target.value))))}
+              onChange={(e) =>
+                setDisableDurationMs(Math.max(100, Math.min(600000, Number(e.target.value))))
+              }
               disabled={disableNodeDisabled}
               className="h-7 w-20 rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
               title="Duration in simulated ms (100–600,000)"
@@ -440,7 +469,9 @@ export function ChaosPanel() {
               <span>Disable</span>
             </Button>
           </div>
-          <span className="text-[9px] text-gray-500">Node failure: all requests timeout for duration</span>
+          <span className="text-[9px] text-gray-500">
+            Node failure: all requests timeout for duration
+          </span>
         </div>
 
         {/* Manual DLQ Redrive */}
@@ -474,7 +505,9 @@ export function ChaosPanel() {
                 <span>Redrive DLQ</span>
               </Button>
             </div>
-            <span className="text-[9px] text-gray-500">Manual redrive of dead-lettered messages</span>
+            <span className="text-[9px] text-gray-500">
+              Manual redrive of dead-lettered messages
+            </span>
           </div>
         )}
       </div>
@@ -483,10 +516,7 @@ export function ChaosPanel() {
       {visibleEffects.length > 0 && (
         <div className="flex flex-col gap-1.5 rounded-md border border-amber-800/50 bg-amber-950/30 p-2">
           {visibleEffects.map((effect) => (
-            <div
-              key={effect.id}
-              className="flex items-start gap-1.5 text-xs text-amber-200"
-            >
+            <div key={effect.id} className="flex items-start gap-1.5 text-xs text-amber-200">
               <span className="shrink-0">{getActiveEffectIcon(effect.chaosType)}</span>
               <span className="leading-tight">
                 {getActiveEffectMessage(effect, effect.remainingSec)}
@@ -504,11 +534,15 @@ export function ChaosPanel() {
               key={`${summary.label}-${idx}`}
               className="rounded-md border border-amber-700/50 bg-amber-950/40 px-2.5 py-1.5 text-[10px] text-amber-200"
             >
-              <span className="font-semibold text-amber-300">{summary.label} Impact:</span>{' '}
-              Latency {summary.latencyChange >= 0 ? '+' : ''}
-              {summary.latencyChange}%, Error rate {summary.errorRateBefore}% → {summary.errorRateAfter}%
+              <span className="font-semibold text-amber-300">{summary.label} Impact:</span> Latency{' '}
+              {summary.latencyChange >= 0 ? '+' : ''}
+              {summary.latencyChange}%, Error rate {summary.errorRateBefore}% →{' '}
+              {summary.errorRateAfter}%
               {summary.throughputChange !== 0 && (
-                <>, Throughput {summary.throughputChange >= 0 ? '+' : ''}{summary.throughputChange}%</>
+                <>
+                  , Throughput {summary.throughputChange >= 0 ? '+' : ''}
+                  {summary.throughputChange}%
+                </>
               )}
             </div>
           ))}
@@ -523,21 +557,40 @@ export function ChaosPanel() {
             <span className="text-green-400">
               Every source retains a path to a reachable terminal under any single removal.
               {spofStatus.unreachableSources.length > 0 && (
-                <> Sources reaching 0 terminals before any removal: {spofStatus.unreachableSources.map((id) => {
-                  const n = nodes.find((node) => node.id === id);
-                  return n ? (n.data as { label?: string }).label || id.slice(0, 8) : id.slice(0, 8);
-                }).join(', ')}.</>
+                <>
+                  {' '}
+                  Sources reaching 0 terminals before any removal:{' '}
+                  {spofStatus.unreachableSources
+                    .map((id) => {
+                      const n = nodes.find((node) => node.id === id);
+                      return n
+                        ? (n.data as { label?: string }).label || id.slice(0, 8)
+                        : id.slice(0, 8);
+                    })
+                    .join(', ')}
+                  .
+                </>
               )}
               {spofStatus.excludedFromCandidates.length > 0 && (
-                <> Excluded as sources: {spofStatus.excludedFromCandidates.map((id) => {
-                  const n = nodes.find((node) => node.id === id);
-                  return n ? (n.data as { label?: string }).label || id.slice(0, 8) : id.slice(0, 8);
-                }).join(', ')}.</>
+                <>
+                  {' '}
+                  Excluded as sources:{' '}
+                  {spofStatus.excludedFromCandidates
+                    .map((id) => {
+                      const n = nodes.find((node) => node.id === id);
+                      return n
+                        ? (n.data as { label?: string }).label || id.slice(0, 8)
+                        : id.slice(0, 8);
+                    })
+                    .join(', ')}
+                  .
+                </>
               )}
             </span>
           ) : (
             <span className="text-amber-400">
-              {spofStatus.spofs.length} node{spofStatus.spofs.length > 1 ? 's' : ''} designated as Single Point{spofStatus.spofs.length > 1 ? 's' : ''} of Failure.
+              {spofStatus.spofs.length} node{spofStatus.spofs.length > 1 ? 's' : ''} designated as
+              Single Point{spofStatus.spofs.length > 1 ? 's' : ''} of Failure.
             </span>
           )}
         </div>

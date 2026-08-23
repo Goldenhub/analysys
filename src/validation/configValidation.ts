@@ -126,15 +126,16 @@ export function validateTrafficGeneratorConfig(
   checkNonNegative(errors, 'spikeDurationSec', config.spikeDurationSec);
 
   if (!Object.values(Distribution).includes(config.distribution)) {
-    errors.push({ field: 'distribution', message: 'distribution must be a valid Distribution value.' });
+    errors.push({
+      field: 'distribution',
+      message: 'distribution must be a valid Distribution value.',
+    });
   }
 
   return { valid: errors.length === 0, errors };
 }
 
-export function validateApiGatewayConfig(
-  config: ApiGatewayConfig,
-): ConfigValidationResult {
+export function validateApiGatewayConfig(config: ApiGatewayConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'authLatencyMeanMs', config.authLatencyMeanMs, 0, 60_000);
@@ -144,9 +145,7 @@ export function validateApiGatewayConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateRateLimiterConfig(
-  config: RateLimiterConfig,
-): ConfigValidationResult {
+export function validateRateLimiterConfig(config: RateLimiterConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'bucketCapacity', config.bucketCapacity, 1, 1_000_000);
@@ -155,9 +154,7 @@ export function validateRateLimiterConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateLoadBalancerConfig(
-  config: LoadBalancerConfig,
-): ConfigValidationResult {
+export function validateLoadBalancerConfig(config: LoadBalancerConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkPositive(errors, 'healthCheckIntervalMs', config.healthCheckIntervalMs);
@@ -166,9 +163,7 @@ export function validateLoadBalancerConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateCircuitBreakerConfig(
-  config: CircuitBreakerConfig,
-): ConfigValidationResult {
+export function validateCircuitBreakerConfig(config: CircuitBreakerConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'errorThreshold', config.errorThreshold, 0, 1);
@@ -178,9 +173,7 @@ export function validateCircuitBreakerConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateAppServerConfig(
-  config: AppServerConfig,
-): ConfigValidationResult {
+export function validateAppServerConfig(config: AppServerConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'workerThreadPoolSize', config.workerThreadPoolSize, 1, 1_000);
@@ -191,9 +184,7 @@ export function validateAppServerConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateCacheConfig(
-  config: CacheConfig,
-): ConfigValidationResult {
+export function validateCacheConfig(config: CacheConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'hitRatio', config.hitRatio, 0, 1);
@@ -202,9 +193,7 @@ export function validateCacheConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateDatabaseConfig(
-  config: DatabaseConfig,
-): ConfigValidationResult {
+export function validateDatabaseConfig(config: DatabaseConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'connectionPoolSize', config.connectionPoolSize, 1, 500);
@@ -215,9 +204,7 @@ export function validateDatabaseConfig(
   return { valid: errors.length === 0, errors };
 }
 
-export function validateMessageQueueConfig(
-  config: MessageQueueConfig,
-): ConfigValidationResult {
+export function validateMessageQueueConfig(config: MessageQueueConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'consumerBatchSize', config.consumerBatchSize, 1, 10_000);
@@ -232,12 +219,16 @@ export function validateMessageQueueConfig(
 /** Requirement 23.1 ranges. `tokenCacheHitRatio` is range-checked in both modes even
  *  though it only takes effect in Introspection mode, so switching mode cannot surface
  *  a value that was never validated. */
-export function validateAuthServiceConfig(
-  config: AuthServiceConfig,
-): ConfigValidationResult {
+export function validateAuthServiceConfig(config: AuthServiceConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
-  checkEnum(errors, 'verificationMode', config.verificationMode, VerificationMode, 'VerificationMode');
+  checkEnum(
+    errors,
+    'verificationMode',
+    config.verificationMode,
+    VerificationMode,
+    'VerificationMode',
+  );
   checkRange(errors, 'verificationLatencyMeanMs', config.verificationLatencyMeanMs, 0, 60_000);
   checkRange(errors, 'verificationLatencyStdDevMs', config.verificationLatencyStdDevMs, 0, 30_000);
   checkRange(errors, 'concurrencyLimit', config.concurrencyLimit, 1, 10_000);
@@ -249,9 +240,7 @@ export function validateAuthServiceConfig(
 }
 
 /** Requirement 24.1 ranges. */
-export function validateAuthzServiceConfig(
-  config: AuthzServiceConfig,
-): ConfigValidationResult {
+export function validateAuthzServiceConfig(config: AuthzServiceConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'policyLatencyMeanMs', config.policyLatencyMeanMs, 0, 60_000);
@@ -267,9 +256,7 @@ export function validateAuthzServiceConfig(
 
 /** Requirement 25.1 ranges. `maxRetries` 0 is a permitted degenerate value — no retry
  *  at all — so its lower bound is 0 rather than 1. */
-export function validateWorkerPoolConfig(
-  config: WorkerPoolConfig,
-): ConfigValidationResult {
+export function validateWorkerPoolConfig(config: WorkerPoolConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'concurrency', config.concurrency, 1, 10_000);
@@ -304,9 +291,7 @@ export function validateDeadLetterQueueConfig(
 
 /** Requirement 27.1 ranges. `throughputCapacityMBps` has a fractional lower bound of
  *  0.1, not 1, because a deliberately slow store is a realistic thing to model. */
-export function validateObjectStoreConfig(
-  config: ObjectStoreConfig,
-): ConfigValidationResult {
+export function validateObjectStoreConfig(config: ObjectStoreConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'objectSizeMeanKB', config.objectSizeMeanKB, 1, 10_485_760);
@@ -329,9 +314,7 @@ export function validateObjectStoreConfig(
  * `intervalMs` is *not* an error: R28.3 has the engine take the lesser of the two as the
  * effective jitter, so the pair is degenerate rather than invalid.
  */
-export function validateSchedulerConfig(
-  config: SchedulerConfig,
-): ConfigValidationResult {
+export function validateSchedulerConfig(config: SchedulerConfig): ConfigValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   checkRange(errors, 'intervalMs', config.intervalMs, 100, 86_400_000);
@@ -407,12 +390,7 @@ function clamp(value: number, min: number, max: number): number {
  * non-finite import is recorded too, which is the case most worth telling the user about.
  */
 function makeClamper(label: string, warnings: MigrationWarning[]) {
-  return function clampField(
-    field: string,
-    value: number,
-    min: number,
-    max: number,
-  ): number {
+  return function clampField(field: string, value: number, min: number, max: number): number {
     const applied = clamp(value, min, max);
     if (applied !== value) {
       warnings.push({ label, field, importedValue: value, appliedValue: applied });
@@ -456,11 +434,20 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           config: {
             rps: c('rps', node.config.rps, 1, 100_000),
             distribution: coerceEnum(
-              node.label, warnings, 'distribution', node.config.distribution,
-              Distribution, Distribution.Poisson,
+              node.label,
+              warnings,
+              'distribution',
+              node.config.distribution,
+              Distribution,
+              Distribution.Poisson,
             ),
             spikeMultiplier: c('spikeMultiplier', node.config.spikeMultiplier, 1, 20),
-            spikeDurationSec: c('spikeDurationSec', node.config.spikeDurationSec, 0, Number.MAX_SAFE_INTEGER),
+            spikeDurationSec: c(
+              'spikeDurationSec',
+              node.config.spikeDurationSec,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
           },
         },
         warnings,
@@ -471,7 +458,12 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             authLatencyMeanMs: c('authLatencyMeanMs', node.config.authLatencyMeanMs, 0, 60_000),
-            authLatencyStdDevMs: c('authLatencyStdDevMs', node.config.authLatencyStdDevMs, 0, 30_000),
+            authLatencyStdDevMs: c(
+              'authLatencyStdDevMs',
+              node.config.authLatencyStdDevMs,
+              0,
+              30_000,
+            ),
             rejectionRate: c('rejectionRate', node.config.rejectionRate, 0, 1),
           },
         },
@@ -494,8 +486,18 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             algorithm: node.config.algorithm,
-            healthCheckIntervalMs: c('healthCheckIntervalMs', node.config.healthCheckIntervalMs, 1, Number.MAX_SAFE_INTEGER),
-            evictionThreshold: c('evictionThreshold', node.config.evictionThreshold, 1, Number.MAX_SAFE_INTEGER),
+            healthCheckIntervalMs: c(
+              'healthCheckIntervalMs',
+              node.config.healthCheckIntervalMs,
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
+            evictionThreshold: c(
+              'evictionThreshold',
+              node.config.evictionThreshold,
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
           },
         },
         warnings,
@@ -517,10 +519,25 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
         node: {
           ...node,
           config: {
-            workerThreadPoolSize: c('workerThreadPoolSize', node.config.workerThreadPoolSize, 1, 1_000),
+            workerThreadPoolSize: c(
+              'workerThreadPoolSize',
+              node.config.workerThreadPoolSize,
+              1,
+              1_000,
+            ),
             requestQueueDepth: c('requestQueueDepth', node.config.requestQueueDepth, 0, 10_000),
-            processingTimeMeanMs: c('processingTimeMeanMs', node.config.processingTimeMeanMs, 0, Number.MAX_SAFE_INTEGER),
-            processingTimeStdDevMs: c('processingTimeStdDevMs', node.config.processingTimeStdDevMs, 0, Number.MAX_SAFE_INTEGER),
+            processingTimeMeanMs: c(
+              'processingTimeMeanMs',
+              node.config.processingTimeMeanMs,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
+            processingTimeStdDevMs: c(
+              'processingTimeStdDevMs',
+              node.config.processingTimeStdDevMs,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
           },
         },
         warnings,
@@ -532,7 +549,12 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           config: {
             hitRatio: c('hitRatio', node.config.hitRatio, 0, 1),
             evictionPolicy: node.config.evictionPolicy,
-            accessLatencyMs: c('accessLatencyMs', node.config.accessLatencyMs, 0, Number.MAX_SAFE_INTEGER),
+            accessLatencyMs: c(
+              'accessLatencyMs',
+              node.config.accessLatencyMs,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
           },
         },
         warnings,
@@ -543,9 +565,24 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             connectionPoolSize: c('connectionPoolSize', node.config.connectionPoolSize, 1, 500),
-            queryLatencyMeanMs: c('queryLatencyMeanMs', node.config.queryLatencyMeanMs, 0, Number.MAX_SAFE_INTEGER),
-            queryLatencyStdDevMs: c('queryLatencyStdDevMs', node.config.queryLatencyStdDevMs, 0, Number.MAX_SAFE_INTEGER),
-            lockTimeoutMs: c('lockTimeoutMs', node.config.lockTimeoutMs, 1, Number.MAX_SAFE_INTEGER),
+            queryLatencyMeanMs: c(
+              'queryLatencyMeanMs',
+              node.config.queryLatencyMeanMs,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
+            queryLatencyStdDevMs: c(
+              'queryLatencyStdDevMs',
+              node.config.queryLatencyStdDevMs,
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
+            lockTimeoutMs: c(
+              'lockTimeoutMs',
+              node.config.lockTimeoutMs,
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
             dbType: node.config.dbType,
           },
         },
@@ -557,8 +594,18 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             consumerBatchSize: c('consumerBatchSize', node.config.consumerBatchSize, 1, 10_000),
-            bufferCapacity: c('bufferCapacity', node.config.bufferCapacity, 1, Number.MAX_SAFE_INTEGER),
-            backpressureThresholdPct: c('backpressureThresholdPct', node.config.backpressureThresholdPct, 0, 100),
+            bufferCapacity: c(
+              'bufferCapacity',
+              node.config.bufferCapacity,
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
+            backpressureThresholdPct: c(
+              'backpressureThresholdPct',
+              node.config.backpressureThresholdPct,
+              0,
+              100,
+            ),
             backpressureStrategy: node.config.backpressureStrategy,
           },
         },
@@ -573,15 +620,34 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             verificationMode: coerceEnum(
-              node.label, warnings, 'verificationMode', node.config.verificationMode,
-              VerificationMode, VerificationMode.Local,
+              node.label,
+              warnings,
+              'verificationMode',
+              node.config.verificationMode,
+              VerificationMode,
+              VerificationMode.Local,
             ),
-            verificationLatencyMeanMs: c('verificationLatencyMeanMs', node.config.verificationLatencyMeanMs, 0, 60_000),
-            verificationLatencyStdDevMs: c('verificationLatencyStdDevMs', node.config.verificationLatencyStdDevMs, 0, 30_000),
+            verificationLatencyMeanMs: c(
+              'verificationLatencyMeanMs',
+              node.config.verificationLatencyMeanMs,
+              0,
+              60_000,
+            ),
+            verificationLatencyStdDevMs: c(
+              'verificationLatencyStdDevMs',
+              node.config.verificationLatencyStdDevMs,
+              0,
+              30_000,
+            ),
             concurrencyLimit: c('concurrencyLimit', node.config.concurrencyLimit, 1, 10_000),
             queueDepth: c('queueDepth', node.config.queueDepth, 0, 10_000),
             tokenCacheHitRatio: c('tokenCacheHitRatio', node.config.tokenCacheHitRatio, 0, 1),
-            credentialFailureRate: c('credentialFailureRate', node.config.credentialFailureRate, 0, 1),
+            credentialFailureRate: c(
+              'credentialFailureRate',
+              node.config.credentialFailureRate,
+              0,
+              1,
+            ),
           },
         },
         warnings,
@@ -591,8 +657,18 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
         node: {
           ...node,
           config: {
-            policyLatencyMeanMs: c('policyLatencyMeanMs', node.config.policyLatencyMeanMs, 0, 60_000),
-            policyLatencyStdDevMs: c('policyLatencyStdDevMs', node.config.policyLatencyStdDevMs, 0, 30_000),
+            policyLatencyMeanMs: c(
+              'policyLatencyMeanMs',
+              node.config.policyLatencyMeanMs,
+              0,
+              60_000,
+            ),
+            policyLatencyStdDevMs: c(
+              'policyLatencyStdDevMs',
+              node.config.policyLatencyStdDevMs,
+              0,
+              30_000,
+            ),
             policyCacheHitRatio: c('policyCacheHitRatio', node.config.policyCacheHitRatio, 0, 1),
             lookupsPerRequest: c('lookupsPerRequest', node.config.lookupsPerRequest, 1, 50),
             denyRate: c('denyRate', node.config.denyRate, 0, 1),
@@ -608,14 +684,33 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             concurrency: c('concurrency', node.config.concurrency, 1, 10_000),
-            jobProcessingMeanMs: c('jobProcessingMeanMs', node.config.jobProcessingMeanMs, 0, 600_000),
-            jobProcessingStdDevMs: c('jobProcessingStdDevMs', node.config.jobProcessingStdDevMs, 0, 300_000),
-            prefetchBufferDepth: c('prefetchBufferDepth', node.config.prefetchBufferDepth, 0, 10_000),
+            jobProcessingMeanMs: c(
+              'jobProcessingMeanMs',
+              node.config.jobProcessingMeanMs,
+              0,
+              600_000,
+            ),
+            jobProcessingStdDevMs: c(
+              'jobProcessingStdDevMs',
+              node.config.jobProcessingStdDevMs,
+              0,
+              300_000,
+            ),
+            prefetchBufferDepth: c(
+              'prefetchBufferDepth',
+              node.config.prefetchBufferDepth,
+              0,
+              10_000,
+            ),
             jobFailureRate: c('jobFailureRate', node.config.jobFailureRate, 0, 1),
             maxRetries: c('maxRetries', node.config.maxRetries, 0, 10),
             retryBackoff: coerceEnum(
-              node.label, warnings, 'retryBackoff', node.config.retryBackoff,
-              RetryBackoff, RetryBackoff.Exponential,
+              node.label,
+              warnings,
+              'retryBackoff',
+              node.config.retryBackoff,
+              RetryBackoff,
+              RetryBackoff.Exponential,
             ),
             retryBaseDelayMs: c('retryBaseDelayMs', node.config.retryBaseDelayMs, 1, 300_000),
             jobTimeoutMs: c('jobTimeoutMs', node.config.jobTimeoutMs, 1, 600_000),
@@ -629,10 +724,19 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             capacity: c('capacity', node.config.capacity, 1, 1_000_000),
-            retentionPeriodMs: c('retentionPeriodMs', node.config.retentionPeriodMs, 1, 2_592_000_000),
+            retentionPeriodMs: c(
+              'retentionPeriodMs',
+              node.config.retentionPeriodMs,
+              1,
+              2_592_000_000,
+            ),
             redriveMode: coerceEnum(
-              node.label, warnings, 'redriveMode', node.config.redriveMode,
-              RedriveMode, RedriveMode.Manual,
+              node.label,
+              warnings,
+              'redriveMode',
+              node.config.redriveMode,
+              RedriveMode,
+              RedriveMode.Manual,
             ),
             redriveIntervalMs: c('redriveIntervalMs', node.config.redriveIntervalMs, 1, 300_000),
             redriveBatchSize: c('redriveBatchSize', node.config.redriveBatchSize, 1, 10_000),
@@ -647,16 +751,41 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
           ...node,
           config: {
             objectSizeMeanKB: c('objectSizeMeanKB', node.config.objectSizeMeanKB, 1, 10_485_760),
-            objectSizeStdDevKB: c('objectSizeStdDevKB', node.config.objectSizeStdDevKB, 0, 10_485_760),
-            throughputCapacityMBps: c('throughputCapacityMBps', node.config.throughputCapacityMBps, 0.1, 100_000),
+            objectSizeStdDevKB: c(
+              'objectSizeStdDevKB',
+              node.config.objectSizeStdDevKB,
+              0,
+              10_485_760,
+            ),
+            throughputCapacityMBps: c(
+              'throughputCapacityMBps',
+              node.config.throughputCapacityMBps,
+              0.1,
+              100_000,
+            ),
             baseLatencyMeanMs: c('baseLatencyMeanMs', node.config.baseLatencyMeanMs, 0, 60_000),
-            baseLatencyStdDevMs: c('baseLatencyStdDevMs', node.config.baseLatencyStdDevMs, 0, 30_000),
-            maxConcurrentTransfers: c('maxConcurrentTransfers', node.config.maxConcurrentTransfers, 1, 100_000),
+            baseLatencyStdDevMs: c(
+              'baseLatencyStdDevMs',
+              node.config.baseLatencyStdDevMs,
+              0,
+              30_000,
+            ),
+            maxConcurrentTransfers: c(
+              'maxConcurrentTransfers',
+              node.config.maxConcurrentTransfers,
+              1,
+              100_000,
+            ),
             // Easy to miss: absent from schema v1 and defaulted by the migration, so it
             // reaches this clamp as whatever the file carried.
             transferQueueDepth: c('transferQueueDepth', node.config.transferQueueDepth, 0, 10_000),
             readFraction: c('readFraction', node.config.readFraction, 0, 1),
-            writeLatencyMultiplier: c('writeLatencyMultiplier', node.config.writeLatencyMultiplier, 1, 100),
+            writeLatencyMultiplier: c(
+              'writeLatencyMultiplier',
+              node.config.writeLatencyMultiplier,
+              1,
+              100,
+            ),
           },
         },
         warnings,
@@ -673,11 +802,20 @@ export function normalizeConfig(node: SimulationNode): NormalizedConfigResult {
             // lesser of the two at fire time, so a larger jitter is degenerate, not invalid.
             jitterMs: c('jitterMs', node.config.jitterMs, 0, 86_400_000),
             overlapPolicy: coerceEnum(
-              node.label, warnings, 'overlapPolicy', node.config.overlapPolicy,
-              OverlapPolicy, OverlapPolicy.Skip,
+              node.label,
+              warnings,
+              'overlapPolicy',
+              node.config.overlapPolicy,
+              OverlapPolicy,
+              OverlapPolicy.Skip,
             ),
             // Easy to miss for the same reason as transferQueueDepth above.
-            maxDeferredTriggers: c('maxDeferredTriggers', node.config.maxDeferredTriggers, 1, 1_000),
+            maxDeferredTriggers: c(
+              'maxDeferredTriggers',
+              node.config.maxDeferredTriggers,
+              1,
+              1_000,
+            ),
           },
         },
         warnings,

@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SimulationEngine } from './engine';
-import {
-  NodeType,
-  Distribution,
-  DatabaseType,
-  RoutingPolicy,
-} from '@/types/nodes';
+import { NodeType, Distribution, DatabaseType, RoutingPolicy } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
@@ -122,7 +117,9 @@ describe('Fan-Out Sub-Request Accounting (Task 337)', () => {
     let summary: { totalRequests: number; successRate: number } | null = null;
     engine.setCallbacks({
       onMetricsBatch: (b) => batches.push(b),
-      onComplete: (s) => { summary = s; },
+      onComplete: (s) => {
+        summary = s;
+      },
     });
 
     await engine.run();
@@ -162,9 +159,7 @@ describe('Fan-Out Sub-Request Accounting (Task 337)', () => {
     expect(maxActive).toBeLessThan(50);
 
     // The count should not be strictly increasing (which would indicate leak)
-    const isStrictlyIncreasing = activeSeries.every(
-      (v, i) => i === 0 || v > activeSeries[i - 1]!,
-    );
+    const isStrictlyIncreasing = activeSeries.every((v, i) => i === 0 || v > activeSeries[i - 1]!);
     expect(isStrictlyIncreasing).toBe(false);
   });
 });
@@ -214,7 +209,12 @@ describe('Terminal Count Sum Invariant (Task 346)', () => {
         label: 'Gen',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'db-1',
@@ -222,7 +222,13 @@ describe('Terminal Count Sum Invariant (Task 346)', () => {
         label: 'DB',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 50, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 50,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
     const edges: EdgeData[] = [
@@ -244,7 +250,9 @@ describe('Terminal Count Sum Invariant (Task 346)', () => {
     let summary: { totalRequests: number; successRate: number } | null = null;
     engine.setCallbacks({
       onMetricsBatch: (b) => batches.push(b),
-      onComplete: (s) => { summary = s; },
+      onComplete: (s) => {
+        summary = s;
+      },
     });
 
     await engine.run();
@@ -280,7 +288,12 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'Generator',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 100, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-rr',
@@ -288,7 +301,12 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'RoundRobin App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.RoundRobin,
-        config: { workerThreadPoolSize: 30, requestQueueDepth: 100, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 30,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'app-fanout',
@@ -296,7 +314,12 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'FanOut App',
         position: { x: 400, y: -50 },
         routingPolicy: RoutingPolicy.FanOut,
-        config: { workerThreadPoolSize: 30, requestQueueDepth: 100, processingTimeMeanMs: 2, processingTimeStdDevMs: 0.5 },
+        config: {
+          workerThreadPoolSize: 30,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 2,
+          processingTimeStdDevMs: 0.5,
+        },
       },
       {
         id: 'app-weighted',
@@ -304,7 +327,12 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'Weighted App',
         position: { x: 400, y: 50 },
         routingPolicy: RoutingPolicy.Weighted,
-        config: { workerThreadPoolSize: 30, requestQueueDepth: 100, processingTimeMeanMs: 3, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 30,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 3,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
@@ -312,7 +340,13 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'DB 1',
         position: { x: 600, y: -100 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
       {
         id: 'db-2',
@@ -320,7 +354,13 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'DB 2',
         position: { x: 600, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
       {
         id: 'db-3',
@@ -328,21 +368,51 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
         label: 'DB 3',
         position: { x: 600, y: 100 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 20, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: DatabaseType.Relational },
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
       },
     ];
 
     const edges: EdgeData[] = [
       { id: 'e1', source: 'gen-1', target: 'app-rr', protocol: EdgeProtocol.Sync, weight: 1.0 },
       // RoundRobin routes to fanout and weighted
-      { id: 'e2', source: 'app-rr', target: 'app-fanout', protocol: EdgeProtocol.Sync, weight: 1.0 },
-      { id: 'e3', source: 'app-rr', target: 'app-weighted', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      {
+        id: 'e2',
+        source: 'app-rr',
+        target: 'app-fanout',
+        protocol: EdgeProtocol.Sync,
+        weight: 1.0,
+      },
+      {
+        id: 'e3',
+        source: 'app-rr',
+        target: 'app-weighted',
+        protocol: EdgeProtocol.Sync,
+        weight: 1.0,
+      },
       // FanOut fans to db-1 and db-2
       { id: 'e4', source: 'app-fanout', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
       { id: 'e5', source: 'app-fanout', target: 'db-2', protocol: EdgeProtocol.Sync, weight: 1.0 },
       // Weighted routes to db-2 and db-3
-      { id: 'e6', source: 'app-weighted', target: 'db-2', protocol: EdgeProtocol.Sync, weight: 2.0 },
-      { id: 'e7', source: 'app-weighted', target: 'db-3', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      {
+        id: 'e6',
+        source: 'app-weighted',
+        target: 'db-2',
+        protocol: EdgeProtocol.Sync,
+        weight: 2.0,
+      },
+      {
+        id: 'e7',
+        source: 'app-weighted',
+        target: 'db-3',
+        protocol: EdgeProtocol.Sync,
+        weight: 1.0,
+      },
     ];
 
     const makeConfig = (): SimulationEngineConfig => ({
@@ -361,7 +431,9 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
     let summary1: Record<string, unknown> | null = null;
     engine1.setCallbacks({
       onMetricsBatch: (b) => batches1.push(b),
-      onComplete: (s) => { summary1 = s as Record<string, unknown>; },
+      onComplete: (s) => {
+        summary1 = s as Record<string, unknown>;
+      },
     });
     await engine1.run();
 
@@ -371,7 +443,9 @@ describe('Determinism with Routing Policies and Fan-Out (Task 347)', () => {
     let summary2: Record<string, unknown> | null = null;
     engine2.setCallbacks({
       onMetricsBatch: (b) => batches2.push(b),
-      onComplete: (s) => { summary2 = s as Record<string, unknown>; },
+      onComplete: (s) => {
+        summary2 = s as Record<string, unknown>;
+      },
     });
     await engine2.run();
 

@@ -84,9 +84,15 @@ export function PersistenceToolbar() {
         // Surface migration warnings (R34.4, R34.8)
         if (warnings && warnings.length > 0) {
           const count = warnings.length;
-          const summary = count <= 3
-            ? warnings.map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`).join('; ')
-            : `${warnings.slice(0, 3).map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`).join('; ')} (+${count - 3} more)`;
+          const summary =
+            count <= 3
+              ? warnings
+                  .map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`)
+                  .join('; ')
+              : `${warnings
+                  .slice(0, 3)
+                  .map((w) => `${w.label}: ${w.field} → ${JSON.stringify(w.appliedValue)}`)
+                  .join('; ')} (+${count - 3} more)`;
           addToast('warning', `Migration applied ${count} default(s): ${summary}`);
         }
       } catch (err) {
@@ -120,9 +126,7 @@ export function PersistenceToolbar() {
 
   const handleLoad = useCallback(
     (name: string) => {
-      const confirmed = window.confirm(
-        `Load "${name}"? This will replace your current topology.`,
-      );
+      const confirmed = window.confirm(`Load "${name}"? This will replace your current topology.`);
       if (!confirmed) return;
       const warnings = loadSavedTopology(name);
       addToast('success', `Loaded "${name}".`);
@@ -245,10 +249,7 @@ export function PersistenceToolbar() {
                     key={entry.name}
                     className="flex items-center justify-between px-3 py-2 hover:bg-gray-700/50"
                   >
-                    <button
-                      onClick={() => handleLoad(entry.name)}
-                      className="flex-1 text-left"
-                    >
+                    <button onClick={() => handleLoad(entry.name)} className="flex-1 text-left">
                       <span className="block text-sm text-gray-200">{entry.name}</span>
                       <span className="block text-[10px] text-gray-500">
                         {new Date(entry.timestamp).toLocaleString()}

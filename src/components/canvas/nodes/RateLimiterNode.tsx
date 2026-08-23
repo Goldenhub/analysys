@@ -46,17 +46,13 @@ export function RateLimiterNode({ id, data }: NodeProps<AnalysysNode>) {
         >
           <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">
-          {data.label}
-        </span>
+        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
       </div>
 
       {/* Refill Rate Display */}
       <div className="mt-1.5 flex items-center justify-between">
         <span className="text-[10px] text-gray-400">Rate</span>
-        <span className="text-xs font-semibold text-teal-300">
-          {config.refillRatePerSec}/s
-        </span>
+        <span className="text-xs font-semibold text-teal-300">{config.refillRatePerSec}/s</span>
       </div>
 
       {/* Burst Capacity Gauge */}

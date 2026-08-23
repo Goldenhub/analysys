@@ -51,24 +51,34 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
   const record = obj as Record<string, unknown>;
 
   // Schema version — R34.9: reject absent, non-integer, or below 1
-  if (!('schemaVersion' in record) || record.schemaVersion === undefined || record.schemaVersion === null) {
+  if (
+    !('schemaVersion' in record) ||
+    record.schemaVersion === undefined ||
+    record.schemaVersion === null
+  ) {
     return {
       valid: false,
-      errors: [`Import rejected: schemaVersion field is absent (found: ${JSON.stringify(record.schemaVersion ?? null)}).`],
+      errors: [
+        `Import rejected: schemaVersion field is absent (found: ${JSON.stringify(record.schemaVersion ?? null)}).`,
+      ],
     };
   }
 
   if (typeof record.schemaVersion !== 'number' || !Number.isInteger(record.schemaVersion)) {
     return {
       valid: false,
-      errors: [`Import rejected: schemaVersion is not an integer (found: ${JSON.stringify(record.schemaVersion)}).`],
+      errors: [
+        `Import rejected: schemaVersion is not an integer (found: ${JSON.stringify(record.schemaVersion)}).`,
+      ],
     };
   }
 
   if (record.schemaVersion < 1) {
     return {
       valid: false,
-      errors: [`Import rejected: schemaVersion must be at least 1 (found: ${record.schemaVersion}).`],
+      errors: [
+        `Import rejected: schemaVersion must be at least 1 (found: ${record.schemaVersion}).`,
+      ],
     };
   }
 

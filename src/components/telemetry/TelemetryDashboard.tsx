@@ -150,89 +150,89 @@ export function TelemetryDashboard() {
 
               {/* Charts View — always mounted, hidden when not active */}
               <div className={viewMode === 'charts' ? 'flex h-full gap-2' : 'hidden'}>
-              {/* 2×2 Chart Grid */}
-              <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-2">
-                {/* Latency Chart */}
-                <div
-                  className="rounded border border-gray-800 bg-gray-900 p-1"
-                  aria-label={`End-to-End Latency chart: p50=${metrics.systemWide.endToEndLatency.p50.toFixed(1)}ms, p90=${metrics.systemWide.endToEndLatency.p90.toFixed(1)}ms, p99=${metrics.systemWide.endToEndLatency.p99.toFixed(1)}ms`}
-                >
-                  <span
-                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
-                    title="Time from request creation to completion (p50/p90/p99 percentiles in ms)"
+                {/* 2×2 Chart Grid */}
+                <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-2">
+                  {/* Latency Chart */}
+                  <div
+                    className="rounded border border-gray-800 bg-gray-900 p-1"
+                    aria-label={`End-to-End Latency chart: p50=${metrics.systemWide.endToEndLatency.p50.toFixed(1)}ms, p90=${metrics.systemWide.endToEndLatency.p90.toFixed(1)}ms, p99=${metrics.systemWide.endToEndLatency.p99.toFixed(1)}ms`}
                   >
-                    End-to-End Latency
-                  </span>
-                  <div className="h-[calc(100%-16px)]">
-                    <LatencyChart metrics={metrics} />
+                    <span
+                      className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                      title="Time from request creation to completion (p50/p90/p99 percentiles in ms)"
+                    >
+                      End-to-End Latency
+                    </span>
+                    <div className="h-[calc(100%-16px)]">
+                      <LatencyChart metrics={metrics} />
+                    </div>
                   </div>
-                </div>
 
-                {/* Throughput Chart */}
-                <div
-                  className="rounded border border-gray-800 bg-gray-900 p-1"
-                  aria-label={`Throughput chart: ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
-                >
-                  <span
-                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
-                    title="Requests processed per second (green=success, red=errors)"
+                  {/* Throughput Chart */}
+                  <div
+                    className="rounded border border-gray-800 bg-gray-900 p-1"
+                    aria-label={`Throughput chart: ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
                   >
-                    Throughput
-                  </span>
-                  <div className="h-[calc(100%-16px)]">
-                    <ThroughputChart metrics={metrics} />
+                    <span
+                      className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                      title="Requests processed per second (green=success, red=errors)"
+                    >
+                      Throughput
+                    </span>
+                    <div className="h-[calc(100%-16px)]">
+                      <ThroughputChart metrics={metrics} />
+                    </div>
                   </div>
-                </div>
 
-                {/* Queue/Pool Gauges */}
-                <div
-                  className="rounded border border-gray-800 bg-gray-900 p-1"
-                  aria-label={`Queue and connection pools gauge: ${metrics.nodes.length} nodes reporting`}
-                >
-                  <span
-                    className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
-                    title="Resource utilization per node. Green <70%, amber 70-90%, red >90%. Pulse = at capacity."
+                  {/* Queue/Pool Gauges */}
+                  <div
+                    className="rounded border border-gray-800 bg-gray-900 p-1"
+                    aria-label={`Queue and connection pools gauge: ${metrics.nodes.length} nodes reporting`}
                   >
-                    Queue / Connection Pools
-                  </span>
-                  <div className="h-[calc(100%-16px)]">
-                    <QueueGauge metrics={metrics} />
+                    <span
+                      className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                      title="Resource utilization per node. Green <70%, amber 70-90%, red >90%. Pulse = at capacity."
+                    >
+                      Queue / Connection Pools
+                    </span>
+                    <div className="h-[calc(100%-16px)]">
+                      <QueueGauge metrics={metrics} />
+                    </div>
+                  </div>
+
+                  {/* System-wide Summary */}
+                  <div
+                    className="rounded border border-gray-800 bg-gray-900 p-2"
+                    aria-label={`System overview: throughput ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%, active requests ${metrics.systemWide.activeRequests}`}
+                  >
+                    <span className="mb-1 block text-[10px] font-medium text-gray-400">
+                      System Overview
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 overflow-auto">
+                      <MetricCard
+                        label="Total Throughput"
+                        value={`${metrics.systemWide.totalThroughput.toFixed(1)} req/s`}
+                      />
+                      <MetricCard
+                        label="Error Rate"
+                        value={`${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
+                      />
+                      <MetricCard
+                        label="Active Requests"
+                        value={String(metrics.systemWide.activeRequests)}
+                      />
+                      <MetricCard
+                        label="Elapsed (sim)"
+                        value={formatSimTime(metrics.simulatedTimeMs)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* System-wide Summary */}
-                <div
-                  className="rounded border border-gray-800 bg-gray-900 p-2"
-                  aria-label={`System overview: throughput ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%, active requests ${metrics.systemWide.activeRequests}`}
-                >
-                  <span className="mb-1 block text-[10px] font-medium text-gray-400">
-                    System Overview
-                  </span>
-                  <div className="grid grid-cols-2 gap-2 overflow-auto">
-                    <MetricCard
-                      label="Total Throughput"
-                      value={`${metrics.systemWide.totalThroughput.toFixed(1)} req/s`}
-                    />
-                    <MetricCard
-                      label="Error Rate"
-                      value={`${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
-                    />
-                    <MetricCard
-                      label="Active Requests"
-                      value={String(metrics.systemWide.activeRequests)}
-                    />
-                    <MetricCard
-                      label="Elapsed (sim)"
-                      value={formatSimTime(metrics.simulatedTimeMs)}
-                    />
-                  </div>
+                {/* Event Log Sidebar */}
+                <div className="w-72 rounded border border-gray-800 bg-gray-900">
+                  <EventLog entries={eventLog} />
                 </div>
-              </div>
-
-              {/* Event Log Sidebar */}
-              <div className="w-72 rounded border border-gray-800 bg-gray-900">
-                <EventLog entries={eventLog} />
-              </div>
               </div>
             </>
           )}

@@ -1,8 +1,4 @@
-import type {
-  MetricsBatchPayload,
-  NodeMetricsSnapshot,
-  UtilizationReading,
-} from '@/types/metrics';
+import type { MetricsBatchPayload, NodeMetricsSnapshot, UtilizationReading } from '@/types/metrics';
 import { useNodeLabels } from './useNodeLabel';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -91,9 +87,7 @@ function UtilizationBar({ reading }: { reading: UtilizationReading | undefined }
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
         <span className="truncate text-[10px] text-gray-400">Utilization</span>
-        <span className={`text-[10px] font-mono ${getGaugeTextColor(pct)}`}>
-          {pct.toFixed(0)}%
-        </span>
+        <span className={`text-[10px] font-mono ${getGaugeTextColor(pct)}`}>{pct.toFixed(0)}%</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
         <div
@@ -129,7 +123,11 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
   // Update peak values
   for (const node of metrics.nodes) {
     const prev = peakValues.get(node.nodeId) ?? {
-      queue: 0, conn: 0, buffer: 0, connMax: 50, queueMax: 100,
+      queue: 0,
+      conn: 0,
+      buffer: 0,
+      connMax: 50,
+      queueMax: 100,
     };
     peakValues.set(node.nodeId, {
       queue: Math.max(prev.queue, node.queueDepth),
@@ -180,18 +178,10 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
               {labelFor(nodeId)}
             </span>
             {peaks.queue > 0 && (
-              <GaugeBar
-                label="Queue"
-                current={currentQueue}
-                max={peaks.queueMax}
-              />
+              <GaugeBar label="Queue" current={currentQueue} max={peaks.queueMax} />
             )}
             {peaks.conn > 0 && (
-              <GaugeBar
-                label="Connections"
-                current={currentConn}
-                max={peaks.connMax}
-              />
+              <GaugeBar label="Connections" current={currentConn} max={peaks.connMax} />
             )}
             {peaks.buffer > 0 && (
               <GaugeBar

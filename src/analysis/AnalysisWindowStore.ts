@@ -205,10 +205,7 @@ export class AnalysisWindowStore {
 
     // Accumulate per-node completed counts from terminal counts
     for (const node of payload.nodes) {
-      const nodeTotal = Object.values(node.cumulativeTerminalCounts).reduce(
-        (sum, v) => sum + v,
-        0,
-      );
+      const nodeTotal = Object.values(node.cumulativeTerminalCounts).reduce((sum, v) => sum + v, 0);
       this._cumulative.nodeCompletedCounts.set(node.nodeId, nodeTotal);
     }
 

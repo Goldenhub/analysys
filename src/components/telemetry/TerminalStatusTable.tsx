@@ -79,10 +79,7 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
             const rate = windowDurationSec > 0 ? windowCount / windowDurationSec : 0;
 
             return (
-              <tr
-                key={key}
-                className="border-t border-gray-100 dark:border-gray-700"
-              >
+              <tr key={key} className="border-t border-gray-100 dark:border-gray-700">
                 <td className="px-3 py-1.5 text-gray-800 dark:text-gray-200">{label}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300">
                   {count}
@@ -92,9 +89,7 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300">
                   {noTerminationsYet ? (
-                    <span className="text-gray-500 text-xs">
-                      No terminated requests yet
-                    </span>
+                    <span className="text-gray-500 text-xs">No terminated requests yet</span>
                   ) : (
                     `${((count / totalCumulative) * 100).toFixed(1)}%`
                   )}
@@ -118,11 +113,7 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
               term/s
             </td>
             <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-800 dark:text-gray-200">
-              {noTerminationsYet ? (
-                <span className="text-gray-500 text-xs">N/A</span>
-              ) : (
-                '100.0%'
-              )}
+              {noTerminationsYet ? <span className="text-gray-500 text-xs">N/A</span> : '100.0%'}
             </td>
           </tr>
         </tfoot>

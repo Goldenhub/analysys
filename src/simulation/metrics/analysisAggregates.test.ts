@@ -11,7 +11,11 @@ import { RunCumulativeAccumulator } from './RunCumulativeAccumulator';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
-function makeNode(id: string, nodeType: NodeType, config: Record<string, unknown> = {}): SimulationNode {
+function makeNode(
+  id: string,
+  nodeType: NodeType,
+  config: Record<string, unknown> = {},
+): SimulationNode {
   return {
     id,
     nodeType,
@@ -57,8 +61,28 @@ function makeNodeState(nodeId: string): NodeRuntimeState {
     totalDropped: 0,
     totalTimedOut: 0,
     latencySamples: [],
-    terminalCounts: { SUCCESS: 0, TIMEOUT: 0, DROPPED: 0, LOOP_DETECTED: 0, NO_ROUTE: 0, UNAUTHENTICATED: 0, FORBIDDEN: 0, RETRY_EXHAUSTED: 0, DEAD_LETTERED: 0 },
-    cumulativeTerminalCounts: { SUCCESS: 0, TIMEOUT: 0, DROPPED: 0, LOOP_DETECTED: 0, NO_ROUTE: 0, UNAUTHENTICATED: 0, FORBIDDEN: 0, RETRY_EXHAUSTED: 0, DEAD_LETTERED: 0 },
+    terminalCounts: {
+      SUCCESS: 0,
+      TIMEOUT: 0,
+      DROPPED: 0,
+      LOOP_DETECTED: 0,
+      NO_ROUTE: 0,
+      UNAUTHENTICATED: 0,
+      FORBIDDEN: 0,
+      RETRY_EXHAUSTED: 0,
+      DEAD_LETTERED: 0,
+    },
+    cumulativeTerminalCounts: {
+      SUCCESS: 0,
+      TIMEOUT: 0,
+      DROPPED: 0,
+      LOOP_DETECTED: 0,
+      NO_ROUTE: 0,
+      UNAUTHENTICATED: 0,
+      FORBIDDEN: 0,
+      RETRY_EXHAUSTED: 0,
+      DEAD_LETTERED: 0,
+    },
   } as unknown as NodeRuntimeState;
 }
 
@@ -68,8 +92,18 @@ describe('AnalysisAggregatesAccumulator', () => {
   describe('window scoping and reset', () => {
     it('resets all per-window aggregates on resetWindow', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const edges = [makeEdge('e1', 'A', 'B')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
@@ -115,8 +149,18 @@ describe('AnalysisAggregatesAccumulator', () => {
 
     it('accumulates across multiple terminations within a window', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const edges = [makeEdge('e1', 'A', 'B')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
@@ -171,14 +215,26 @@ describe('AnalysisAggregatesAccumulator', () => {
      */
     it('computes correct Latency_Share for each node', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('C', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('C', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
-      const edges = [
-        makeEdge('e1', 'A', 'B'),
-        makeEdge('e2', 'B', 'C'),
-      ];
+      const edges = [makeEdge('e1', 'A', 'B'), makeEdge('e2', 'B', 'C')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
       const nodeStates = new Map<string, NodeRuntimeState>();
       nodeStates.set('A', makeNodeState('A'));
@@ -244,14 +300,26 @@ describe('AnalysisAggregatesAccumulator', () => {
      */
     it('computes correct Blast_Radius for each node', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('C', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('C', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
-      const edges = [
-        makeEdge('e1', 'A', 'B'),
-        makeEdge('e2', 'A', 'C'),
-      ];
+      const edges = [makeEdge('e1', 'A', 'B'), makeEdge('e2', 'A', 'C')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
       const nodeStates = new Map<string, NodeRuntimeState>();
       nodeStates.set('A', makeNodeState('A'));
@@ -291,9 +359,24 @@ describe('AnalysisAggregatesAccumulator', () => {
 
     it('folds branch paths into terminatedThroughNodeCount', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('C', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('C', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const edges = [makeEdge('e1', 'A', 'B'), makeEdge('e2', 'B', 'C')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
@@ -337,8 +420,23 @@ describe('AnalysisAggregatesAccumulator', () => {
   describe('monitoredDepth and monitoredDepthBound', () => {
     it('returns prefetchBufferDepth + upstream MQ capacity for WorkerPool', () => {
       const nodes = [
-        makeNode('mq', NodeType.MessageQueue, { bufferCapacity: 500, consumerBatchSize: 10, backpressureThresholdPct: 80, backpressureStrategy: 'DROP_OLDEST' }),
-        makeNode('wp', NodeType.WorkerPool, { concurrency: 4, prefetchBufferDepth: 50, jobProcessingMeanMs: 100, jobProcessingStdDevMs: 20, jobFailureRate: 0, maxRetries: 3, retryBackoff: 'EXPONENTIAL', retryBaseDelayMs: 100, jobTimeoutMs: 5000 }),
+        makeNode('mq', NodeType.MessageQueue, {
+          bufferCapacity: 500,
+          consumerBatchSize: 10,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: 'DROP_OLDEST',
+        }),
+        makeNode('wp', NodeType.WorkerPool, {
+          concurrency: 4,
+          prefetchBufferDepth: 50,
+          jobProcessingMeanMs: 100,
+          jobProcessingStdDevMs: 20,
+          jobFailureRate: 0,
+          maxRetries: 3,
+          retryBackoff: 'EXPONENTIAL',
+          retryBaseDelayMs: 100,
+          jobTimeoutMs: 5000,
+        }),
       ];
       const edges = [makeEdge('e1', 'mq', 'wp')];
       const acc = new AnalysisAggregatesAccumulator(nodes, edges);
@@ -350,7 +448,12 @@ describe('AnalysisAggregatesAccumulator', () => {
 
     it('returns bufferCapacity for MessageQueue', () => {
       const nodes = [
-        makeNode('mq', NodeType.MessageQueue, { bufferCapacity: 1000, consumerBatchSize: 10, backpressureThresholdPct: 80, backpressureStrategy: 'DROP_OLDEST' }),
+        makeNode('mq', NodeType.MessageQueue, {
+          bufferCapacity: 1000,
+          consumerBatchSize: 10,
+          backpressureThresholdPct: 80,
+          backpressureStrategy: 'DROP_OLDEST',
+        }),
       ];
       const acc = new AnalysisAggregatesAccumulator(nodes, []);
 
@@ -359,7 +462,12 @@ describe('AnalysisAggregatesAccumulator', () => {
 
     it('returns requestQueueDepth for AppServer', () => {
       const nodes = [
-        makeNode('as', NodeType.AppServer, { requestQueueDepth: 200, workerThreadPoolSize: 8, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('as', NodeType.AppServer, {
+          requestQueueDepth: 200,
+          workerThreadPoolSize: 8,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const acc = new AnalysisAggregatesAccumulator(nodes, []);
 
@@ -368,7 +476,12 @@ describe('AnalysisAggregatesAccumulator', () => {
 
     it('returns null for TrafficGenerator', () => {
       const nodes = [
-        makeNode('tg', NodeType.TrafficGenerator, { rps: 100, distribution: 'POISSON', spikeMultiplier: 1, spikeDurationSec: 0 }),
+        makeNode('tg', NodeType.TrafficGenerator, {
+          rps: 100,
+          distribution: 'POISSON',
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        }),
       ];
       const acc = new AnalysisAggregatesAccumulator(nodes, []);
 
@@ -379,8 +492,18 @@ describe('AnalysisAggregatesAccumulator', () => {
   describe('arrivalCount and departureCount', () => {
     it('counts arrivals and departures independently per node', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
-        makeNode('B', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
+        makeNode('B', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const acc = new AnalysisAggregatesAccumulator(nodes, [makeEdge('e1', 'A', 'B')]);
 
@@ -401,7 +524,12 @@ describe('AnalysisAggregatesAccumulator', () => {
   describe('durationMs in MetricsCollector batch', () => {
     it('reports actual window duration in each snapshot', () => {
       const nodes = [
-        makeNode('A', NodeType.AppServer, { requestQueueDepth: 100, workerThreadPoolSize: 4, processingTimeMeanMs: 50, processingTimeStdDevMs: 10 }),
+        makeNode('A', NodeType.AppServer, {
+          requestQueueDepth: 100,
+          workerThreadPoolSize: 4,
+          processingTimeMeanMs: 50,
+          processingTimeStdDevMs: 10,
+        }),
       ];
       const edges: EdgeData[] = [];
       const collector = new MetricsCollector(nodes, 5000, edges);
@@ -432,7 +560,11 @@ describe('RunCumulativeAccumulator', () => {
 
     const req1 = makeRequest({ id: 'req-1', accumulatedLatencyMs: 100 });
     const req2 = makeRequest({ id: 'req-2', accumulatedLatencyMs: 200 });
-    const req3 = makeRequest({ id: 'req-3', accumulatedLatencyMs: 300, status: RequestStatus.Timeout });
+    const req3 = makeRequest({
+      id: 'req-3',
+      accumulatedLatencyMs: 300,
+      status: RequestStatus.Timeout,
+    });
 
     acc.recordTermination(req1, RequestStatus.Success, 1000);
     acc.recordTermination(req2, RequestStatus.Success, 2000);

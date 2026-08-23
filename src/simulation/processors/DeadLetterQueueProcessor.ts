@@ -49,11 +49,7 @@ export class DeadLetterQueueProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -145,10 +141,7 @@ export class DeadLetterQueueProcessor implements NodeProcessor {
    * Automatic redrive on the redrive interval (R26.6).
    * Called from the engine's DlqRedrive event handler.
    */
-  onDlqRedrive(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onDlqRedrive(event: SimEvent, context: ProcessorContext): void {
     this.nextRedriveScheduled = false;
     this.performRedrive(event.nodeId, event.timestamp, context);
 
@@ -196,11 +189,7 @@ export class DeadLetterQueueProcessor implements NodeProcessor {
    * Perform the actual redrive: route up to redriveBatchSize retained messages
    * whose redriveAttempts < maxRedriveAttempts in ascending retention start order.
    */
-  private performRedrive(
-    nodeId: string,
-    timestamp: number,
-    context: ProcessorContext,
-  ): void {
+  private performRedrive(nodeId: string, timestamp: number, context: ProcessorContext): void {
     const targets = context.resolveTargets(nodeId, {
       id: '',
       originNodeId: '',
@@ -276,11 +265,7 @@ export class DeadLetterQueueProcessor implements NodeProcessor {
     }
   }
 
-  private scheduleNextRedrive(
-    nodeId: string,
-    timestamp: number,
-    context: ProcessorContext,
-  ): void {
+  private scheduleNextRedrive(nodeId: string, timestamp: number, context: ProcessorContext): void {
     this.nextRedriveScheduled = true;
     context.scheduleEvent({
       type: SimEventType.DlqRedrive,

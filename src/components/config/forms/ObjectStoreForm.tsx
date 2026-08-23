@@ -20,7 +20,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('objectSizeMeanKB', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.objectSizeMeanKB && <span className="text-xs text-red-400">{errors.objectSizeMeanKB}</span>}
+        {errors.objectSizeMeanKB && (
+          <span className="text-xs text-red-400">{errors.objectSizeMeanKB}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -33,7 +35,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('objectSizeStdDevKB', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.objectSizeStdDevKB && <span className="text-xs text-red-400">{errors.objectSizeStdDevKB}</span>}
+        {errors.objectSizeStdDevKB && (
+          <span className="text-xs text-red-400">{errors.objectSizeStdDevKB}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -47,7 +51,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('throughputCapacityMBps', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.throughputCapacityMBps && <span className="text-xs text-red-400">{errors.throughputCapacityMBps}</span>}
+        {errors.throughputCapacityMBps && (
+          <span className="text-xs text-red-400">{errors.throughputCapacityMBps}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -60,7 +66,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('baseLatencyMeanMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.baseLatencyMeanMs && <span className="text-xs text-red-400">{errors.baseLatencyMeanMs}</span>}
+        {errors.baseLatencyMeanMs && (
+          <span className="text-xs text-red-400">{errors.baseLatencyMeanMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -73,7 +81,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('baseLatencyStdDevMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.baseLatencyStdDevMs && <span className="text-xs text-red-400">{errors.baseLatencyStdDevMs}</span>}
+        {errors.baseLatencyStdDevMs && (
+          <span className="text-xs text-red-400">{errors.baseLatencyStdDevMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -86,7 +96,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('maxConcurrentTransfers', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.maxConcurrentTransfers && <span className="text-xs text-red-400">{errors.maxConcurrentTransfers}</span>}
+        {errors.maxConcurrentTransfers && (
+          <span className="text-xs text-red-400">{errors.maxConcurrentTransfers}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -99,7 +111,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('transferQueueDepth', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.transferQueueDepth && <span className="text-xs text-red-400">{errors.transferQueueDepth}</span>}
+        {errors.transferQueueDepth && (
+          <span className="text-xs text-red-400">{errors.transferQueueDepth}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -130,7 +144,9 @@ export function ObjectStoreForm({ config, onFieldChange, errors }: FormProps) {
           onChange={(e) => onFieldChange('writeLatencyMultiplier', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.writeLatencyMultiplier && <span className="text-xs text-red-400">{errors.writeLatencyMultiplier}</span>}
+        {errors.writeLatencyMultiplier && (
+          <span className="text-xs text-red-400">{errors.writeLatencyMultiplier}</span>
+        )}
       </div>
     </div>
   );

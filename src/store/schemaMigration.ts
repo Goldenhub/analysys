@@ -38,9 +38,10 @@ export interface SerializedTopologyV2 {
  * Migrates a v1 record to v2. Pure function — returns a new record plus
  * the warnings to surface to the user.
  */
-export function migrateV1ToV2(
-  v1: SerializedTopology,
-): { topology: SerializedTopologyV2; warnings: MigrationWarning[] } {
+export function migrateV1ToV2(v1: SerializedTopology): {
+  topology: SerializedTopologyV2;
+  warnings: MigrationWarning[];
+} {
   const warnings: MigrationWarning[] = [];
 
   const nodes: SimulationNode[] = v1.nodes.map((node) => {
@@ -108,9 +109,10 @@ export function migrateV1ToV2(
  * the set {routingPolicy, edge weight, subsystemGroups, R23–R28 params} is
  * defaulted rather than treated as a validation failure.
  */
-export function applyV2Defaults(
-  v2: SerializedTopologyV2,
-): { topology: SerializedTopologyV2; warnings: MigrationWarning[] } {
+export function applyV2Defaults(v2: SerializedTopologyV2): {
+  topology: SerializedTopologyV2;
+  warnings: MigrationWarning[];
+} {
   const warnings: MigrationWarning[] = [];
 
   const nodes: SimulationNode[] = v2.nodes.map((node) => {

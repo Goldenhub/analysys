@@ -42,30 +42,49 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
       >
         <thead>
           <tr className="border-b border-gray-700 text-gray-400 font-medium">
-            <th scope="col" className="py-1 px-1.5 text-left">Step</th>
-            <th scope="col" className="py-1 px-1.5 text-right">Requested RPS</th>
-            <th scope="col" className="py-1 px-1.5 text-right">Applied RPS</th>
-            <th scope="col" className="py-1 px-1.5 text-right">Throughput (req/s)</th>
-            <th scope="col" className="py-1 px-1.5 text-right">p50 (ms)</th>
-            <th scope="col" className="py-1 px-1.5 text-right">p90 (ms)</th>
-            <th scope="col" className="py-1 px-1.5 text-right">p99 (ms)</th>
-            <th scope="col" className="py-1 px-1.5 text-right">Error Rate</th>
+            <th scope="col" className="py-1 px-1.5 text-left">
+              Step
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Requested RPS
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Applied RPS
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Throughput (req/s)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              p50 (ms)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              p90 (ms)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              p99 (ms)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Error Rate
+            </th>
             {TERMINAL_STATUSES.map((status) => (
               <th key={status} scope="col" className="py-1 px-1.5 text-right">
                 {status.replace(/_/g, ' ')}
               </th>
             ))}
-            <th scope="col" className="py-1 px-1.5 text-right">Interval Start (ms)</th>
-            <th scope="col" className="py-1 px-1.5 text-right">Interval End (ms)</th>
-            <th scope="col" className="py-1 px-1.5 text-center">Verdict</th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Interval Start (ms)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-right">
+              Interval End (ms)
+            </th>
+            <th scope="col" className="py-1 px-1.5 text-center">
+              Verdict
+            </th>
           </tr>
         </thead>
         <tbody>
           {steps.map((step) => (
-            <tr
-              key={step.stepIndex}
-              className="border-b border-gray-800/50 hover:bg-gray-800/30"
-            >
+            <tr key={step.stepIndex} className="border-b border-gray-800/50 hover:bg-gray-800/30">
               <th scope="row" className="py-1 px-1.5 text-left text-gray-300 font-normal">
                 {step.stepIndex + 1}
               </th>
@@ -97,7 +116,9 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
               <td className="py-1 px-1.5 text-right text-gray-400">
                 {step.measurementInterval.endMs}
               </td>
-              <td className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-gray-400'}`}>
+              <td
+                className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-gray-400'}`}
+              >
                 {step.verdict}
               </td>
             </tr>

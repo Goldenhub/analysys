@@ -1,10 +1,5 @@
 import { memo, useState, useCallback } from 'react';
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  type EdgeProps,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { AnalysysEdge } from '@/types/edges';
 import type { MergedBoundaryEdgeData } from './useCollapsedTopologyView';
 

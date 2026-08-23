@@ -46,7 +46,10 @@ export function SubsystemBreakdown() {
   const breakdowns: GroupBreakdown[] = subsystemGroups.map((group) => {
     let summedThroughput = 0;
     const summedErrorsByStatus: Record<string, number> = {};
-    let highestUtil: UtilizationReading = { kind: 'not-applicable', reason: 'No member has a numeric utilization reading.' };
+    let highestUtil: UtilizationReading = {
+      kind: 'not-applicable',
+      reason: 'No member has a numeric utilization reading.',
+    };
     let highestUtilValue = -1;
     let highestUtilNodeLabel: string | null = null;
 

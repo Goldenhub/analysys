@@ -36,7 +36,10 @@ function utilizationValue(processor: NodeProcessor): number {
   return reading.value;
 }
 
-function makeNodeState(nodeId: string, overrides: Partial<NodeRuntimeState> = {}): NodeRuntimeState {
+function makeNodeState(
+  nodeId: string,
+  overrides: Partial<NodeRuntimeState> = {},
+): NodeRuntimeState {
   return {
     nodeId,
     processor: inertProcessor,
@@ -96,7 +99,12 @@ class Harness implements ProcessorContext {
   }
 
   /** Builds a request/event pair at the given time and delivers it to `processor`. */
-  deliver(processor: NodeProcessor, nodeId: string, timestamp: number, requestId: string): SimRequest {
+  deliver(
+    processor: NodeProcessor,
+    nodeId: string,
+    timestamp: number,
+    requestId: string,
+  ): SimRequest {
     this.setTime(timestamp);
     const request: SimRequest = {
       id: requestId,

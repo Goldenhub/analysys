@@ -48,12 +48,7 @@ export const CONNECTION_RULES: Record<
     allowedProtocols: [EdgeProtocol.Sync],
   },
   [NodeType.CircuitBreaker]: {
-    allowedTargets: [
-      NodeType.AppServer,
-      NodeType.Database,
-      NodeType.Cache,
-      NodeType.MessageQueue,
-    ],
+    allowedTargets: [NodeType.AppServer, NodeType.Database, NodeType.Cache, NodeType.MessageQueue],
     allowedProtocols: [EdgeProtocol.Sync, EdgeProtocol.Async],
   },
   [NodeType.AppServer]: {
@@ -222,9 +217,7 @@ export function validateEdgeConnection(
   }
 
   // Rule 2: No duplicate edges (same source → same target) (R30.14)
-  const duplicate = existingEdges.some(
-    (e) => e.source === source.id && e.target === target.id,
-  );
+  const duplicate = existingEdges.some((e) => e.source === source.id && e.target === target.id);
   if (duplicate) {
     return { valid: false, reason: 'A connection already exists between these nodes.' };
   }
@@ -263,18 +256,13 @@ export function validateEdgeConnection(
   // Rule 6: Worker_Pool → Dead_Letter_Queue cardinality (R30.11) — at most one such
   // outgoing edge per Worker_Pool. Two distinct pools may target the same DLQ, so the
   // check is scoped to this source node rather than to the target.
-  if (
-    source.nodeType === NodeType.WorkerPool &&
-    target.nodeType === NodeType.DeadLetterQueue
-  ) {
+  if (source.nodeType === NodeType.WorkerPool && target.nodeType === NodeType.DeadLetterQueue) {
     const existingDlqEdge = existingEdges.find(
       (e) =>
-        e.source === source.id &&
-        nodesById.get(e.target)?.nodeType === NodeType.DeadLetterQueue,
+        e.source === source.id && nodesById.get(e.target)?.nodeType === NodeType.DeadLetterQueue,
     );
     if (existingDlqEdge) {
-      const heldDlqLabel =
-        nodesById.get(existingDlqEdge.target)?.label ?? existingDlqEdge.target;
+      const heldDlqLabel = nodesById.get(existingDlqEdge.target)?.label ?? existingDlqEdge.target;
       return {
         valid: false,
         reason:
@@ -296,10 +284,7 @@ export function validateEdgeConnection(
  * Consults `PROTOCOL_OVERRIDES` before the source type's flat `allowedProtocols`, because
  * R30.7 and R30.8 pin protocol per pair rather than per source type.
  */
-export function getValidProtocols(
-  sourceType: NodeType,
-  targetType: NodeType,
-): EdgeProtocol[] {
+export function getValidProtocols(sourceType: NodeType, targetType: NodeType): EdgeProtocol[] {
   const rules = CONNECTION_RULES[sourceType];
   if (!rules.allowedTargets.includes(targetType)) {
     return [];

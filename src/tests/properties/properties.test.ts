@@ -6,7 +6,15 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { NodeType, Distribution, RoutingPolicy, OverlapPolicy, BackpressureStrategy, RetryBackoff, RedriveMode } from '@/types/nodes';
+import {
+  NodeType,
+  Distribution,
+  RoutingPolicy,
+  OverlapPolicy,
+  BackpressureStrategy,
+  RetryBackoff,
+  RedriveMode,
+} from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
@@ -68,26 +76,28 @@ describe('CP-11: Evidence completeness', () => {
    * and every entry carries a numeric value and a unit.
    */
   it('every Finding produced by FindingBuilder has non-empty evidence with value and unit', () => {
-    const arbEvidence = fc.array(
-      fc.record({
-        metricName: fc.string({ minLength: 1, maxLength: 50 }),
-        value: fc.double({ min: -1e6, max: 1e6, noNaN: true, noDefaultInfinity: true }),
-        unit: fc.string({ minLength: 1, maxLength: 20 }),
-        scope: fc.string({ minLength: 1, maxLength: 50 }),
-        primary: fc.constant(undefined as true | undefined),
-      }),
-      { minLength: 1, maxLength: 5 },
-    ).map((entries) => {
-      // Ensure exactly one primary
-      const result = entries.map((e, i) => ({
-        metricName: e.metricName,
-        value: e.value,
-        unit: e.unit,
-        scope: e.scope,
-        ...(i === 0 ? { primary: true as const } : {}),
-      }));
-      return result;
-    });
+    const arbEvidence = fc
+      .array(
+        fc.record({
+          metricName: fc.string({ minLength: 1, maxLength: 50 }),
+          value: fc.double({ min: -1e6, max: 1e6, noNaN: true, noDefaultInfinity: true }),
+          unit: fc.string({ minLength: 1, maxLength: 20 }),
+          scope: fc.string({ minLength: 1, maxLength: 50 }),
+          primary: fc.constant(undefined as true | undefined),
+        }),
+        { minLength: 1, maxLength: 5 },
+      )
+      .map((entries) => {
+        // Ensure exactly one primary
+        const result = entries.map((e, i) => ({
+          metricName: e.metricName,
+          value: e.value,
+          unit: e.unit,
+          scope: e.scope,
+          ...(i === 0 ? { primary: true as const } : {}),
+        }));
+        return result;
+      });
 
     fc.assert(
       fc.property(arbEvidence, (evidence) => {
@@ -170,13 +180,22 @@ describe('CP-15: Scheduler emission count under Allow policy', () => {
             },
           ];
           const edges: EdgeData[] = [
-            { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
+            {
+              id: 'e1',
+              source: 'sched-1',
+              target: 'app-1',
+              protocol: EdgeProtocol.Sync,
+              weight: 1,
+            },
           ];
 
-          const { summary } = await runEngine({ nodes, edges }, {
-            maxSimulatedTimeMs: duration,
-            seed: 42,
-          });
+          const { summary } = await runEngine(
+            { nodes, edges },
+            {
+              maxSimulatedTimeMs: duration,
+              seed: 42,
+            },
+          );
 
           // Expected trigger count: triggers fire at 0, intervalMs, 2*intervalMs, ...
           // up to (and including) duration since engine uses > not >=
@@ -208,11 +227,24 @@ describe('CP-21: Finding identifier invariance', () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 20 }),
-        fc.constantFrom('Bottleneck', 'Saturation', 'Instability', 'Capacity', 'Single_Point_Of_Failure', 'Reliability', 'Configuration', 'Comparison'),
+        fc.constantFrom(
+          'Bottleneck',
+          'Saturation',
+          'Instability',
+          'Capacity',
+          'Single_Point_Of_Failure',
+          'Reliability',
+          'Configuration',
+          'Comparison',
+        ),
         fc.array(fc.string({ minLength: 1, maxLength: 10 }), { minLength: 0, maxLength: 5 }),
         (ruleId, category, nodeIds) => {
           const id1 = deriveFindingId(ruleId, category as Finding['category'], nodeIds);
-          const id2 = deriveFindingId(ruleId, category as Finding['category'], [...nodeIds].reverse());
+          const id2 = deriveFindingId(
+            ruleId,
+            category as Finding['category'],
+            [...nodeIds].reverse(),
+          );
           // Same ids regardless of input order
           expect(id1).toBe(id2);
 
@@ -243,7 +275,9 @@ describe('CP-21: Finding identifier invariance', () => {
               category: 'Bottleneck',
               severity: 'Warning',
               subjectNodeIds: spec.nodeIds,
-              evidence: [{ metricName: 'util', value: 0.9, unit: 'fraction', scope: 'n1', primary: true }],
+              evidence: [
+                { metricName: 'util', value: 0.9, unit: 'fraction', scope: 'n1', primary: true },
+              ],
               constraint: 'Test constraint text for id invariance testing',
               action: { nodeId: 'n1', parameter: 'pool', direction: 'increase' },
               tradeoff: 'More memory usage for higher throughput capacity',
@@ -277,60 +311,73 @@ describe('CP-5: Terminal status partition', () => {
    */
   it('cumulative terminal status sum is consistent across snapshots', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        fc.integer({ min: 1, max: 2 ** 31 }),
-        async (seed) => {
-          const nodes: SimulationNode[] = [
-            {
-              id: 'tg-1',
-              nodeType: NodeType.TrafficGenerator,
-              label: 'TG',
-              position: { x: 0, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { rps: 200, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 },
+      fc.asyncProperty(fc.integer({ min: 1, max: 2 ** 31 }), async (seed) => {
+        const nodes: SimulationNode[] = [
+          {
+            id: 'tg-1',
+            nodeType: NodeType.TrafficGenerator,
+            label: 'TG',
+            position: { x: 0, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              rps: 200,
+              distribution: Distribution.Poisson,
+              spikeMultiplier: 1,
+              spikeDurationSec: 0,
             },
-            {
-              id: 'app-1',
-              nodeType: NodeType.AppServer,
-              label: 'App',
-              position: { x: 200, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { workerThreadPoolSize: 10, requestQueueDepth: 50, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+          },
+          {
+            id: 'app-1',
+            nodeType: NodeType.AppServer,
+            label: 'App',
+            position: { x: 200, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              workerThreadPoolSize: 10,
+              requestQueueDepth: 50,
+              processingTimeMeanMs: 5,
+              processingTimeStdDevMs: 1,
             },
-            {
-              id: 'db-1',
-              nodeType: NodeType.Database,
-              label: 'DB',
-              position: { x: 400, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { connectionPoolSize: 5, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+          },
+          {
+            id: 'db-1',
+            nodeType: NodeType.Database,
+            label: 'DB',
+            position: { x: 400, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              connectionPoolSize: 5,
+              queryLatencyMeanMs: 10,
+              queryLatencyStdDevMs: 2,
+              lockTimeoutMs: 5000,
+              dbType: 'RELATIONAL',
             },
-          ];
-          const edges: EdgeData[] = [
-            { id: 'e1', source: 'tg-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
-            { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1 },
-          ];
+          },
+        ];
+        const edges: EdgeData[] = [
+          { id: 'e1', source: 'tg-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
+          { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1 },
+        ];
 
-          const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 5_000 });
+        const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 5_000 });
 
-          // For each batch, check that terminal counts are non-negative and monotonically increasing
-          let prevTotal = 0;
-          for (const batch of batches) {
-            let batchTotal = 0;
-            for (const node of batch.nodes) {
-              const counts = node.cumulativeTerminalCounts;
-              for (const status of TERMINAL_STATUSES) {
-                const count = (counts as Record<string, number>)[status] ?? 0;
-                expect(count).toBeGreaterThanOrEqual(0);
-                batchTotal += count;
-              }
+        // For each batch, check that terminal counts are non-negative and monotonically increasing
+        let prevTotal = 0;
+        for (const batch of batches) {
+          let batchTotal = 0;
+          for (const node of batch.nodes) {
+            const counts = node.cumulativeTerminalCounts;
+            for (const status of TERMINAL_STATUSES) {
+              const count = (counts as Record<string, number>)[status] ?? 0;
+              expect(count).toBeGreaterThanOrEqual(0);
+              batchTotal += count;
             }
-            // Cumulative counts should be non-decreasing
-            expect(batchTotal).toBeGreaterThanOrEqual(prevTotal);
-            prevTotal = batchTotal;
           }
-        },
-      ),
+          // Cumulative counts should be non-decreasing
+          expect(batchTotal).toBeGreaterThanOrEqual(prevTotal);
+          prevTotal = batchTotal;
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -362,7 +409,12 @@ describe('CP-7: Resource conservation for new node types', () => {
               label: 'TG',
               position: { x: 0, y: 0 },
               routingPolicy: RoutingPolicy.First,
-              config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 },
+              config: {
+                rps: 100,
+                distribution: Distribution.Poisson,
+                spikeMultiplier: 1,
+                spikeDurationSec: 0,
+              },
             },
             {
               id: 'mq-1',
@@ -370,7 +422,12 @@ describe('CP-7: Resource conservation for new node types', () => {
               label: 'MQ',
               position: { x: 200, y: 0 },
               routingPolicy: RoutingPolicy.First,
-              config: { consumerBatchSize: 10, bufferCapacity: 10000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.RejectNew },
+              config: {
+                consumerBatchSize: 10,
+                bufferCapacity: 10000,
+                backpressureThresholdPct: 80,
+                backpressureStrategy: BackpressureStrategy.RejectNew,
+              },
             },
             {
               id: 'wp-1',
@@ -396,7 +453,10 @@ describe('CP-7: Resource conservation for new node types', () => {
             { id: 'e2', source: 'mq-1', target: 'wp-1', protocol: EdgeProtocol.Async, weight: 1 },
           ];
 
-          const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 5_000 });
+          const { batches } = await runEngine(
+            { nodes, edges },
+            { seed, maxSimulatedTimeMs: 5_000 },
+          );
 
           // Check Worker_Pool metrics never exceed limits
           for (const batch of batches) {
@@ -438,7 +498,12 @@ describe('CP-8: Retry budget bound', () => {
               label: 'TG',
               position: { x: 0, y: 0 },
               routingPolicy: RoutingPolicy.First,
-              config: { rps: 50, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 },
+              config: {
+                rps: 50,
+                distribution: Distribution.Poisson,
+                spikeMultiplier: 1,
+                spikeDurationSec: 0,
+              },
             },
             {
               id: 'mq-1',
@@ -446,7 +511,12 @@ describe('CP-8: Retry budget bound', () => {
               label: 'MQ',
               position: { x: 200, y: 0 },
               routingPolicy: RoutingPolicy.First,
-              config: { consumerBatchSize: 10, bufferCapacity: 10000, backpressureThresholdPct: 80, backpressureStrategy: BackpressureStrategy.RejectNew },
+              config: {
+                consumerBatchSize: 10,
+                bufferCapacity: 10000,
+                backpressureThresholdPct: 80,
+                backpressureStrategy: BackpressureStrategy.RejectNew,
+              },
             },
             {
               id: 'wp-1',
@@ -488,7 +558,10 @@ describe('CP-8: Retry budget bound', () => {
             { id: 'e3', source: 'wp-1', target: 'dlq-1', protocol: EdgeProtocol.Async, weight: 1 },
           ];
 
-          const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 5_000 });
+          const { batches } = await runEngine(
+            { nodes, edges },
+            { seed, maxSimulatedTimeMs: 5_000 },
+          );
 
           // All jobs should end up as RetryExhausted or DeadLettered
           if (batches.length === 0) return;
@@ -497,8 +570,14 @@ describe('CP-8: Retry budget bound', () => {
           const dlqNode = lastBatch.nodes.find((n) => n.nodeId === 'dlq-1');
 
           // RetryExhausted or DeadLettered should be present
-          const retryExhausted = (wpNode?.cumulativeTerminalCounts as Record<string, number>)?.[RequestStatus.RetryExhausted] ?? 0;
-          const deadLettered = (dlqNode?.cumulativeTerminalCounts as Record<string, number>)?.[RequestStatus.DeadLettered] ?? 0;
+          const retryExhausted =
+            (wpNode?.cumulativeTerminalCounts as Record<string, number>)?.[
+              RequestStatus.RetryExhausted
+            ] ?? 0;
+          const deadLettered =
+            (dlqNode?.cumulativeTerminalCounts as Record<string, number>)?.[
+              RequestStatus.DeadLettered
+            ] ?? 0;
 
           // Some jobs should reach terminal state
           const total = retryExhausted + deadLettered;
@@ -523,59 +602,78 @@ describe('CP-17: Fan-out depth bound', () => {
    */
   it('topology with fan-out nodes completes without exceeding depth 4', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        fc.integer({ min: 1, max: 2 ** 31 }),
-        async (seed) => {
-          // Create a linear chain with Fan_Out routing at each intermediate node
-          const nodes: SimulationNode[] = [
-            {
-              id: 'tg-1',
-              nodeType: NodeType.TrafficGenerator,
-              label: 'TG',
-              position: { x: 0, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { rps: 10, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+      fc.asyncProperty(fc.integer({ min: 1, max: 2 ** 31 }), async (seed) => {
+        // Create a linear chain with Fan_Out routing at each intermediate node
+        const nodes: SimulationNode[] = [
+          {
+            id: 'tg-1',
+            nodeType: NodeType.TrafficGenerator,
+            label: 'TG',
+            position: { x: 0, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              rps: 10,
+              distribution: Distribution.Uniform,
+              spikeMultiplier: 1,
+              spikeDurationSec: 0,
             },
-            {
-              id: 'app-1',
-              nodeType: NodeType.AppServer,
-              label: 'App 1',
-              position: { x: 200, y: 0 },
-              routingPolicy: RoutingPolicy.FanOut,
-              config: { workerThreadPoolSize: 100, requestQueueDepth: 1000, processingTimeMeanMs: 1, processingTimeStdDevMs: 0 },
+          },
+          {
+            id: 'app-1',
+            nodeType: NodeType.AppServer,
+            label: 'App 1',
+            position: { x: 200, y: 0 },
+            routingPolicy: RoutingPolicy.FanOut,
+            config: {
+              workerThreadPoolSize: 100,
+              requestQueueDepth: 1000,
+              processingTimeMeanMs: 1,
+              processingTimeStdDevMs: 0,
             },
-            {
-              id: 'db-1',
-              nodeType: NodeType.Database,
-              label: 'DB1',
-              position: { x: 400, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { connectionPoolSize: 100, queryLatencyMeanMs: 1, queryLatencyStdDevMs: 0, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+          },
+          {
+            id: 'db-1',
+            nodeType: NodeType.Database,
+            label: 'DB1',
+            position: { x: 400, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              connectionPoolSize: 100,
+              queryLatencyMeanMs: 1,
+              queryLatencyStdDevMs: 0,
+              lockTimeoutMs: 5000,
+              dbType: 'RELATIONAL',
             },
-            {
-              id: 'db-2',
-              nodeType: NodeType.Database,
-              label: 'DB2',
-              position: { x: 400, y: 200 },
-              routingPolicy: RoutingPolicy.First,
-              config: { connectionPoolSize: 100, queryLatencyMeanMs: 1, queryLatencyStdDevMs: 0, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+          },
+          {
+            id: 'db-2',
+            nodeType: NodeType.Database,
+            label: 'DB2',
+            position: { x: 400, y: 200 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              connectionPoolSize: 100,
+              queryLatencyMeanMs: 1,
+              queryLatencyStdDevMs: 0,
+              lockTimeoutMs: 5000,
+              dbType: 'RELATIONAL',
             },
-          ];
-          const edges: EdgeData[] = [
-            { id: 'e1', source: 'tg-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
-            { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1 },
-            { id: 'e3', source: 'app-1', target: 'db-2', protocol: EdgeProtocol.Sync, weight: 1 },
-          ];
+          },
+        ];
+        const edges: EdgeData[] = [
+          { id: 'e1', source: 'tg-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
+          { id: 'e2', source: 'app-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1 },
+          { id: 'e3', source: 'app-1', target: 'db-2', protocol: EdgeProtocol.Sync, weight: 1 },
+        ];
 
-          const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 3_000 });
+        const { batches } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: 3_000 });
 
-          // If simulation ran, requests should have completed successfully
-          if (batches.length > 0) {
-            const total = getTotalCompleted(batches);
-            expect(total).toBeGreaterThan(0);
-          }
-        },
-      ),
+        // If simulation ran, requests should have completed successfully
+        if (batches.length > 0) {
+          const total = getTotalCompleted(batches);
+          expect(total).toBeGreaterThan(0);
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -675,7 +773,15 @@ describe('CP-2: Analysis Report round trip', () => {
                 category: 'Bottleneck',
                 severity: 'Warning',
                 subjectNodeIds: [spec.nodeId],
-                evidence: [{ metricName: 'utilization', value: 0.85, unit: 'fraction', scope: spec.nodeId, primary: true }],
+                evidence: [
+                  {
+                    metricName: 'utilization',
+                    value: 0.85,
+                    unit: 'fraction',
+                    scope: spec.nodeId,
+                    primary: true,
+                  },
+                ],
                 constraint: 'Test constraint for round-trip property validation test',
                 action: { nodeId: spec.nodeId, parameter: 'poolSize', direction: 'increase' },
                 tradeoff: 'Higher memory usage for increased throughput capacity',
@@ -738,7 +844,12 @@ describe('CP-1: Analysis determinism', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Poisson,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-1',
@@ -746,7 +857,12 @@ describe('CP-1: Analysis determinism', () => {
         label: 'App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
@@ -754,7 +870,13 @@ describe('CP-1: Analysis determinism', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 10, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+        config: {
+          connectionPoolSize: 10,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: 'RELATIONAL',
+        },
       },
     ];
     const edges: EdgeData[] = [
@@ -832,29 +954,26 @@ describe('CP-3: Topology serialization round trip', () => {
    */
   it('JSON stringify/parse round-trips topology data', () => {
     fc.assert(
-      fc.property(
-        arbTopology({ minNodes: 3, maxNodes: 8 }),
-        (topology) => {
-          const serialized = JSON.stringify(topology);
-          const deserialized = JSON.parse(serialized) as typeof topology;
+      fc.property(arbTopology({ minNodes: 3, maxNodes: 8 }), (topology) => {
+        const serialized = JSON.stringify(topology);
+        const deserialized = JSON.parse(serialized) as typeof topology;
 
-          expect(deserialized.nodes.length).toBe(topology.nodes.length);
-          expect(deserialized.edges.length).toBe(topology.edges.length);
+        expect(deserialized.nodes.length).toBe(topology.nodes.length);
+        expect(deserialized.edges.length).toBe(topology.edges.length);
 
-          for (let i = 0; i < topology.nodes.length; i++) {
-            expect(deserialized.nodes[i]!.id).toBe(topology.nodes[i]!.id);
-            expect(deserialized.nodes[i]!.nodeType).toBe(topology.nodes[i]!.nodeType);
-            expect(deserialized.nodes[i]!.routingPolicy).toBe(topology.nodes[i]!.routingPolicy);
-          }
+        for (let i = 0; i < topology.nodes.length; i++) {
+          expect(deserialized.nodes[i]!.id).toBe(topology.nodes[i]!.id);
+          expect(deserialized.nodes[i]!.nodeType).toBe(topology.nodes[i]!.nodeType);
+          expect(deserialized.nodes[i]!.routingPolicy).toBe(topology.nodes[i]!.routingPolicy);
+        }
 
-          for (let i = 0; i < topology.edges.length; i++) {
-            expect(deserialized.edges[i]!.source).toBe(topology.edges[i]!.source);
-            expect(deserialized.edges[i]!.target).toBe(topology.edges[i]!.target);
-            expect(deserialized.edges[i]!.protocol).toBe(topology.edges[i]!.protocol);
-            expect(deserialized.edges[i]!.weight).toBe(topology.edges[i]!.weight);
-          }
-        },
-      ),
+        for (let i = 0; i < topology.edges.length; i++) {
+          expect(deserialized.edges[i]!.source).toBe(topology.edges[i]!.source);
+          expect(deserialized.edges[i]!.target).toBe(topology.edges[i]!.target);
+          expect(deserialized.edges[i]!.protocol).toBe(topology.edges[i]!.protocol);
+          expect(deserialized.edges[i]!.weight).toBe(topology.edges[i]!.weight);
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -872,24 +991,21 @@ describe('CP-20: Subsystem_Group membership is a partition', () => {
     const nodeIds = Array.from({ length: 30 }, (_, i) => `node-${i}`);
 
     fc.assert(
-      fc.property(
-        arbSubsystemGroups(nodeIds),
-        (groups) => {
-          // At most 20 groups
-          expect(groups.length).toBeLessThanOrEqual(20);
+      fc.property(arbSubsystemGroups(nodeIds), (groups) => {
+        // At most 20 groups
+        expect(groups.length).toBeLessThanOrEqual(20);
 
-          // Each group has 2-50 members
-          for (const g of groups) {
-            expect(g.memberNodeIds.length).toBeGreaterThanOrEqual(2);
-            expect(g.memberNodeIds.length).toBeLessThanOrEqual(50);
-          }
+        // Each group has 2-50 members
+        for (const g of groups) {
+          expect(g.memberNodeIds.length).toBeGreaterThanOrEqual(2);
+          expect(g.memberNodeIds.length).toBeLessThanOrEqual(50);
+        }
 
-          // Disjoint membership
-          const allMembers = groups.flatMap((g) => g.memberNodeIds);
-          const uniqueMembers = new Set(allMembers);
-          expect(allMembers.length).toBe(uniqueMembers.size);
-        },
-      ),
+        // Disjoint membership
+        const allMembers = groups.flatMap((g) => g.memberNodeIds);
+        const uniqueMembers = new Set(allMembers);
+        expect(allMembers.length).toBe(uniqueMembers.size);
+      }),
       { numRuns: 100 },
     );
   });
@@ -912,7 +1028,12 @@ describe('CP-6: Grouping invariance', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-1',
@@ -920,7 +1041,12 @@ describe('CP-6: Grouping invariance', () => {
         label: 'App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
@@ -928,7 +1054,13 @@ describe('CP-6: Grouping invariance', () => {
         label: 'DB',
         position: { x: 400, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 10, queryLatencyMeanMs: 10, queryLatencyStdDevMs: 2, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+        config: {
+          connectionPoolSize: 10,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: 'RELATIONAL',
+        },
       },
     ];
     const edges: EdgeData[] = [
@@ -961,7 +1093,12 @@ describe('CP-10: Fan-out latency is the maximum', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 10, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 10,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-1',
@@ -969,7 +1106,12 @@ describe('CP-10: Fan-out latency is the maximum', () => {
         label: 'Fan-Out App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.FanOut,
-        config: { workerThreadPoolSize: 100, requestQueueDepth: 1000, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 100,
+          requestQueueDepth: 1000,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'db-1',
@@ -977,7 +1119,13 @@ describe('CP-10: Fan-out latency is the maximum', () => {
         label: 'Fast DB',
         position: { x: 400, y: -100 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 100, queryLatencyMeanMs: 5, queryLatencyStdDevMs: 1, lockTimeoutMs: 5000, dbType: 'RELATIONAL' },
+        config: {
+          connectionPoolSize: 100,
+          queryLatencyMeanMs: 5,
+          queryLatencyStdDevMs: 1,
+          lockTimeoutMs: 5000,
+          dbType: 'RELATIONAL',
+        },
       },
       {
         id: 'db-2',
@@ -985,7 +1133,13 @@ describe('CP-10: Fan-out latency is the maximum', () => {
         label: 'Slow DB',
         position: { x: 400, y: 100 },
         routingPolicy: RoutingPolicy.First,
-        config: { connectionPoolSize: 100, queryLatencyMeanMs: 50, queryLatencyStdDevMs: 5, lockTimeoutMs: 5000, dbType: 'NOSQL' },
+        config: {
+          connectionPoolSize: 100,
+          queryLatencyMeanMs: 50,
+          queryLatencyStdDevMs: 5,
+          lockTimeoutMs: 5000,
+          dbType: 'NOSQL',
+        },
       },
     ];
     const edges: EdgeData[] = [
@@ -994,7 +1148,10 @@ describe('CP-10: Fan-out latency is the maximum', () => {
       { id: 'e3', source: 'app-1', target: 'db-2', protocol: EdgeProtocol.Sync, weight: 1 },
     ];
 
-    const { batches, summary } = await runEngine({ nodes, edges }, { seed: 42, maxSimulatedTimeMs: 5_000 });
+    const { batches, summary } = await runEngine(
+      { nodes, edges },
+      { seed: 42, maxSimulatedTimeMs: 5_000 },
+    );
 
     // Successful requests should have completed
     if (summary) {
@@ -1023,7 +1180,12 @@ describe('CP-18: Round_Robin selection determinism', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'lb-1',
@@ -1039,7 +1201,12 @@ describe('CP-18: Round_Robin selection determinism', () => {
         label: 'App1',
         position: { x: 400, y: -100 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
       {
         id: 'app-2',
@@ -1047,7 +1214,12 @@ describe('CP-18: Round_Robin selection determinism', () => {
         label: 'App2',
         position: { x: 400, y: 100 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 50, requestQueueDepth: 200, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 50,
+          requestQueueDepth: 200,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
     ];
     const edges: EdgeData[] = [
@@ -1092,7 +1264,12 @@ describe('CP-4: Schema v1 behavioral equivalence', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 100, distribution: Distribution.Poisson, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 100,
+          distribution: Distribution.Poisson,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-1',
@@ -1100,7 +1277,12 @@ describe('CP-4: Schema v1 behavioral equivalence', () => {
         label: 'App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 10, requestQueueDepth: 100, processingTimeMeanMs: 5, processingTimeStdDevMs: 1 },
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
       },
     ];
     const edgesV2: EdgeData[] = [
@@ -1108,8 +1290,14 @@ describe('CP-4: Schema v1 behavioral equivalence', () => {
     ];
 
     // Run twice with identical seed — should be deterministic
-    const run1 = await runEngine({ nodes: nodesV2, edges: edgesV2 }, { seed: 42, maxSimulatedTimeMs: 5_000 });
-    const run2 = await runEngine({ nodes: nodesV2, edges: edgesV2 }, { seed: 42, maxSimulatedTimeMs: 5_000 });
+    const run1 = await runEngine(
+      { nodes: nodesV2, edges: edgesV2 },
+      { seed: 42, maxSimulatedTimeMs: 5_000 },
+    );
+    const run2 = await runEngine(
+      { nodes: nodesV2, edges: edgesV2 },
+      { seed: 42, maxSimulatedTimeMs: 5_000 },
+    );
 
     expect(run1.summary?.totalRequests).toBe(run2.summary?.totalRequests);
     expect(run1.summary?.totalEvents).toBe(run2.summary?.totalEvents);
@@ -1126,50 +1314,55 @@ describe('CP-19: Scheduler schedule holds no drift', () => {
    */
   it('two different seeds produce same number of triggers over same duration', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        fc.integer({ min: 1, max: 2 ** 31 }),
-        async (seed) => {
-          const intervalMs = 2000;
-          const duration = 10_000;
-          const nodes: SimulationNode[] = [
-            {
-              id: 'sched-1',
-              nodeType: NodeType.Scheduler,
-              label: 'Sched',
-              position: { x: 0, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: {
-                intervalMs,
-                jobsPerTrigger: 1,
-                startOffsetMs: 0,
-                jitterMs: 0, // Zero jitter ensures deterministic trigger count
-                overlapPolicy: OverlapPolicy.Allow,
-                maxDeferredTriggers: 10,
-              },
+      fc.asyncProperty(fc.integer({ min: 1, max: 2 ** 31 }), async (seed) => {
+        const intervalMs = 2000;
+        const duration = 10_000;
+        const nodes: SimulationNode[] = [
+          {
+            id: 'sched-1',
+            nodeType: NodeType.Scheduler,
+            label: 'Sched',
+            position: { x: 0, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              intervalMs,
+              jobsPerTrigger: 1,
+              startOffsetMs: 0,
+              jitterMs: 0, // Zero jitter ensures deterministic trigger count
+              overlapPolicy: OverlapPolicy.Allow,
+              maxDeferredTriggers: 10,
             },
-            {
-              id: 'app-1',
-              nodeType: NodeType.AppServer,
-              label: 'App',
-              position: { x: 200, y: 0 },
-              routingPolicy: RoutingPolicy.First,
-              config: { workerThreadPoolSize: 100, requestQueueDepth: 10000, processingTimeMeanMs: 1, processingTimeStdDevMs: 0 },
+          },
+          {
+            id: 'app-1',
+            nodeType: NodeType.AppServer,
+            label: 'App',
+            position: { x: 200, y: 0 },
+            routingPolicy: RoutingPolicy.First,
+            config: {
+              workerThreadPoolSize: 100,
+              requestQueueDepth: 10000,
+              processingTimeMeanMs: 1,
+              processingTimeStdDevMs: 0,
             },
-          ];
-          const edges: EdgeData[] = [
-            { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
-          ];
+          },
+        ];
+        const edges: EdgeData[] = [
+          { id: 'e1', source: 'sched-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1 },
+        ];
 
-          const { summary } = await runEngine({ nodes, edges }, { seed, maxSimulatedTimeMs: duration });
+        const { summary } = await runEngine(
+          { nodes, edges },
+          { seed, maxSimulatedTimeMs: duration },
+        );
 
-          // Under Allow policy with zero jitter, triggers fire at exactly 0, intervalMs, ...
-          // up to and including duration (engine processes events at timestamp == maxSimulatedTimeMs)
-          const expectedTriggers = Math.floor(duration / intervalMs) + 1;
-          // Each trigger produces 1 job
-          expect(summary).not.toBeNull();
-          expect(summary!.totalRequests).toBe(expectedTriggers);
-        },
-      ),
+        // Under Allow policy with zero jitter, triggers fire at exactly 0, intervalMs, ...
+        // up to and including duration (engine processes events at timestamp == maxSimulatedTimeMs)
+        const expectedTriggers = Math.floor(duration / intervalMs) + 1;
+        // Each trigger produces 1 job
+        expect(summary).not.toBeNull();
+        expect(summary!.totalRequests).toBe(expectedTriggers);
+      }),
       { numRuns: 100 },
     );
   });
@@ -1192,7 +1385,12 @@ describe('CP-16: Object_Store bandwidth bound', () => {
         label: 'TG',
         position: { x: 0, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { rps: 50, distribution: Distribution.Uniform, spikeMultiplier: 1, spikeDurationSec: 0 },
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 1,
+          spikeDurationSec: 0,
+        },
       },
       {
         id: 'app-1',
@@ -1200,7 +1398,12 @@ describe('CP-16: Object_Store bandwidth bound', () => {
         label: 'App',
         position: { x: 200, y: 0 },
         routingPolicy: RoutingPolicy.First,
-        config: { workerThreadPoolSize: 100, requestQueueDepth: 1000, processingTimeMeanMs: 1, processingTimeStdDevMs: 0 },
+        config: {
+          workerThreadPoolSize: 100,
+          requestQueueDepth: 1000,
+          processingTimeMeanMs: 1,
+          processingTimeStdDevMs: 0,
+        },
       },
       {
         id: 'obj-1',

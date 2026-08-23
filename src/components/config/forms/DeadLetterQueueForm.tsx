@@ -34,7 +34,9 @@ export function DeadLetterQueueForm({ config, onFieldChange, errors }: FormProps
           onChange={(e) => onFieldChange('retentionPeriodMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.retentionPeriodMs && <span className="text-xs text-red-400">{errors.retentionPeriodMs}</span>}
+        {errors.retentionPeriodMs && (
+          <span className="text-xs text-red-400">{errors.retentionPeriodMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -75,7 +77,9 @@ export function DeadLetterQueueForm({ config, onFieldChange, errors }: FormProps
           onChange={(e) => onFieldChange('redriveIntervalMs', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.redriveIntervalMs && <span className="text-xs text-red-400">{errors.redriveIntervalMs}</span>}
+        {errors.redriveIntervalMs && (
+          <span className="text-xs text-red-400">{errors.redriveIntervalMs}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -88,7 +92,9 @@ export function DeadLetterQueueForm({ config, onFieldChange, errors }: FormProps
           onChange={(e) => onFieldChange('redriveBatchSize', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.redriveBatchSize && <span className="text-xs text-red-400">{errors.redriveBatchSize}</span>}
+        {errors.redriveBatchSize && (
+          <span className="text-xs text-red-400">{errors.redriveBatchSize}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -101,7 +107,9 @@ export function DeadLetterQueueForm({ config, onFieldChange, errors }: FormProps
           onChange={(e) => onFieldChange('maxRedriveAttempts', parseFloat(e.target.value) || 0)}
           className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
         />
-        {errors.maxRedriveAttempts && <span className="text-xs text-red-400">{errors.maxRedriveAttempts}</span>}
+        {errors.maxRedriveAttempts && (
+          <span className="text-xs text-red-400">{errors.maxRedriveAttempts}</span>
+        )}
       </div>
     </div>
   );

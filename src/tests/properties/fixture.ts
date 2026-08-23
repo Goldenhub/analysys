@@ -47,7 +47,9 @@ export async function runEngine(
 
   engine.setCallbacks({
     onMetricsBatch: (payload) => batches.push(payload),
-    onComplete: (s) => { summary = s; },
+    onComplete: (s) => {
+      summary = s;
+    },
   });
 
   await engine.run();

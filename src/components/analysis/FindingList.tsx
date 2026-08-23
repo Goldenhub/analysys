@@ -36,7 +36,9 @@ function sortWithinGroup(findings: Finding[]): Finding[] {
 }
 
 /** Group Findings by category, omitting empty categories. */
-export function groupFindings(findings: Finding[]): Array<{ category: FindingCategory; items: Finding[] }> {
+export function groupFindings(
+  findings: Finding[],
+): Array<{ category: FindingCategory; items: Finding[] }> {
   const groups: Array<{ category: FindingCategory; items: Finding[] }> = [];
 
   for (const category of FINDING_CATEGORY_ORDER) {
@@ -137,7 +139,11 @@ export function FindingList({ findings, onActivateFinding, openerRef }: FindingL
           <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5 sticky top-0 bg-gray-950/90 py-0.5 backdrop-blur-sm">
             {category.replace(/_/g, ' ')} ({items.length})
           </h3>
-          <div className="flex flex-col gap-1.5" role="group" aria-label={category.replace(/_/g, ' ')}>
+          <div
+            className="flex flex-col gap-1.5"
+            role="group"
+            aria-label={category.replace(/_/g, ' ')}
+          >
             {items.map((finding) => {
               const idx = flatIndex++;
               return (

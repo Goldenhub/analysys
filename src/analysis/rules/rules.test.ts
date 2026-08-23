@@ -22,7 +22,9 @@ import { RULE_REGISTRY } from './index';
 
 // ─── Test Helpers ────────────────────────────────────────────────
 
-function makeNodeSnapshot(overrides: Partial<NodeMetricsSnapshot> & { nodeId: string }): NodeMetricsSnapshot {
+function makeNodeSnapshot(
+  overrides: Partial<NodeMetricsSnapshot> & { nodeId: string },
+): NodeMetricsSnapshot {
   return {
     nodeId: overrides.nodeId,
     timestamp: 0,
@@ -33,7 +35,14 @@ function makeNodeSnapshot(overrides: Partial<NodeMetricsSnapshot> & { nodeId: st
     activeConnections: 0,
     bufferOccupancy: 0,
     utilization: overrides.utilization ?? { kind: 'value', value: 0.5, idle: false },
-    littlesLaw: overrides.littlesLaw ?? { nodeId: overrides.nodeId, L: 5, lambda: 10, W: 0.5, deviation: 0.01, isStable: true },
+    littlesLaw: overrides.littlesLaw ?? {
+      nodeId: overrides.nodeId,
+      L: 5,
+      lambda: 10,
+      W: 0.5,
+      deviation: 0.01,
+      isStable: true,
+    },
     healthStatus: 'green',
     terminalCounts: overrides.terminalCounts ?? {},
     cumulativeTerminalCounts: overrides.cumulativeTerminalCounts ?? { Success: 200 },
@@ -45,11 +54,17 @@ function makeNodeSnapshot(overrides: Partial<NodeMetricsSnapshot> & { nodeId: st
     arrivalCount: overrides.arrivalCount ?? 50,
     departureCount: overrides.departureCount ?? 50,
     durationMs: overrides.durationMs ?? 500,
-    ...(overrides.retainedByUpstreamNode !== undefined ? { retainedByUpstreamNode: overrides.retainedByUpstreamNode } : {}),
+    ...(overrides.retainedByUpstreamNode !== undefined
+      ? { retainedByUpstreamNode: overrides.retainedByUpstreamNode }
+      : {}),
   };
 }
 
-function makeWindow(nodes: NodeMetricsSnapshot[], durationMs = 500, startMs = 0): NodeMetricsWindow {
+function makeWindow(
+  nodes: NodeMetricsSnapshot[],
+  durationMs = 500,
+  startMs = 0,
+): NodeMetricsWindow {
   return {
     startMs,
     endMs: startMs + durationMs,
@@ -99,7 +114,10 @@ function makeContext(
     }
   }
 
-  const steadyStateMap = new Map<string, { nodeId: string; isSteady: boolean; consecutiveStableWindows: number }>();
+  const steadyStateMap = new Map<
+    string,
+    { nodeId: string; isSteady: boolean; consecutiveStableWindows: number }
+  >();
   for (const id of nodeIds) {
     steadyStateMap.set(id, { nodeId: id, isSteady: true, consecutiveStableWindows: 3 });
   }
@@ -122,7 +140,10 @@ function makeContext(
 }
 
 /** Run a generator rule to completion. */
-function runRule(rule: { evaluate: (ctx: AnalysisContext) => Generator<void, unknown[], void> }, ctx: AnalysisContext): unknown[] {
+function runRule(
+  rule: { evaluate: (ctx: AnalysisContext) => Generator<void, unknown[], void> },
+  ctx: AnalysisContext,
+): unknown[] {
   const gen = rule.evaluate(ctx);
   let result = gen.next();
   while (!result.done) {
@@ -136,9 +157,36 @@ function runRule(rule: { evaluate: (ctx: AnalysisContext) => Generator<void, unk
 describe('analysisUtilization', () => {
   it('computes the mean over the 3 most recent completed windows', () => {
     const windows: NodeMetricsWindow[] = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.6, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.7, idle: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.8, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const result = analysisUtilization('n1', windows);
     expect(result).toBeCloseTo(0.7, 6);
@@ -146,27 +194,108 @@ describe('analysisUtilization', () => {
 
   it('returns null for fewer than 3 completed windows', () => {
     const windows: NodeMetricsWindow[] = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.6, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.7, idle: false } })], 500, 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
     ];
     expect(analysisUtilization('n1', windows)).toBeNull();
   });
 
   it('returns null when utilization is not-applicable', () => {
     const windows: NodeMetricsWindow[] = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'not-applicable', reason: 'no resource' } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.7, idle: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.8, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'not-applicable', reason: 'no resource' },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     expect(analysisUtilization('n1', windows)).toBeNull();
   });
 
   it('excludes zero-duration windows', () => {
     const windows: NodeMetricsWindow[] = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.6, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.7, idle: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.99, idle: false } })], 0, 1000), // zero-duration
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', utilization: { kind: 'value', value: 0.8, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.99, idle: false },
+          }),
+        ],
+        0,
+        1000,
+      ), // zero-duration
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'n1',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     // Should use the 3 completed (non-zero-duration) windows: 0.6, 0.7, 0.8
     expect(analysisUtilization('n1', windows)).toBeCloseTo(0.7, 6);
@@ -178,18 +307,42 @@ describe('analysisUtilization', () => {
 describe('latencyShare', () => {
   it('computes timeInSystemAtNodeMs / pathTimeInSystemMs × 100', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })], 500, 1000),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })],
+        500,
+        0,
+      ),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })],
+        500,
+        500,
+      ),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 })],
+        500,
+        1000,
+      ),
     ];
     expect(latencyShare('n1', windows)).toBeCloseTo(25, 6);
   });
 
   it('returns null when pathTimeInSystemMs is 0', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })], 500, 1000),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })],
+        500,
+        0,
+      ),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })],
+        500,
+        500,
+      ),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 'n1', timeInSystemAtNodeMs: 0, pathTimeInSystemMs: 0 })],
+        500,
+        1000,
+      ),
     ];
     expect(latencyShare('n1', windows)).toBeNull();
   });
@@ -200,18 +353,48 @@ describe('latencyShare', () => {
 describe('rankNodes', () => {
   it('ranks by descending utilization', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.9, idle: false } }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.9, idle: false } }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.9, idle: false } }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const ranked = rankNodes(ctx);
@@ -221,18 +404,60 @@ describe('rankNodes', () => {
 
   it('tie-breaks within 0.001 by descending latencyShare', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.8005, idle: false }, timeInSystemAtNodeMs: 200, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.8000, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.8005, idle: false }, timeInSystemAtNodeMs: 200, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.8000, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.8005, idle: false }, timeInSystemAtNodeMs: 200, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.8000, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.8005, idle: false },
+            timeInSystemAtNodeMs: 200,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.8005, idle: false },
+            timeInSystemAtNodeMs: 200,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.8005, idle: false },
+            timeInSystemAtNodeMs: 200,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const ranked = rankNodes(ctx);
@@ -243,18 +468,66 @@ describe('rankNodes', () => {
 
   it('tie-breaks by ascending node ID as final fallback', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'z', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'z', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'z', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.5, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400, throughput: 100 }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'z',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'z',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'z',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+            throughput: 100,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const ranked = rankNodes(ctx);
@@ -268,18 +541,48 @@ describe('rankNodes', () => {
 describe('bottleneckRankRule', () => {
   it('designates exactly one node — the highest utilization at or above 0.85', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.70, idle: false } }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.70, idle: false } }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.70, idle: false } }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckRankRule, ctx);
@@ -289,18 +592,60 @@ describe('bottleneckRankRule', () => {
 
   it('falls back to greatest latencyShare when no node ≥0.85', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.60, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.50, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.60, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.50, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.60, idle: false }, timeInSystemAtNodeMs: 100, pathTimeInSystemMs: 400 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.50, idle: false }, timeInSystemAtNodeMs: 300, pathTimeInSystemMs: 400 }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.6, idle: false },
+            timeInSystemAtNodeMs: 100,
+            pathTimeInSystemMs: 400,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            timeInSystemAtNodeMs: 300,
+            pathTimeInSystemMs: 400,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckRankRule, ctx);
@@ -311,9 +656,39 @@ describe('bottleneckRankRule', () => {
 
   it('sets confidence Low when fewer than 30 completions (Task 468)', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, cumulativeTerminalCounts: { Success: 10 } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, cumulativeTerminalCounts: { Success: 10 } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, cumulativeTerminalCounts: { Success: 10 } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            cumulativeTerminalCounts: { Success: 10 },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            cumulativeTerminalCounts: { Success: 10 },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            cumulativeTerminalCounts: { Success: 10 },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckRankRule, ctx);
@@ -324,21 +699,60 @@ describe('bottleneckRankRule', () => {
 describe('bottleneckCoLimitingRule', () => {
   it('identifies nodes within 0.05 of a saturated bottleneck', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.87, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'c', utilization: { kind: 'value', value: 0.50, idle: false } }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.87, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'c', utilization: { kind: 'value', value: 0.50, idle: false } }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.87, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'c', utilization: { kind: 'value', value: 0.50, idle: false } }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.87, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'c',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.87, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'c',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.87, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'c',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckCoLimitingRule, ctx);
@@ -350,18 +764,48 @@ describe('bottleneckCoLimitingRule', () => {
 describe('bottleneckNoConstraintRule', () => {
   it('emits Info when all nodes below 0.60 with no instability', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.30, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.40, idle: false } }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.30, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.40, idle: false } }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.30, idle: false } }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.40, idle: false } }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.3, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.4, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.3, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.4, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.3, idle: false },
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.4, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckNoConstraintRule, ctx);
@@ -373,23 +817,62 @@ describe('bottleneckNoConstraintRule', () => {
 describe('bottleneckNoneEligibleRule', () => {
   it('emits Info naming counts of excluded nodes', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'not-applicable', reason: 'no bound' }, arrivalCount: 10 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.5, idle: false }, arrivalCount: 0 }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'not-applicable', reason: 'no bound' }, arrivalCount: 10 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.5, idle: false }, arrivalCount: 0 }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'not-applicable', reason: 'no bound' }, arrivalCount: 10 }),
-        makeNodeSnapshot({ nodeId: 'b', utilization: { kind: 'value', value: 0.5, idle: false }, arrivalCount: 0 }),
-      ], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'not-applicable', reason: 'no bound' },
+            arrivalCount: 10,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            arrivalCount: 0,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'not-applicable', reason: 'no bound' },
+            arrivalCount: 10,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            arrivalCount: 0,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'not-applicable', reason: 'no bound' },
+            arrivalCount: 10,
+          }),
+          makeNodeSnapshot({
+            nodeId: 'b',
+            utilization: { kind: 'value', value: 0.5, idle: false },
+            arrivalCount: 0,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(bottleneckNoneEligibleRule, ctx);
     expect(findings.length).toBe(1);
-    const f = findings[0] as { severity: string; evidence: { metricName: string; value: number }[] };
+    const f = findings[0] as {
+      severity: string;
+      evidence: { metricName: string; value: number }[];
+    };
     expect(f.severity).toBe('Info');
     const naEvidence = f.evidence.find((e) => e.metricName === 'excludedNotApplicable');
     const zeroEvidence = f.evidence.find((e) => e.metricName === 'excludedZeroArrivals');
@@ -403,9 +886,36 @@ describe('bottleneckNoneEligibleRule', () => {
 describe('saturationRule', () => {
   it('fires when a node is ≥0.85 in each of 3 most recent windows', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.88, idle: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.92, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.88, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.92, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(saturationRule, ctx);
@@ -416,7 +926,16 @@ describe('saturationRule', () => {
   it('reports the maximal run length in evidence', () => {
     // 5 windows all ≥0.85 — the run length should be 5
     const windows = Array.from({ length: 5 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(saturationRule, ctx);
@@ -428,9 +947,36 @@ describe('saturationRule', () => {
 
   it('does not fire when one of the 3 recent windows is below 0.85', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.80, idle: false } })], 500, 500), // below
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.8, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ), // below
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(saturationRule, ctx);
@@ -443,11 +989,17 @@ describe('saturationRule', () => {
 describe('instabilityDepthGrowthRule', () => {
   it('fires with 4 consecutive depth increases and ≥20% growth', () => {
     const windows = Array.from({ length: 5 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({
-        nodeId: 'a',
-        monitoredDepth: 100 + i * 30, // 100, 130, 160, 190, 220 (120% growth from oldest)
-        monitoredDepthBound: 500,
-      })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            monitoredDepth: 100 + i * 30, // 100, 130, 160, 190, 220 (120% growth from oldest)
+            monitoredDepthBound: 500,
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(instabilityDepthGrowthRule, ctx);
@@ -458,11 +1010,17 @@ describe('instabilityDepthGrowthRule', () => {
   it('does not fire when growth is below 20% floor (slow sawtooth)', () => {
     // Growth from 100 to 110 = 10% — below the 20% floor
     const windows = Array.from({ length: 5 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({
-        nodeId: 'a',
-        monitoredDepth: 100 + i * 2.5, // 100, 102.5, 105, 107.5, 110
-        monitoredDepthBound: 500,
-      })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            monitoredDepth: 100 + i * 2.5, // 100, 102.5, 105, 107.5, 110
+            monitoredDepthBound: 500,
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(instabilityDepthGrowthRule, ctx);
@@ -471,11 +1029,17 @@ describe('instabilityDepthGrowthRule', () => {
 
   it('does not fire with only 4 windows (requires 5)', () => {
     const windows = Array.from({ length: 4 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({
-        nodeId: 'a',
-        monitoredDepth: 100 + i * 50,
-        monitoredDepthBound: 500,
-      })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            monitoredDepth: 100 + i * 50,
+            monitoredDepthBound: 500,
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(instabilityDepthGrowthRule, ctx);
@@ -484,11 +1048,17 @@ describe('instabilityDepthGrowthRule', () => {
 
   it('reports projection as not applicable when no bound is available', () => {
     const windows = Array.from({ length: 5 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({
-        nodeId: 'a',
-        monitoredDepth: 100 + i * 30,
-        monitoredDepthBound: null, // no bound
-      })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            monitoredDepth: 100 + i * 30,
+            monitoredDepthBound: null, // no bound
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(instabilityDepthGrowthRule, ctx);
@@ -499,12 +1069,18 @@ describe('instabilityDepthGrowthRule', () => {
 
   it('folds sustained utilization when node also satisfies saturation (precedence)', () => {
     const windows = Array.from({ length: 5 }, (_, i) =>
-      makeWindow([makeNodeSnapshot({
-        nodeId: 'a',
-        monitoredDepth: 100 + i * 30,
-        monitoredDepthBound: 500,
-        utilization: { kind: 'value', value: 0.90, idle: false },
-      })], 500, i * 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            monitoredDepth: 100 + i * 30,
+            monitoredDepthBound: 500,
+            utilization: { kind: 'value', value: 0.9, idle: false },
+          }),
+        ],
+        500,
+        i * 500,
+      ),
     );
     const ctx = makeContext(windows);
     const findings = runRule(instabilityDepthGrowthRule, ctx);
@@ -512,16 +1088,43 @@ describe('instabilityDepthGrowthRule', () => {
     const f = findings[0] as { evidence: { metricName: string; value: number }[] };
     const sustainedEvidence = f.evidence.find((e) => e.metricName === 'sustainedUtilization');
     expect(sustainedEvidence).toBeDefined();
-    expect(sustainedEvidence!.value).toBeCloseTo(0.90, 2);
+    expect(sustainedEvidence!.value).toBeCloseTo(0.9, 2);
   });
 });
 
 describe('instabilityLittlesLawRule', () => {
   it('fires when deviation exceeds 5% in all 3 recent windows', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.10, isStable: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.08, isStable: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.12, isStable: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.1, isStable: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.08, isStable: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.12, isStable: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(instabilityLittlesLawRule, ctx);
@@ -531,9 +1134,36 @@ describe('instabilityLittlesLawRule', () => {
 
   it('does not fire when deviation is below 5% in one window', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.10, isStable: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.03, isStable: true } })], 500, 500), // below threshold
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.12, isStable: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.1, isStable: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.03, isStable: true },
+          }),
+        ],
+        500,
+        500,
+      ), // below threshold
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            littlesLaw: { nodeId: 'a', L: 5, lambda: 10, W: 0.5, deviation: 0.12, isStable: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(instabilityLittlesLawRule, ctx);
@@ -546,9 +1176,39 @@ describe('instabilityLittlesLawRule', () => {
 describe('dlqGrowthRule', () => {
   it('fires when retained count rises in 3 consecutive windows', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 10, retainedByUpstreamNode: { wp1: 5 } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 15, retainedByUpstreamNode: { wp1: 8 } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 22, retainedByUpstreamNode: { wp1: 12 } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 10,
+            retainedByUpstreamNode: { wp1: 5 },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 15,
+            retainedByUpstreamNode: { wp1: 8 },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 22,
+            retainedByUpstreamNode: { wp1: 12 },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const dlqNode: SimulationNode = {
       id: 'dlq1',
@@ -556,7 +1216,14 @@ describe('dlqGrowthRule', () => {
       label: 'DLQ-1',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { capacity: 1000, retentionPeriodMs: 86400000, redriveMode: 'MANUAL', redriveIntervalMs: 60000, redriveBatchSize: 10, maxRedriveAttempts: 3 },
+      config: {
+        capacity: 1000,
+        retentionPeriodMs: 86400000,
+        redriveMode: 'MANUAL',
+        redriveIntervalMs: 60000,
+        redriveBatchSize: 10,
+        maxRedriveAttempts: 3,
+      },
     } as SimulationNode;
     const ctx = makeContext(windows, [dlqNode]);
     const findings = runRule(dlqGrowthRule, ctx);
@@ -566,9 +1233,39 @@ describe('dlqGrowthRule', () => {
 
   it('does not fire when depth decreases in one window', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 10, retainedByUpstreamNode: { wp1: 5 } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 8, retainedByUpstreamNode: { wp1: 3 } })], 500, 500), // decreased
-      makeWindow([makeNodeSnapshot({ nodeId: 'dlq1', monitoredDepth: 15, retainedByUpstreamNode: { wp1: 8 } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 10,
+            retainedByUpstreamNode: { wp1: 5 },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 8,
+            retainedByUpstreamNode: { wp1: 3 },
+          }),
+        ],
+        500,
+        500,
+      ), // decreased
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'dlq1',
+            monitoredDepth: 15,
+            retainedByUpstreamNode: { wp1: 8 },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const dlqNode: SimulationNode = {
       id: 'dlq1',
@@ -576,7 +1273,14 @@ describe('dlqGrowthRule', () => {
       label: 'DLQ-1',
       position: { x: 0, y: 0 },
       routingPolicy: RoutingPolicy.First,
-      config: { capacity: 1000, retentionPeriodMs: 86400000, redriveMode: 'MANUAL', redriveIntervalMs: 60000, redriveBatchSize: 10, maxRedriveAttempts: 3 },
+      config: {
+        capacity: 1000,
+        retentionPeriodMs: 86400000,
+        redriveMode: 'MANUAL',
+        redriveIntervalMs: 60000,
+        redriveBatchSize: 10,
+        maxRedriveAttempts: 3,
+      },
     } as SimulationNode;
     const ctx = makeContext(windows, [dlqNode]);
     const findings = runRule(dlqGrowthRule, ctx);
@@ -612,9 +1316,42 @@ describe('workerPoolConcurrencyRule', () => {
     } as SimulationNode;
 
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows, [wpNode]);
     const findings = runRule(workerPoolConcurrencyRule, ctx);
@@ -645,9 +1382,42 @@ describe('workerPoolConcurrencyRule', () => {
     } as SimulationNode;
 
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.3, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.3, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.3, idle: false }, cumulativeTerminalCounts: { Success: 100 } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.3, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.3, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.3, idle: false },
+            cumulativeTerminalCounts: { Success: 100 },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows, [wpNode]);
     const findings = runRule(workerPoolConcurrencyRule, ctx);
@@ -675,9 +1445,42 @@ describe('workerPoolConcurrencyRule', () => {
     } as SimulationNode;
 
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: {} })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: {} })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'wp1', arrivalCount: 50, utilization: { kind: 'value', value: 0.8, idle: false }, cumulativeTerminalCounts: {} })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: {},
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: {},
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'wp1',
+            arrivalCount: 50,
+            utilization: { kind: 'value', value: 0.8, idle: false },
+            cumulativeTerminalCounts: {},
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows, [wpNode]);
     const findings = runRule(workerPoolConcurrencyRule, ctx);
@@ -696,7 +1499,11 @@ describe('admissionDominatesRule', () => {
     ];
     // Override systemWide failureClassRates
     for (const w of windows) {
-      w.systemWide.failureClassRates = { admission: 10, capacityReliability: 5, topologyConfiguration: 0 };
+      w.systemWide.failureClassRates = {
+        admission: 10,
+        capacityReliability: 5,
+        topologyConfiguration: 0,
+      };
     }
     const ctx = makeContext(windows);
     const findings = runRule(admissionDominatesRule, ctx);
@@ -710,7 +1517,11 @@ describe('admissionDominatesRule', () => {
       makeWindow([makeNodeSnapshot({ nodeId: 'a', terminalCounts: { Timeout: 5 } })], 500, 1000),
     ];
     for (const w of windows) {
-      w.systemWide.failureClassRates = { admission: 10, capacityReliability: 5, topologyConfiguration: 0 };
+      w.systemWide.failureClassRates = {
+        admission: 10,
+        capacityReliability: 5,
+        topologyConfiguration: 0,
+      };
     }
     const ctx = makeContext(windows);
     const findings = runRule(admissionDominatesRule, ctx);
@@ -724,7 +1535,11 @@ describe('admissionDominatesRule', () => {
       makeWindow([makeNodeSnapshot({ nodeId: 'a', terminalCounts: { Timeout: 20 } })], 500, 1000),
     ];
     for (const w of windows) {
-      w.systemWide.failureClassRates = { admission: 5, capacityReliability: 5, topologyConfiguration: 0 };
+      w.systemWide.failureClassRates = {
+        admission: 5,
+        capacityReliability: 5,
+        topologyConfiguration: 0,
+      };
     }
     const ctx = makeContext(windows);
     const findings = runRule(admissionDominatesRule, ctx);
@@ -737,29 +1552,48 @@ describe('admissionDominatesRule', () => {
 describe('schedulerCollisionRule', () => {
   it('fires when two schedulers have ≥2 consecutive coinciding triggers', () => {
     const s1: SimulationNode = {
-      id: 's1', nodeType: NodeType.Scheduler, label: 'Sched-1',
-      position: { x: 0, y: 0 }, routingPolicy: RoutingPolicy.First,
-      config: { intervalMs: 1000, jobsPerTrigger: 1, startOffsetMs: 0, jitterMs: 0, overlapPolicy: 'ALLOW', maxDeferredTriggers: 10 },
+      id: 's1',
+      nodeType: NodeType.Scheduler,
+      label: 'Sched-1',
+      position: { x: 0, y: 0 },
+      routingPolicy: RoutingPolicy.First,
+      config: {
+        intervalMs: 1000,
+        jobsPerTrigger: 1,
+        startOffsetMs: 0,
+        jitterMs: 0,
+        overlapPolicy: 'ALLOW',
+        maxDeferredTriggers: 10,
+      },
     } as SimulationNode;
     const s2: SimulationNode = {
-      id: 's2', nodeType: NodeType.Scheduler, label: 'Sched-2',
-      position: { x: 0, y: 0 }, routingPolicy: RoutingPolicy.First,
-      config: { intervalMs: 1000, jobsPerTrigger: 1, startOffsetMs: 0, jitterMs: 0, overlapPolicy: 'ALLOW', maxDeferredTriggers: 10 },
+      id: 's2',
+      nodeType: NodeType.Scheduler,
+      label: 'Sched-2',
+      position: { x: 0, y: 0 },
+      routingPolicy: RoutingPolicy.First,
+      config: {
+        intervalMs: 1000,
+        jobsPerTrigger: 1,
+        startOffsetMs: 0,
+        jitterMs: 0,
+        overlapPolicy: 'ALLOW',
+        maxDeferredTriggers: 10,
+      },
     } as SimulationNode;
 
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 's1' }),
-        makeNodeSnapshot({ nodeId: 's2' }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 's1' }),
-        makeNodeSnapshot({ nodeId: 's2' }),
-      ], 500, 500),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 's1' }),
-        makeNodeSnapshot({ nodeId: 's2' }),
-      ], 500, 1000),
+      makeWindow([makeNodeSnapshot({ nodeId: 's1' }), makeNodeSnapshot({ nodeId: 's2' })], 500, 0),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 's1' }), makeNodeSnapshot({ nodeId: 's2' })],
+        500,
+        500,
+      ),
+      makeWindow(
+        [makeNodeSnapshot({ nodeId: 's1' }), makeNodeSnapshot({ nodeId: 's2' })],
+        500,
+        1000,
+      ),
     ];
 
     const eventLog = [
@@ -779,9 +1613,19 @@ describe('schedulerCollisionRule', () => {
 
   it('does not fire with only 1 scheduler node', () => {
     const s1: SimulationNode = {
-      id: 's1', nodeType: NodeType.Scheduler, label: 'Sched-1',
-      position: { x: 0, y: 0 }, routingPolicy: RoutingPolicy.First,
-      config: { intervalMs: 1000, jobsPerTrigger: 1, startOffsetMs: 0, jitterMs: 0, overlapPolicy: 'ALLOW', maxDeferredTriggers: 10 },
+      id: 's1',
+      nodeType: NodeType.Scheduler,
+      label: 'Sched-1',
+      position: { x: 0, y: 0 },
+      routingPolicy: RoutingPolicy.First,
+      config: {
+        intervalMs: 1000,
+        jobsPerTrigger: 1,
+        startOffsetMs: 0,
+        jitterMs: 0,
+        overlapPolicy: 'ALLOW',
+        maxDeferredTriggers: 10,
+      },
     } as SimulationNode;
     const windows = [
       makeWindow([makeNodeSnapshot({ nodeId: 's1' })], 500, 0),
@@ -799,16 +1643,44 @@ describe('schedulerCollisionRule', () => {
 describe('headroomRule', () => {
   it('reports per-node headroom as (1 - util) × 100', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false } })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false } })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false } })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(headroomRule, ctx);
     // Should have at least per-node and system findings
     expect(findings.length).toBeGreaterThanOrEqual(1);
-    const perNode = (findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[])
-      .find((f) => f.subjectNodeIds.includes('a'));
+    const perNode = (
+      findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[]
+    ).find((f) => f.subjectNodeIds.includes('a'));
     expect(perNode).toBeDefined();
     const headroom = perNode!.evidence.find((e) => e.metricName === 'headroom');
     expect(headroom!.value).toBeCloseTo(30, 1);
@@ -816,14 +1688,49 @@ describe('headroomRule', () => {
 
   it('reports system headroom as (0.85/U - 1) × 100', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(headroomRule, ctx);
-    const systemFinding = (findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[])
-      .find((f) => f.subjectNodeIds.length === 0 && f.evidence.some((e) => e.metricName === 'systemHeadroomPct'));
+    const systemFinding = (
+      findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[]
+    ).find(
+      (f) =>
+        f.subjectNodeIds.length === 0 &&
+        f.evidence.some((e) => e.metricName === 'systemHeadroomPct'),
+    );
     expect(systemFinding).toBeDefined();
     // (0.85/0.70 - 1) × 100 ≈ 21.43%
     const pct = systemFinding!.evidence.find((e) => e.metricName === 'systemHeadroomPct');
@@ -832,14 +1739,49 @@ describe('headroomRule', () => {
 
   it('reports system headroom as 0% at or above 0.85', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, throughput: 100 })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, throughput: 100 })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.90, idle: false }, throughput: 100 })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.9, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(headroomRule, ctx);
-    const systemFinding = (findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[])
-      .find((f) => f.subjectNodeIds.length === 0 && f.evidence.some((e) => e.metricName === 'systemHeadroomPct'));
+    const systemFinding = (
+      findings as { subjectNodeIds: string[]; evidence: { metricName: string; value: number }[] }[]
+    ).find(
+      (f) =>
+        f.subjectNodeIds.length === 0 &&
+        f.evidence.some((e) => e.metricName === 'systemHeadroomPct'),
+    );
     expect(systemFinding).toBeDefined();
     const pct = systemFinding!.evidence.find((e) => e.metricName === 'systemHeadroomPct');
     expect(pct!.value).toBe(0);
@@ -847,9 +1789,39 @@ describe('headroomRule', () => {
 
   it('states capacity sweep assumption in tradeoff', () => {
     const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 0),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 500),
-      makeWindow([makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.70, idle: false }, throughput: 100 })], 500, 1000),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        500,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.7, idle: false },
+            throughput: 100,
+          }),
+        ],
+        500,
+        1000,
+      ),
     ];
     const ctx = makeContext(windows);
     const findings = runRule(headroomRule, ctx);
@@ -889,9 +1861,7 @@ describe('RULE_REGISTRY', () => {
 
   it('every rule yields (can be driven as a generator)', () => {
     // Minimal context with only 1 window — no rule should emit a Finding
-    const windows = [
-      makeWindow([makeNodeSnapshot({ nodeId: 'a' })], 500, 0),
-    ];
+    const windows = [makeWindow([makeNodeSnapshot({ nodeId: 'a' })], 500, 0)];
     const ctx = makeContext(windows);
 
     for (const rule of RULE_REGISTRY) {
@@ -908,9 +1878,17 @@ describe('RULE_REGISTRY', () => {
 
   it('no rule emits a Finding from a single window (Task 489)', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.99, idle: false }, monitoredDepth: 1000 }),
-      ], 500, 0),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.99, idle: false },
+            monitoredDepth: 1000,
+          }),
+        ],
+        500,
+        0,
+      ),
     ];
     const ctx = makeContext(windows);
     for (const rule of RULE_REGISTRY) {
@@ -921,12 +1899,28 @@ describe('RULE_REGISTRY', () => {
 
   it('no rule emits a Finding from two windows (minimum sample enforcement)', () => {
     const windows = [
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.99, idle: false }, monitoredDepth: 1000 }),
-      ], 500, 0),
-      makeWindow([
-        makeNodeSnapshot({ nodeId: 'a', utilization: { kind: 'value', value: 0.99, idle: false }, monitoredDepth: 2000 }),
-      ], 500, 500),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.99, idle: false },
+            monitoredDepth: 1000,
+          }),
+        ],
+        500,
+        0,
+      ),
+      makeWindow(
+        [
+          makeNodeSnapshot({
+            nodeId: 'a',
+            utilization: { kind: 'value', value: 0.99, idle: false },
+            monitoredDepth: 2000,
+          }),
+        ],
+        500,
+        500,
+      ),
     ];
     const ctx = makeContext(windows);
     for (const rule of RULE_REGISTRY) {

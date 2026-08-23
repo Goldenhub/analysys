@@ -1,11 +1,7 @@
 import { create } from 'zustand';
 import { SimState } from '@/simulation/types';
 import type { MetricsBatchPayload } from '@/types/metrics';
-import type {
-  MainToWorkerMessage,
-  WorkerToMainMessage,
-  SimEventLogEntry,
-} from '@/types/messages';
+import type { MainToWorkerMessage, WorkerToMainMessage, SimEventLogEntry } from '@/types/messages';
 
 // ─── Chaos Effect ────────────────────────────────────────────────
 
@@ -89,8 +85,7 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       return { metrics: payload };
     }),
 
-  appendEventLog: (entries) =>
-    set((state) => ({ eventLog: [...state.eventLog, ...entries] })),
+  appendEventLog: (entries) => set((state) => ({ eventLog: [...state.eventLog, ...entries] })),
 
   setNodeStatus: (nodeId, status) =>
     set((state) => {
@@ -139,10 +134,9 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       worker.terminate();
     }
 
-    worker = new Worker(
-      new URL('../simulation/simulation.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
+    worker = new Worker(new URL('../simulation/simulation.worker.ts', import.meta.url), {
+      type: 'module',
+    });
 
     worker.onmessage = (event: MessageEvent<WorkerToMainMessage>) => {
       const msg = event.data;

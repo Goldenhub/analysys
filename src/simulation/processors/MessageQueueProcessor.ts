@@ -14,11 +14,7 @@ export class MessageQueueProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -155,10 +151,7 @@ export class MessageQueueProcessor implements NodeProcessor {
    * Clamped by downstream consumer's admissionCapacity() where available (R25.4),
    * and by Number.POSITIVE_INFINITY otherwise.
    */
-  onConsumerPoll(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onConsumerPoll(event: SimEvent, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -209,11 +202,7 @@ export class MessageQueueProcessor implements NodeProcessor {
   /** Consumer poll interval in simulated milliseconds. */
   private static readonly POLL_INTERVAL_MS = 100;
 
-  private scheduleConsumerPoll(
-    nodeId: string,
-    timestamp: number,
-    context: ProcessorContext,
-  ): void {
+  private scheduleConsumerPoll(nodeId: string, timestamp: number, context: ProcessorContext): void {
     this.consumerScheduled = true;
     context.scheduleEvent({
       type: SimEventType.ConsumerPoll,

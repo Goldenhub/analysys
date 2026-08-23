@@ -70,10 +70,7 @@ export const referencePresets: ReferencePreset[] = [
 ];
 
 /** All presets for backward compatibility. */
-export const presets: PresetTopology[] = [
-  ...failureModePresets,
-  ...referencePresets,
-];
+export const presets: PresetTopology[] = [...failureModePresets, ...referencePresets];
 
 export function getPresetByName(name: string): PresetTopology | undefined {
   return presets.find((p) => p.name === name);

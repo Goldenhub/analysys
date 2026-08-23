@@ -53,11 +53,7 @@ export class ObjectStoreProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
@@ -121,10 +117,7 @@ export class ObjectStoreProcessor implements NodeProcessor {
   /**
    * Called by the engine when a TransferComplete event fires.
    */
-  onTransferComplete(
-    event: SimEvent,
-    context: ProcessorContext,
-  ): void {
+  onTransferComplete(event: SimEvent, context: ProcessorContext): void {
     const transfer = this.active.get(event.requestId);
     if (!transfer) return;
 
@@ -136,7 +129,8 @@ export class ObjectStoreProcessor implements NodeProcessor {
     if (!state) return;
 
     // Complete the transfer
-    const transferTimeMs = event.timestamp - (event.payload.transferStartMs as number ?? transfer.lastUpdateMs);
+    const transferTimeMs =
+      event.timestamp - ((event.payload.transferStartMs as number) ?? transfer.lastUpdateMs);
     this.windowTransferredKB += transfer.actualSizeKB;
     this.windowTransferCount++;
     this.windowTransferTimeMs += transferTimeMs;
@@ -206,12 +200,18 @@ export class ObjectStoreProcessor implements NodeProcessor {
           requestId: transfer.requestId,
           payload: {
             epoch: transfer.epoch,
-            transferStartMs: (context.getRequestMap().get(transfer.requestId) as unknown as Record<string, unknown>)?.__osTransferStart ?? now,
+            transferStartMs:
+              (
+                context.getRequestMap().get(transfer.requestId) as unknown as Record<
+                  string,
+                  unknown
+                >
+              )?.__osTransferStart ?? now,
           },
         });
       } else {
         // Calculate remaining time: (remainingWorkKB / 1024) / shareMBps * 1000 ms
-        const remainingMs = (transfer.remainingWorkKB / 1024) / this.currentShareMBps * 1000;
+        const remainingMs = (transfer.remainingWorkKB / 1024 / this.currentShareMBps) * 1000;
         context.scheduleEvent({
           type: SimEventType.TransferComplete,
           timestamp: now + remainingMs,
@@ -219,7 +219,13 @@ export class ObjectStoreProcessor implements NodeProcessor {
           requestId: transfer.requestId,
           payload: {
             epoch: transfer.epoch,
-            transferStartMs: (context.getRequestMap().get(transfer.requestId) as unknown as Record<string, unknown>)?.__osTransferStart ?? now,
+            transferStartMs:
+              (
+                context.getRequestMap().get(transfer.requestId) as unknown as Record<
+                  string,
+                  unknown
+                >
+              )?.__osTransferStart ?? now,
           },
         });
       }
@@ -235,9 +241,7 @@ export class ObjectStoreProcessor implements NodeProcessor {
     context: ProcessorContext,
   ): void {
     // Encode write multiplier as scaled remaining work
-    const remainingWorkKB = isWrite
-      ? sizeKB * this.config.writeLatencyMultiplier
-      : sizeKB;
+    const remainingWorkKB = isWrite ? sizeKB * this.config.writeLatencyMultiplier : sizeKB;
 
     const transfer: ActiveTransfer = {
       requestId,
@@ -265,15 +269,8 @@ export class ObjectStoreProcessor implements NodeProcessor {
     this.reprice(timestamp, nodeId, context);
   }
 
-  private admitFromQueue(
-    nodeId: string,
-    timestamp: number,
-    context: ProcessorContext,
-  ): void {
-    while (
-      this.active.size < this.config.maxConcurrentTransfers &&
-      this.transferQueue.length > 0
-    ) {
+  private admitFromQueue(nodeId: string, timestamp: number, context: ProcessorContext): void {
+    while (this.active.size < this.config.maxConcurrentTransfers && this.transferQueue.length > 0) {
       const nextId = this.transferQueue.shift()!;
       const state = context.getNodeState(nodeId);
       if (state) {
@@ -294,8 +291,7 @@ export class ObjectStoreProcessor implements NodeProcessor {
 
       // Retrieve stored transfer params
       const transferParams = (request as unknown as Record<string, unknown>).__osTransfer as
-        | { sizeKB: number; isWrite: boolean }
-        | undefined;
+        { sizeKB: number; isWrite: boolean } | undefined;
       const sizeKB = transferParams?.sizeKB ?? this.config.objectSizeMeanKB;
       const isWrite = transferParams?.isWrite ?? false;
 

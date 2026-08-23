@@ -296,7 +296,8 @@ export class AnalysisAggregatesAccumulator {
           concurrencyOccupied: state.activeConnections,
           concurrencyBound: wpConfig.concurrency,
           jobBacklog: typeof p.getJobBacklog === 'function' ? p.getJobBacklog() : undefined,
-          backlogAgeMs: typeof p.getBacklogAge === 'function' ? p.getBacklogAge(currentTime) : undefined,
+          backlogAgeMs:
+            typeof p.getBacklogAge === 'function' ? p.getBacklogAge(currentTime) : undefined,
         };
       }
       case NodeType.DeadLetterQueue: {

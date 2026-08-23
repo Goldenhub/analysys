@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSimulationStore } from '@/store';
-import {
-  DEFAULT_MAX_HOPS_PER_REQUEST,
-  DEFAULT_METRICS_INTERVAL_MS,
-} from '@/types/messages';
+import { DEFAULT_MAX_HOPS_PER_REQUEST, DEFAULT_METRICS_INTERVAL_MS } from '@/types/messages';
 import { useTopologyStore } from '@/store';
 import { SimState } from '@/simulation/types';
 import { Button } from '@/components/ui/button';
@@ -12,7 +9,12 @@ import { Button } from '@/components/ui/button';
 
 function PlayIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M8 5.14v14l11-7-11-7z" />
     </svg>
   );
@@ -20,7 +22,12 @@ function PlayIcon() {
 
 function PauseIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
     </svg>
   );
@@ -28,7 +35,12 @@ function PauseIcon() {
 
 function StopIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+    >
       <path d="M6 6h12v12H6V6z" />
     </svg>
   );
@@ -36,7 +48,16 @@ function StopIcon() {
 
 function RefreshIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+    >
       <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
@@ -47,7 +68,16 @@ function RefreshIcon() {
 
 function HelpIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3.5"
+    >
       <circle cx="12" cy="12" r="10" />
       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
       <line x1="12" y1="17" x2="12.01" y2="17" />

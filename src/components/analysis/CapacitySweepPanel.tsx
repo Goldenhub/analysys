@@ -133,7 +133,9 @@ export function CapacitySweepPanel({
         <FormField
           label="Max p99 Latency (ms)"
           value={config.objective.maxP99LatencyMs}
-          onChange={(v) => setConfig((prev) => ({ ...prev, objective: { ...prev.objective, maxP99LatencyMs: v } }))}
+          onChange={(v) =>
+            setConfig((prev) => ({ ...prev, objective: { ...prev.objective, maxP99LatencyMs: v } }))
+          }
           error={getFieldError(errors, 'objective.maxP99LatencyMs')}
           min={1}
           max={60000}
@@ -142,7 +144,9 @@ export function CapacitySweepPanel({
         <FormField
           label="Max Error Rate"
           value={config.objective.maxErrorRate}
-          onChange={(v) => setConfig((prev) => ({ ...prev, objective: { ...prev.objective, maxErrorRate: v } }))}
+          onChange={(v) =>
+            setConfig((prev) => ({ ...prev, objective: { ...prev.objective, maxErrorRate: v } }))
+          }
           error={getFieldError(errors, 'objective.maxErrorRate')}
           min={0}
           max={1}
@@ -183,7 +187,8 @@ export function CapacitySweepPanel({
           aria-label="Sweep progress"
         >
           <p className="text-indigo-300">
-            Step {progress.currentStep} of {progress.totalSteps} — {progress.currentRequestedRps} RPS
+            Step {progress.currentStep} of {progress.totalSteps} — {progress.currentRequestedRps}{' '}
+            RPS
           </p>
           <p className="text-gray-400 text-[10px] mt-0.5">
             Elapsed: {progress.elapsedMs.toFixed(0)} ms simulated time
@@ -227,7 +232,16 @@ interface FormFieldProps {
   disabled?: boolean;
 }
 
-function FormField({ label, value, onChange, error, min, max, step = 1, disabled }: FormFieldProps) {
+function FormField({
+  label,
+  value,
+  onChange,
+  error,
+  min,
+  max,
+  step = 1,
+  disabled,
+}: FormFieldProps) {
   const id = `sweep-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
   return (

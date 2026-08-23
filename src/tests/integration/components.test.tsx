@@ -71,17 +71,19 @@ describe('TerminalStatusTable', () => {
   }
 
   it('shows all nine terminal status labels', () => {
-    const nodes = [makeMetricsNode('node-1', {
-      [RequestStatus.Success]: 100,
-      [RequestStatus.Timeout]: 5,
-      [RequestStatus.Dropped]: 3,
-      [RequestStatus.LoopDetected]: 0,
-      [RequestStatus.NoRoute]: 0,
-      [RequestStatus.Unauthenticated]: 2,
-      [RequestStatus.Forbidden]: 1,
-      [RequestStatus.RetryExhausted]: 4,
-      [RequestStatus.DeadLettered]: 2,
-    })];
+    const nodes = [
+      makeMetricsNode('node-1', {
+        [RequestStatus.Success]: 100,
+        [RequestStatus.Timeout]: 5,
+        [RequestStatus.Dropped]: 3,
+        [RequestStatus.LoopDetected]: 0,
+        [RequestStatus.NoRoute]: 0,
+        [RequestStatus.Unauthenticated]: 2,
+        [RequestStatus.Forbidden]: 1,
+        [RequestStatus.RetryExhausted]: 4,
+        [RequestStatus.DeadLettered]: 2,
+      }),
+    ];
 
     render(<TerminalStatusTable nodes={nodes} windowDurationSec={5} />);
 
@@ -97,17 +99,19 @@ describe('TerminalStatusTable', () => {
   });
 
   it('shows "No terminated requests yet" when all counts are zero', () => {
-    const nodes = [makeMetricsNode('node-1', {
-      [RequestStatus.Success]: 0,
-      [RequestStatus.Timeout]: 0,
-      [RequestStatus.Dropped]: 0,
-      [RequestStatus.LoopDetected]: 0,
-      [RequestStatus.NoRoute]: 0,
-      [RequestStatus.Unauthenticated]: 0,
-      [RequestStatus.Forbidden]: 0,
-      [RequestStatus.RetryExhausted]: 0,
-      [RequestStatus.DeadLettered]: 0,
-    })];
+    const nodes = [
+      makeMetricsNode('node-1', {
+        [RequestStatus.Success]: 0,
+        [RequestStatus.Timeout]: 0,
+        [RequestStatus.Dropped]: 0,
+        [RequestStatus.LoopDetected]: 0,
+        [RequestStatus.NoRoute]: 0,
+        [RequestStatus.Unauthenticated]: 0,
+        [RequestStatus.Forbidden]: 0,
+        [RequestStatus.RetryExhausted]: 0,
+        [RequestStatus.DeadLettered]: 0,
+      }),
+    ];
 
     render(<TerminalStatusTable nodes={nodes} windowDurationSec={5} />);
     expect(screen.getAllByText(/no terminated requests yet/i).length).toBeGreaterThan(0);

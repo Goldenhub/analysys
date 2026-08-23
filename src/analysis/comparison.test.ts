@@ -247,9 +247,7 @@ describe('determineComparisonLabel', () => {
     const label = determineComparisonLabel(a, b);
     expect(label.kind).toBe('uncontrolled');
     if (label.kind === 'uncontrolled') {
-      expect(label.differences).toContainEqual(
-        expect.objectContaining({ attribute: 'seed' }),
-      );
+      expect(label.differences).toContainEqual(expect.objectContaining({ attribute: 'seed' }));
     }
   });
 
@@ -273,10 +271,7 @@ describe('determineComparisonLabel', () => {
 describe('compareRuns', () => {
   it('rejects same run selections', () => {
     const run = makeBaseline({ name: 'Same' });
-    const result = compareRuns(
-      { name: 'Same', run },
-      { name: 'Same', run },
-    );
+    const result = compareRuns({ name: 'Same', run }, { name: 'Same', run });
     expect(isComparisonError(result)).toBe(true);
     if (isComparisonError(result)) {
       expect(result.message).toContain('same run');
@@ -335,13 +330,13 @@ describe('comparisonUtilizationRule', () => {
   it('produces a Finding for ≥0.10 utilization difference', () => {
     const a = makeBaseline({
       perNode: {
-        'n1': makePerNode({ nodeId: 'n1', meanUtilization: 0.3 }),
+        n1: makePerNode({ nodeId: 'n1', meanUtilization: 0.3 }),
       },
     });
     const b = makeBaseline({
       name: 'B',
       perNode: {
-        'n1': makePerNode({ nodeId: 'n1', meanUtilization: 0.5 }),
+        n1: makePerNode({ nodeId: 'n1', meanUtilization: 0.5 }),
       },
     });
     const matched = [{ nodeIdA: 'n1', nodeIdB: 'n1', nodeType: 'APP_SERVER', label: 'Server' }];
@@ -353,13 +348,13 @@ describe('comparisonUtilizationRule', () => {
   it('produces no Finding for <0.10 utilization difference', () => {
     const a = makeBaseline({
       perNode: {
-        'n1': makePerNode({ nodeId: 'n1', meanUtilization: 0.5 }),
+        n1: makePerNode({ nodeId: 'n1', meanUtilization: 0.5 }),
       },
     });
     const b = makeBaseline({
       name: 'B',
       perNode: {
-        'n1': makePerNode({ nodeId: 'n1', meanUtilization: 0.55 }),
+        n1: makePerNode({ nodeId: 'n1', meanUtilization: 0.55 }),
       },
     });
     const matched = [{ nodeIdA: 'n1', nodeIdB: 'n1', nodeType: 'APP_SERVER', label: 'Server' }];

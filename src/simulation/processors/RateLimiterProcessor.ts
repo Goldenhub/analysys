@@ -21,11 +21,7 @@ export class RateLimiterProcessor implements NodeProcessor {
     this.tokens = config.bucketCapacity;
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 

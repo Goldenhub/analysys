@@ -13,19 +13,13 @@ export class LoadBalancerProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
-  onRequestArrived(
-    event: SimEvent,
-    request: SimRequest,
-    context: ProcessorContext,
-  ): void {
+  onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
 
     context.recordArrival(event.nodeId, request.id, event.timestamp);
 
     const edges = context.getOutgoingEdges(event.nodeId);
-    const healthyEdges = edges.filter(
-      (e) => this.targetHealthy.get(e.target) !== false,
-    );
+    const healthyEdges = edges.filter((e) => this.targetHealthy.get(e.target) !== false);
 
     if (healthyEdges.length === 0) {
       // No healthy targets — drop the request
@@ -35,7 +29,10 @@ export class LoadBalancerProcessor implements NodeProcessor {
       return;
     }
 
-    const target = this.selectTarget(healthyEdges.map((e) => e.target), context);
+    const target = this.selectTarget(
+      healthyEdges.map((e) => e.target),
+      context,
+    );
 
     // Route to selected target with small LB forwarding latency
     const lbLatency = 0.5;

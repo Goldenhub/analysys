@@ -34,9 +34,7 @@ export function RoutingPolicyField({ nodeId, routingPolicy }: RoutingPolicyField
 
   // Outgoing edges for this node
   const outgoingEdges: EdgeData[] = useMemo(() => {
-    return edges
-      .filter((e) => e.source === nodeId && e.data)
-      .map((e) => e.data as EdgeData);
+    return edges.filter((e) => e.source === nodeId && e.data).map((e) => e.data as EdgeData);
   }, [edges, nodeId]);
 
   // Only show this field if the node has 2+ outgoing edges
