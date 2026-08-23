@@ -797,43 +797,43 @@ Phases 1 through 13 cover Requirements 1 through 22 and are complete. Phases 14 
 
 ### 21.1 Bottleneck Rules (`src/analysis/rules/bottleneck.ts`)
 
-- [~] 465. Implement `analysisUtilization` as the arithmetic mean of a node's per-window numeric utilization over the 3 most recently completed windows, and `latencyShare` as `timeInSystemAtNodeMs / pathTimeInSystemMs × 100` reported as not applicable while the divisor is 0 ms.
-- [~] 466. Implement the ranking total order — descending analysis Utilization, values within 0.001 tie-broken by descending Latency_Share, then descending throughput, then ascending node identifier — and expose it in the panel.
-- [~] 467. Implement `bottleneckRankRule` designating exactly one node per recomputation (highest analysis Utilization at or above 0.85, else greatest Latency_Share), naming the bounding configuration parameter and its configured value with unit, carrying the six evidence entries the design lists including which selection rule fired, and stating that reducing that node's contribution to 0 ms reduces end-to-end p99 by at most its Latency_Share percent.
-- [~] 468. Implement eligibility as a numeric utilization reading plus at least 1 arrival in the window, keeping a node eligible at 0 throughput, listing every excluded node with its reason, and setting confidence Low with the completed-request count stated where the designated node recorded fewer than 30 completions.
-- [~] 469. Implement `bottleneckCoLimitingRule` for other eligible nodes within 0.05 of a saturated Bottleneck, and `bottleneckNoConstraintRule` emitting one Info Finding where every applicable node is below 0.60 with no Instability.
-- [~] 470. Implement `bottleneckNoneEligibleRule` emitting one Info Finding naming the count excluded for a not-applicable utilization and the count excluded for zero arrivals, and write tests for all four rules including the single-designation and tie-break behaviour.
+- [x] 465. Implement `analysisUtilization` as the arithmetic mean of a node's per-window numeric utilization over the 3 most recently completed windows, and `latencyShare` as `timeInSystemAtNodeMs / pathTimeInSystemMs × 100` reported as not applicable while the divisor is 0 ms.
+- [x] 466. Implement the ranking total order — descending analysis Utilization, values within 0.001 tie-broken by descending Latency_Share, then descending throughput, then ascending node identifier — and expose it in the panel.
+- [x] 467. Implement `bottleneckRankRule` designating exactly one node per recomputation (highest analysis Utilization at or above 0.85, else greatest Latency_Share), naming the bounding configuration parameter and its configured value with unit, carrying the six evidence entries the design lists including which selection rule fired, and stating that reducing that node's contribution to 0 ms reduces end-to-end p99 by at most its Latency_Share percent.
+- [x] 468. Implement eligibility as a numeric utilization reading plus at least 1 arrival in the window, keeping a node eligible at 0 throughput, listing every excluded node with its reason, and setting confidence Low with the completed-request count stated where the designated node recorded fewer than 30 completions.
+- [x] 469. Implement `bottleneckCoLimitingRule` for other eligible nodes within 0.05 of a saturated Bottleneck, and `bottleneckNoConstraintRule` emitting one Info Finding where every applicable node is below 0.60 with no Instability.
+- [x] 470. Implement `bottleneckNoneEligibleRule` emitting one Info Finding naming the count excluded for a not-applicable utilization and the count excluded for zero arrivals, and write tests for all four rules including the single-designation and tie-break behaviour.
 
 ### 21.2 Saturation and Instability (`src/analysis/rules/saturation.ts`, `instability.ts`)
 
-- [~] 471. Implement `saturationRule` for a node at or above 0.85 in each of the 3 most recent windows, reporting sustained Utilization as the mean over the **maximal** run of consecutive windows at or above 0.85 ending at the most recent one, which may be longer than 3.
-- [~] 472. Implement `instabilityDepthGrowthRule` inspecting 5 windows: monitored depth increasing at each of the 4 most recent boundaries **and** the newest value exceeding the oldest by at least 20% of the oldest — the 20% floor is what stops a slow sawtooth being reported as unbounded growth.
-- [~] 473. Compute the growth rate and the projected time to the monitored depth bound, stating the projection holds while that growth rate continues, and report the projection as not applicable with a plain-language reason where the growth rate is at or below 0 items/s or no bound is available.
-- [~] 474. Implement the precedence rule: where a node satisfies both Saturation and Instability in one recomputation, emit only the Instability Finding with the sustained Utilization folded into its evidence.
-- [~] 475. Implement `instabilityLittlesLawRule` for a node exceeding 5% deviation in each of the 3 most recent windows, suppressing every `Capacity` Finding for that node, reporting which analysis was suppressed and for which node, and continuing to report per-node and system Headroom annotated as measured outside Steady_State.
-- [~] 476. Write tests for the run-length reporting, the 20% floor boundary, the not-applicable projection, and the Saturation-versus-Instability precedence.
+- [x] 471. Implement `saturationRule` for a node at or above 0.85 in each of the 3 most recent windows, reporting sustained Utilization as the mean over the **maximal** run of consecutive windows at or above 0.85 ending at the most recent one, which may be longer than 3.
+- [x] 472. Implement `instabilityDepthGrowthRule` inspecting 5 windows: monitored depth increasing at each of the 4 most recent boundaries **and** the newest value exceeding the oldest by at least 20% of the oldest — the 20% floor is what stops a slow sawtooth being reported as unbounded growth.
+- [x] 473. Compute the growth rate and the projected time to the monitored depth bound, stating the projection holds while that growth rate continues, and report the projection as not applicable with a plain-language reason where the growth rate is at or below 0 items/s or no bound is available.
+- [x] 474. Implement the precedence rule: where a node satisfies both Saturation and Instability in one recomputation, emit only the Instability Finding with the sustained Utilization folded into its evidence.
+- [x] 475. Implement `instabilityLittlesLawRule` for a node exceeding 5% deviation in each of the 3 most recent windows, suppressing every `Capacity` Finding for that node, reporting which analysis was suppressed and for which node, and continuing to report per-node and system Headroom annotated as measured outside Steady_State.
+- [x] 476. Write tests for the run-length reporting, the 20% floor boundary, the not-applicable projection, and the Saturation-versus-Instability precedence.
 
 ### 21.3 Reliability, Capacity, and Configuration Rules
 
-- [~] 477. Implement `dlqGrowthRule` in `src/analysis/rules/reliability.ts` for a Dead_Letter_Queue whose retained count rose at each of the 3 most recent boundaries, with the per-upstream-node attribution as evidence and a tradeoff naming the added slot occupancy at that upstream node.
-- [~] 478. Implement `workerPoolConcurrencyRule` in `src/analysis/rules/capacity.ts` computing required concurrency as arrival rate times mean processing time in seconds rounded up, naming the configured concurrency and the 10,000 maximum where the computed value exceeds it, gated on at least 1 completed attempt in the window span.
-- [~] 479. Implement `schedulerCollisionRule` in `src/analysis/rules/configuration.ts` for pairs of Scheduler nodes with 2 or more consecutive coinciding trigger indices within 1,000 simulated ms, reading trigger fire times from the event log.
-- [~] 480. Implement `admissionDominatesRule` in `reliability.ts` requiring the admission rate to exceed the capacity-or-reliability rate by at least 20% in each of 3 windows with at least 30 non-Success terminations across them, so no rule fires from an empty denominator.
-- [~] 481. Write tests for each rule's minimum-sample gate, confirming suppression rather than a Finding computed from zero observations.
+- [x] 477. Implement `dlqGrowthRule` in `src/analysis/rules/reliability.ts` for a Dead_Letter_Queue whose retained count rose at each of the 3 most recent boundaries, with the per-upstream-node attribution as evidence and a tradeoff naming the added slot occupancy at that upstream node.
+- [x] 478. Implement `workerPoolConcurrencyRule` in `src/analysis/rules/capacity.ts` computing required concurrency as arrival rate times mean processing time in seconds rounded up, naming the configured concurrency and the 10,000 maximum where the computed value exceeds it, gated on at least 1 completed attempt in the window span.
+- [x] 479. Implement `schedulerCollisionRule` in `src/analysis/rules/configuration.ts` for pairs of Scheduler nodes with 2 or more consecutive coinciding trigger indices within 1,000 simulated ms, reading trigger fire times from the event log.
+- [x] 480. Implement `admissionDominatesRule` in `reliability.ts` requiring the admission rate to exceed the capacity-or-reliability rate by at least 20% in each of 3 windows with at least 30 non-Success terminations across them, so no rule fires from an empty denominator.
+- [x] 481. Write tests for each rule's minimum-sample gate, confirming suppression rather than a Finding computed from zero observations.
 
 ### 21.4 Headroom (`src/analysis/rules/headroom.ts`)
 
-- [~] 482. Report per-node Headroom as `(1 - analysisUtilization) * 100` with the bounding parameter name and its configured value and unit.
-- [~] 483. Report Headroom as not applicable with a plain-language reason for a node whose utilization reading is `not-applicable` or which recorded 0 arrivals.
-- [~] 484. Report system Headroom as `(0.85 / U - 1) * 100` percent and `L * (0.85 / U - 1)` RPS, naming the label and analysis Utilization of the node holding `U`, with `L` the offered load over the analysis window.
-- [~] 485. Report system Headroom as 0 percent and 0 RPS at or above 0.85 naming the holding node, and as not applicable naming which precondition failed where fewer than 3 windows completed, no node is eligible, `U` is 0.0, or offered load is 0 RPS.
-- [~] 486. State alongside every numeric system Headroom figure that it assumes proportional growth of the highest-utilization node and that no other node saturates sooner, and that a Capacity_Sweep produces a measured Sustainable_Load in its place.
+- [x] 482. Report per-node Headroom as `(1 - analysisUtilization) * 100` with the bounding parameter name and its configured value and unit.
+- [x] 483. Report Headroom as not applicable with a plain-language reason for a node whose utilization reading is `not-applicable` or which recorded 0 arrivals.
+- [x] 484. Report system Headroom as `(0.85 / U - 1) * 100` percent and `L * (0.85 / U - 1)` RPS, naming the label and analysis Utilization of the node holding `U`, with `L` the offered load over the analysis window.
+- [x] 485. Report system Headroom as 0 percent and 0 RPS at or above 0.85 naming the holding node, and as not applicable naming which precondition failed where fewer than 3 windows completed, no node is eligible, `U` is 0.0, or offered load is 0 RPS.
+- [x] 486. State alongside every numeric system Headroom figure that it assumes proportional growth of the highest-utilization node and that no other node saturates sooner, and that a Capacity_Sweep produces a measured Sustainable_Load in its place.
 
 ### 21.5 Registry Wiring
 
-- [~] 487. Create `src/analysis/rules/index.ts` exporting `RULE_REGISTRY` in the design's stated order, with each rule declaring its `requiredMetrics`.
-- [~] 488. Make each rule yield every N nodes so a rule iterating 80 nodes never occupies the main thread for more than 33 consecutive milliseconds.
-- [~] 489. Write a test asserting no rule reads a single window and every rule carries a minimum sample count, so a one-window spike or a one-window zero cannot emit a Finding.
+- [x] 487. Create `src/analysis/rules/index.ts` exporting `RULE_REGISTRY` in the design's stated order, with each rule declaring its `requiredMetrics`.
+- [x] 488. Make each rule yield every N nodes so a rule iterating 80 nodes never occupies the main thread for more than 33 consecutive milliseconds.
+- [x] 489. Write a test asserting no rule reads a single window and every rule carries a minimum sample count, so a one-window spike or a one-window zero cannot emit a Finding.
 
 ---
 

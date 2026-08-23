@@ -28,10 +28,56 @@ export interface AnalysisRule {
   evaluate(ctx: AnalysisContext): Generator<void, Finding[], void>;
 }
 
-// ─── Rule Registry ───────────────────────────────────────────────
+// ─── Rule Imports ────────────────────────────────────────────────
+
+import {
+  bottleneckRankRule,
+  bottleneckCoLimitingRule,
+  bottleneckNoConstraintRule,
+  bottleneckNoneEligibleRule,
+} from './bottleneck';
+import { saturationRule } from './saturation';
+import { instabilityDepthGrowthRule, instabilityLittlesLawRule } from './instability';
+import { dlqGrowthRule, admissionDominatesRule } from './reliability';
+import { workerPoolConcurrencyRule } from './capacity';
+import { schedulerCollisionRule } from './configuration';
+import { headroomRule } from './headroom';
+
+// ─── Rule Registry (Task 487) ────────────────────────────────────
 
 /**
- * The rule registry. Rules are added in Phase 21.
- * The registry is iterated in order by the scheduler.
+ * The rule registry in design-stated order. Rules are iterated in this order
+ * by the scheduler (Phase 21).
+ *
+ * Order: bottleneck → saturation → instability → reliability → capacity →
+ *        configuration → headroom
  */
-export const RULE_REGISTRY: readonly AnalysisRule[] = [];
+export const RULE_REGISTRY: readonly AnalysisRule[] = [
+  bottleneckRankRule,
+  bottleneckCoLimitingRule,
+  bottleneckNoConstraintRule,
+  bottleneckNoneEligibleRule,
+  saturationRule,
+  instabilityDepthGrowthRule,
+  instabilityLittlesLawRule,
+  dlqGrowthRule,
+  workerPoolConcurrencyRule,
+  schedulerCollisionRule,
+  admissionDominatesRule,
+  headroomRule,
+];
+
+// ─── Re-exports ──────────────────────────────────────────────────
+
+export {
+  bottleneckRankRule,
+  bottleneckCoLimitingRule,
+  bottleneckNoConstraintRule,
+  bottleneckNoneEligibleRule,
+} from './bottleneck';
+export { saturationRule } from './saturation';
+export { instabilityDepthGrowthRule, instabilityLittlesLawRule } from './instability';
+export { dlqGrowthRule, admissionDominatesRule } from './reliability';
+export { workerPoolConcurrencyRule } from './capacity';
+export { schedulerCollisionRule } from './configuration';
+export { headroomRule } from './headroom';
