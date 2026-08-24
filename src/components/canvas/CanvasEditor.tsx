@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useMemo } from 'react';
+import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -44,6 +44,8 @@ import { HealthLegend } from './HealthLegend';
 import {
   SubsystemGroupNode,
   MergedBoundaryEdge,
+  GroupToolbar,
+  useCollapsedTopologyView,
   SUBSYSTEM_GROUP_NODE_TYPE,
   MERGED_BOUNDARY_EDGE_TYPE,
 } from './groups';
@@ -98,9 +100,9 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
-  // Connect to topology store
-  const nodes = useTopologyStore((s) => s.nodes);
-  const edges = useTopologyStore((s) => s.edges);
+  // Canonical store (for mutations)
+  const storeNodes = useTopologyStore((s) => s.nodes);
+  const storeEdges = useTopologyStore((s) => s.edges);
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const addNode = useTopologyStore((s) => s.addNode);
@@ -110,6 +112,13 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
   const undo = useTopologyStore((s) => s.undo);
   const redo = useTopologyStore((s) => s.redo);
 
+  // Derived view for rendering (includes collapsed groups)
+  const { nodes: renderNodes, edges: renderEdges } = useCollapsedTopologyView();
+
+  // Track selected node IDs for group toolbar
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const subsystemGroups = useTopologyStore((s) => s.subsystemGroups);
+
   // ─── onConnect: validate then add edge ─────────────────────────
 
   const onConnect = useCallback(
@@ -117,15 +126,15 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
       if (!connection.source || !connection.target) return;
 
       // Find source and target node data for validation
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
+      const sourceNode = storeNodes.find((n) => n.id === connection.source);
+      const targetNode = storeNodes.find((n) => n.id === connection.target);
       if (!sourceNode || !targetNode) return;
 
       const sourceData = sourceNode.data as SimulationNode;
       const targetData = targetNode.data as SimulationNode;
 
       // Extract existing edge data for duplicate check
-      const existingEdgeData: EdgeData[] = edges.map((e) => e.data as EdgeData);
+      const existingEdgeData: EdgeData[] = storeEdges.map((e) => e.data as EdgeData);
 
       // The protocol is decided before validation because R30.13 validates it. Take the
       // pair's first permitted protocol rather than assuming Sync: an async-only pair
@@ -136,7 +145,7 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
       // Node lookup for the R30.11 cardinality rejection, which names a third node.
       const nodesById = new Map<string, SimulationNode>(
-        nodes.map((n) => [n.id, n.data as SimulationNode]),
+        storeNodes.map((n) => [n.id, n.data as SimulationNode]),
       );
 
       const result = validateEdgeConnection(
@@ -171,7 +180,7 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
       addEdge(newEdge);
     },
-    [nodes, edges, addEdge],
+    [storeNodes, storeEdges, addEdge],
   );
 
   // ─── onDrop: create new node from palette ──────────────────────
@@ -215,6 +224,8 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: AnalysysNode[] }) => {
+      const ids = selectedNodes.map((n) => n.id);
+      setSelectedNodeIds(ids);
       const firstNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined;
       onNodeSelect?.(firstNode?.id ?? null);
     },
@@ -233,8 +244,8 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
 
       // Delete/Backspace: remove selected nodes and edges
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        const selectedNodes = nodes.filter((n) => n.selected);
-        const selectedEdges = edges.filter((e) => e.selected);
+        const selectedNodes = storeNodes.filter((n) => n.selected);
+        const selectedEdges = storeEdges.filter((e) => e.selected);
 
         selectedNodes.forEach((n) => removeNode(n.id));
         selectedEdges.forEach((e) => removeEdge(e.id));
@@ -255,7 +266,7 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         redo();
       }
     },
-    [nodes, edges, removeNode, removeEdge, undo, redo],
+    [storeNodes, storeEdges, removeNode, removeEdge, undo, redo],
   );
 
   useEffect(() => {
@@ -273,8 +284,8 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
   return (
     <div ref={reactFlowWrapper} className="relative h-full w-full">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={renderNodes}
+        edges={renderEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -297,6 +308,13 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         />
         <HealthLegend />
       </ReactFlow>
+
+      {/* Group toolbar: visible when 2+ nodes are selected OR when groups exist */}
+      {(selectedNodeIds.length >= 2 || subsystemGroups.length > 0) && (
+        <div className="absolute top-2 right-2 z-10 max-h-[60vh] overflow-y-auto">
+          <GroupToolbar selectedNodeIds={selectedNodeIds} />
+        </div>
+      )}
     </div>
   );
 }
