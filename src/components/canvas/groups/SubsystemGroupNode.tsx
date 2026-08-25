@@ -44,7 +44,6 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
   }
 
   const summedThroughput = memberMetrics.reduce((sum, m) => sum + m.throughput, 0);
-  const summedErrors = memberMetrics.reduce((sum, m) => sum + m.errorRate, 0);
 
   // Collect health statuses for members that have one
   const availableHealthStatuses: HealthStatus[] = [];
@@ -65,7 +64,7 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
 
   return (
     <div
-      className={`relative w-[180px] rounded-xl border-2 bg-gray-900 px-3 py-2 shadow-lg transition-all duration-300 ease-in-out ${healthClass}`}
+      className={`relative w-[200px] rounded-xl border-2 bg-gray-900 px-3 py-2 shadow-lg transition-all duration-300 ease-in-out ${healthClass}`}
       aria-label={`Subsystem group: ${groupData.groupName}, ${groupData.memberCount} members, health: ${groupHealth ?? 'not applicable'}`}
     >
       {/* Header */}
@@ -86,19 +85,32 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
         <span className="truncate text-xs font-semibold text-gray-100">{groupData.groupName}</span>
       </div>
 
-      {/* Member count */}
-      <div className="mt-1 text-[10px] text-gray-400">{groupData.memberCount} nodes</div>
+      {/* Member list */}
+      <div className="mt-1.5 rounded-md border border-gray-700/50 bg-gray-800/50 px-2 py-1">
+        <div className="text-[10px] font-medium text-gray-400">
+          {groupData.memberCount} node{groupData.memberCount === 1 ? '' : 's'}
+        </div>
+        <div className="mt-0.5 flex flex-col gap-0.5">
+          {groupData.memberLabels.slice(0, 5).map((label, i) => (
+            <span key={groupData.memberNodeIds[i]} className="truncate text-[10px] text-gray-300">
+              {label}
+            </span>
+          ))}
+          {groupData.memberLabels.length > 5 && (
+            <span className="text-[10px] text-gray-500">
+              +{groupData.memberLabels.length - 5} more
+            </span>
+          )}
+        </div>
+      </div>
 
-      {/* Telemetry badges (R33.14, R33.15, R33.16) */}
-      {hasMetrics ? (
+      {/* Telemetry badges */}
+      {hasMetrics && (
         <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px]">
           <span className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-300">
             {summedThroughput.toFixed(1)} req/s
           </span>
-          <span className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-300">
-            {summedErrors.toFixed(0)} errors
-          </span>
-          {groupHealth ? (
+          {groupHealth && (
             <span
               className={`rounded px-1.5 py-0.5 font-medium ${
                 groupHealth === 'red'
@@ -110,15 +122,7 @@ function SubsystemGroupNodeInner({ data }: NodeProps<AnalysysNode>) {
             >
               {groupHealth}
             </span>
-          ) : (
-            <span className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-500">
-              health: N/A — no member has reported metrics
-            </span>
           )}
-        </div>
-      ) : (
-        <div className="mt-1.5 text-[10px] text-gray-500">
-          health: N/A — no member has reported metrics
         </div>
       )}
 

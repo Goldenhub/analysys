@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { MetricsBatchPayload } from '@/types/metrics';
 import { useSimulationStore } from '@/store/simulationStore';
+import { appendTelemetryPoint } from './telemetryBuffer';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -30,11 +31,9 @@ interface ThroughputChartProps {
 
 // ─── Constants ───────────────────────────────────────────────────
 
-const MAX_BUFFER_SIZE = 120;
-
 const CHAOS_LABELS: Record<string, string> = {
-  FLUSH_CACHE: '\ud83d\udd25 Cache Flush',
-  DROP_DB: '\u26a0\ufe0f DB Partition',
+  FLUSH_CACHE: '\ud83d\udd25 Cold Cache',
+  DROP_DB: '\u26a0\ufe0f DB Outage',
   SPIKE_TRAFFIC: '\u26a1 Traffic Spike',
 };
 
@@ -53,9 +52,7 @@ function dataReducer(
   state: ThroughputDataPoint[],
   action: ThroughputDataPoint,
 ): ThroughputDataPoint[] {
-  const lastPoint = state[state.length - 1];
-  if (lastPoint && lastPoint.time === action.time) return state;
-  return [...state, action].slice(-MAX_BUFFER_SIZE);
+  return appendTelemetryPoint(state, action);
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -119,11 +116,15 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis dataKey="timeLabel" tick={{ fill: '#9ca3af', fontSize: 10 }} stroke="#4b5563" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-700)" />
+        <XAxis
+          dataKey="timeLabel"
+          tick={{ fill: '#9ca3af', fontSize: 10 }}
+          stroke="var(--color-gray-600)"
+        />
         <YAxis
           tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="#4b5563"
+          stroke="var(--color-gray-600)"
           label={{ value: 'req/s', position: 'insideLeft', fill: '#9ca3af', fontSize: 10 }}
         />
         <Tooltip

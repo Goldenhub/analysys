@@ -17,8 +17,6 @@ interface NodePeaks {
   queue: number;
   conn: number;
   buffer: number;
-  connMax: number;
-  queueMax: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -126,15 +124,11 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
       queue: 0,
       conn: 0,
       buffer: 0,
-      connMax: 50,
-      queueMax: 100,
     };
     peakValues.set(node.nodeId, {
       queue: Math.max(prev.queue, node.queueDepth),
       conn: Math.max(prev.conn, node.activeConnections),
       buffer: Math.max(prev.buffer, node.bufferOccupancy),
-      connMax: Math.max(prev.connMax, node.activeConnections, 50),
-      queueMax: Math.max(prev.queueMax, node.queueDepth, 100),
     });
   }
 
@@ -172,16 +166,27 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
         const currentConn = currentSnapshot?.activeConnections ?? 0;
         const currentBuffer = currentSnapshot?.bufferOccupancy ?? 0;
 
+        const connBound = currentSnapshot?.concurrencyBound;
+        const queueBound = currentSnapshot?.monitoredDepthBound;
+
         return (
           <div key={nodeId} className="space-y-1">
             <span className="text-[10px] font-medium text-gray-300" title={nodeId}>
               {labelFor(nodeId)}
             </span>
             {peaks.queue > 0 && (
-              <GaugeBar label="Queue" current={currentQueue} max={peaks.queueMax} />
+              <GaugeBar
+                label="Queue"
+                current={currentQueue}
+                max={queueBound ?? Math.max(peaks.queue, 1)}
+              />
             )}
             {peaks.conn > 0 && (
-              <GaugeBar label="Connections" current={currentConn} max={peaks.connMax} />
+              <GaugeBar
+                label="Connections"
+                current={currentConn}
+                max={connBound ?? Math.max(peaks.conn, 1)}
+              />
             )}
             {peaks.buffer > 0 && (
               <GaugeBar

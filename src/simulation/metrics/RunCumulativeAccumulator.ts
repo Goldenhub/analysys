@@ -26,7 +26,12 @@ export class RunCumulativeAccumulator {
   /** Maximum reservoir size for latency samples (reservoir sampling). */
   private static readonly MAX_RESERVOIR_SIZE = 10_000;
 
-  constructor() {
+  /**
+   * `rng` must be deterministic (the engine supplies a seeded stream derived from
+   * the run's seed) so that whole-run percentiles are reproducible for a given
+   * seed. Defaults to Math.random only for standalone/test use.
+   */
+  constructor(private rng: () => number = Math.random) {
     this.terminalCounts = {};
     for (const status of TERMINAL_STATUSES) {
       this.terminalCounts[status] = 0;
@@ -49,7 +54,7 @@ export class RunCumulativeAccumulator {
         this.latencySamples.push(request.accumulatedLatencyMs);
       } else {
         // Reservoir sampling: replace a random element with decreasing probability
-        const idx = Math.floor(Math.random() * this.totalTerminations);
+        const idx = Math.floor(this.rng() * this.totalTerminations);
         if (idx < RunCumulativeAccumulator.MAX_RESERVOIR_SIZE) {
           this.latencySamples[idx] = request.accumulatedLatencyMs;
         }

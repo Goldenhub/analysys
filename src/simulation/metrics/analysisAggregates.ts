@@ -340,6 +340,13 @@ export class AnalysisAggregatesAccumulator {
           concurrencyBound: authzConfig.concurrencyLimit,
         };
       }
+      case NodeType.Database: {
+        const dbConfig = config.config as { connectionPoolSize: number };
+        return {
+          concurrencyOccupied: state.activeConnections,
+          concurrencyBound: dbConfig.connectionPoolSize,
+        };
+      }
       default:
         return {};
     }

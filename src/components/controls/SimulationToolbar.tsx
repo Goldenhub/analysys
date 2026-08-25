@@ -4,6 +4,7 @@ import { DEFAULT_MAX_HOPS_PER_REQUEST, DEFAULT_METRICS_INTERVAL_MS } from '@/typ
 import { useTopologyStore } from '@/store';
 import { SimState } from '@/simulation/types';
 import { Button } from '@/components/ui/button';
+import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
 
 // ─── Icons (inline SVG) ──────────────────────────────────────────
 
@@ -66,6 +67,26 @@ function RefreshIcon() {
   );
 }
 
+function DicesIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3.5"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <path d="M16 8h.01" />
+      <path d="M12 12h.01" />
+      <path d="M8 16h.01" />
+    </svg>
+  );
+}
+
 function HelpIcon() {
   return (
     <svg
@@ -102,14 +123,6 @@ const DURATION_OPTIONS = [
 const DEFAULT_DURATION_MS = 120_000; // 2 min
 
 // ─── Helpers ─────────────────────────────────────────────────────
-
-function formatSimTime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  const millis = Math.floor(ms % 1000);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-}
 
 function getStateBadgeColor(state: SimState): string {
   switch (state) {
@@ -153,17 +166,23 @@ export function SimulationToolbar() {
 
   const [showHelp, setShowHelp] = useState(false);
   const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
+  // Reproducibility: runs are seeded explicitly instead of Date.now(), so a run
+  // can be repeated exactly. Randomized per mount; the dice button re-rolls.
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 0xffffffff));
 
   // ─── Button Handlers ─────────────────────────────────────────
 
   const handleStart = useCallback(() => {
     const topology = getTopologySnapshot();
+    // Fresh run: clear the previous run's live metrics, log, and summary so the
+    // dashboard never mixes runs.
+    resetMetrics();
     initWorker();
     sendToWorker({
       type: 'INIT',
       payload: {
         topology,
-        seed: Date.now(),
+        seed,
         speedMultiplier,
         maxSimulatedTimeMs: durationMs,
         metricsIntervalMs: DEFAULT_METRICS_INTERVAL_MS,
@@ -172,7 +191,16 @@ export function SimulationToolbar() {
     });
     sendToWorker({ type: 'START', payload: { speedMultiplier } });
     setSimState(SimState.Running);
-  }, [getTopologySnapshot, initWorker, sendToWorker, speedMultiplier, setSimState, durationMs]);
+  }, [
+    getTopologySnapshot,
+    initWorker,
+    sendToWorker,
+    speedMultiplier,
+    setSimState,
+    durationMs,
+    seed,
+    resetMetrics,
+  ]);
 
   const handlePause = useCallback(() => {
     sendToWorker({ type: 'PAUSE' });
@@ -200,8 +228,8 @@ export function SimulationToolbar() {
       const newSpeed = Number(e.target.value);
       setSpeed(newSpeed);
       if (simState === SimState.Running) {
-        sendToWorker({ type: 'PAUSE' });
-        sendToWorker({ type: 'RESUME', payload: { speedMultiplier: newSpeed } });
+        // Live speed change — no PAUSE/RESUME pair (that race could double-drive the loop).
+        sendToWorker({ type: 'UPDATE_SPEED', payload: { speedMultiplier: newSpeed } });
       }
     },
     [setSpeed, simState, sendToWorker],
@@ -353,6 +381,37 @@ export function SimulationToolbar() {
           ))}
         </select>
         <span className="text-[10px] text-gray-500">sim</span>
+      </div>
+
+      {/* Seed Control */}
+      <div className="flex items-center gap-1">
+        <label
+          htmlFor="sim-seed"
+          className="text-[10px] text-gray-500"
+          title="Random seed for the simulation's randomness (arrival times, latencies). The same seed always produces the identical run — enter it again to reproduce results exactly."
+        >
+          Seed
+        </label>
+        <input
+          id="sim-seed"
+          type="number"
+          value={seed}
+          onChange={(e) => setSeed(Math.floor(Number(e.target.value) || 0))}
+          disabled={simState === SimState.Running || simState === SimState.Paused}
+          title="Random seed — same seed = identical run; dice button rolls a fresh one."
+          className="h-7 w-24 rounded-md border border-gray-700 bg-gray-800 px-2 font-mono text-xs text-gray-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSeed(Math.floor(Math.random() * 0xffffffff))}
+          disabled={simState === SimState.Running || simState === SimState.Paused}
+          title="Randomize seed — new sample of arrival times and latencies"
+          aria-label="Randomize seed"
+          className="h-7 w-7 p-0 text-gray-400 hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <DicesIcon />
+        </Button>
       </div>
 
       {/* Simulation Time */}

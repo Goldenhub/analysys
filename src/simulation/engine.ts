@@ -1,7 +1,11 @@
 import { NodeType, RoutingPolicy } from '@/types/nodes';
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
-import type { SimulationEngineConfig, ChaosEventPayload } from '@/types/messages';
+import type {
+  SimulationEngineConfig,
+  ChaosEventPayload,
+  SimulationSummary,
+} from '@/types/messages';
 import type { MetricsBatchPayload } from '@/types/metrics';
 import { MinHeap } from './eventQueue';
 import { SeededRNG } from './prng';
@@ -18,6 +22,7 @@ import {
   RequestStatus,
   SubRequestPolicy,
   emptyTerminalCounts,
+  FAILURE_CLASS_OF,
 } from './types';
 import type { TerminalStatus } from './types';
 import { TrafficGeneratorProcessor } from './processors/TrafficGeneratorProcessor';
@@ -37,6 +42,9 @@ import { DeadLetterQueueProcessor } from './processors/DeadLetterQueueProcessor'
 import { ObjectStoreProcessor } from './processors/ObjectStoreProcessor';
 import { SchedulerProcessor } from './processors/SchedulerProcessor';
 import { dispatchBranches, settleBranch, mapBranchFailureToParent } from './subRequests';
+
+/** Salt for the engine's independent reservoir-sampling PRNG stream (Phase: determinism). */
+const RESERVOIR_SEED_SALT = 0x9e3779b9;
 
 export class SimulationEngine {
   private eventQueue: MinHeap<SimEvent>;
@@ -74,16 +82,21 @@ export class SimulationEngine {
         }>,
       ) => void)
     | null = null;
-  private onComplete:
-    | ((summary: {
-        totalEvents: number;
-        totalRequests: number;
-        successRate: number;
-        avgEndToEndLatencyMs: number;
-        simulatedDurationMs: number;
-        wallClockDurationMs: number;
-        eventsPerSecond: number;
-      }) => void)
+  private onComplete: ((summary: SimulationSummary) => void) | null = null;
+
+  /**
+   * Optional observer fed every top-level termination — used by the Capacity
+   * Sweep to accumulate measurement-interval statistics ([warmUpMs, duration]).
+   * The worker-side adapter owns the warm-up gate; the engine just reports.
+   */
+  private sweepRecorder:
+    | ((
+        latencyMs: number,
+        status: string,
+        isError: boolean,
+        isSchedulerJob: boolean,
+        simTimeMs: number,
+      ) => void)
     | null = null;
 
   // In-flight request tracking (time-weighted average)
@@ -92,6 +105,15 @@ export class SimulationEngine {
   private lastInFlightChangeTime = 0;
   private lastSnapshotTime = 0;
   private countedAsComplete: Set<string> = new Set();
+
+  // Whole-run summary counters for top-level requests. Kept in lockstep with
+  // creation/termination/redrive so emitComplete never needs to iterate the
+  // request map — which in turn lets terminal requests be evicted from the map
+  // during long runs instead of accumulating without bound.
+  private topLevelCreated = 0;
+  private topLevelTerminated = 0;
+  private topLevelSuccesses = 0;
+  private topLevelSuccessLatencySumMs = 0;
 
   // Event log batching — accumulate entries and flush on metrics snapshot
   private pendingLogEntries: Array<{
@@ -108,14 +130,29 @@ export class SimulationEngine {
   // Batch control
   private readonly BATCH_SIZE = 200;
 
+  // Incremented on every run/resume/reset. Each drain loop captures the generation
+  // at entry; a loop that wakes from its inter-batch yield and finds itself stale
+  // (a newer loop was started) terminates without emitting completion. This makes
+  // it impossible for two loops to drain the same heap concurrently — e.g. when a
+  // PAUSE+RESUME pair arrives while the previous loop is parked in its yield.
+  private runGeneration = 0;
+
   constructor(config: SimulationEngineConfig) {
     this.config = config;
     this.rng = new SeededRNG(config.seed);
-    this.eventQueue = new MinHeap<SimEvent>((a, b) => a.timestamp - b.timestamp);
+    // Tie-break equal timestamps by scheduling order (`id` is assigned monotonically
+    // in scheduleEvent), so same-timestamp events extract FIFO instead of in arbitrary
+    // heap order.
+    this.eventQueue = new MinHeap<SimEvent>((a, b) => a.timestamp - b.timestamp || a.id - b.id);
+    // Dedicated PRNG stream for the run-cumulative latency reservoir: derived from
+    // the same seed but independent of the event stream, so reservoir sampling is
+    // reproducible per seed without perturbing the simulation's draw order.
+    const reservoirRng = new SeededRNG(config.seed ^ RESERVOIR_SEED_SALT);
     this.metricsCollector = new MetricsCollector(
       config.topology.nodes,
       5000,
       config.topology.edges,
+      () => reservoirRng.next(),
     );
 
     this.buildAdjacency(config.topology.edges);
@@ -138,15 +175,7 @@ export class SimulationEngine {
         message: string;
       }>,
     ) => void;
-    onComplete?: (summary: {
-      totalEvents: number;
-      totalRequests: number;
-      successRate: number;
-      avgEndToEndLatencyMs: number;
-      simulatedDurationMs: number;
-      wallClockDurationMs: number;
-      eventsPerSecond: number;
-    }) => void;
+    onComplete?: (summary: SimulationSummary) => void;
   }): void {
     this.onMetricsBatch = callbacks.onMetricsBatch ?? null;
     this.onNodeStatus = callbacks.onNodeStatus ?? null;
@@ -155,11 +184,60 @@ export class SimulationEngine {
   }
 
   async run(): Promise<void> {
+    // Only a fresh run may start driving events; if any loop already owns the
+    // queue (Running/Paused), starting another would drain it concurrently.
+    if (this.state === SimState.Running || this.state === SimState.Paused) return;
     this.state = SimState.Running;
     this.startWallTime = Date.now();
     this.metricsCollector.setRunStartTime(0); // Virtual clock starts at 0
 
-    while (this.state === SimState.Running) {
+    await this.driveEvents();
+  }
+
+  pause(): void {
+    this.state = SimState.Paused;
+  }
+
+  resume(speedMultiplier: number): void {
+    if (this.state !== SimState.Paused) return;
+    this.config.speedMultiplier = speedMultiplier;
+    this.state = SimState.Running;
+    void this.driveEvents();
+  }
+
+  /** Live speed change without pausing — takes effect at the next inter-batch yield. */
+  setSpeedMultiplier(speedMultiplier: number): void {
+    this.config.speedMultiplier = speedMultiplier;
+  }
+
+  /**
+   * Register a Capacity-Sweep measurement observer. Pass null to detach.
+   * Every top-level termination is reported with the virtual time at which it
+   * terminated, so the adapter can gate on the warm-up boundary itself.
+   */
+  setSweepRecorder(
+    recorder:
+      | ((
+          latencyMs: number,
+          status: string,
+          isError: boolean,
+          isSchedulerJob: boolean,
+          simTimeMs: number,
+        ) => void)
+      | null,
+  ): void {
+    this.sweepRecorder = recorder;
+  }
+
+  /**
+   * Drains the event queue until the simulation completes, pauses, or is superseded.
+   * Completion is emitted by exactly one loop because stale generations abort here
+   * and only the current generation can reach the terminal states below.
+   */
+  private async driveEvents(): Promise<void> {
+    const gen = ++this.runGeneration;
+
+    while (this.state === SimState.Running && gen === this.runGeneration) {
       let processed = 0;
 
       while (processed < this.BATCH_SIZE && this.eventQueue.size > 0) {
@@ -180,6 +258,9 @@ export class SimulationEngine {
       // Yield to event loop so postMessage handlers can fire
       await this.yieldToMacroTask();
 
+      // A newer loop (run/resume/reset) superseded this one — it owns completion now.
+      if (gen !== this.runGeneration) return;
+
       if (this.eventQueue.size === 0) {
         this.state = SimState.Complete;
         this.handleMetricsSnapshot();
@@ -189,18 +270,10 @@ export class SimulationEngine {
     }
   }
 
-  pause(): void {
-    this.state = SimState.Paused;
-  }
-
-  resume(speedMultiplier: number): void {
-    this.config.speedMultiplier = speedMultiplier;
-    this.state = SimState.Running;
-    this.run();
-  }
-
   reset(): void {
     this.state = SimState.Idle;
+    // Kill any drain loop parked in its inter-batch yield.
+    this.runGeneration++;
     this.virtualClockMs = 0;
     this.eventQueue.clear();
     this.requests.clear();
@@ -211,6 +284,10 @@ export class SimulationEngine {
     this.lastInFlightChangeTime = 0;
     this.lastSnapshotTime = 0;
     this.countedAsComplete.clear();
+    this.topLevelCreated = 0;
+    this.topLevelTerminated = 0;
+    this.topLevelSuccesses = 0;
+    this.topLevelSuccessLatencySumMs = 0;
     this.pendingLogEntries = [];
     this.completionLogCounter = 0;
     this.roundRobinCursors.clear();
@@ -333,6 +410,11 @@ export class SimulationEngine {
       if (chaosType === 'DROP_DB' && node.nodeType === NodeType.Database) {
         applies = !targetNodeId || targetNodeId === nodeId;
       }
+      // Load balancers learn immediately that a database went down so they can
+      // eject it from rotation before the next health-check interval elapses.
+      if (chaosType === 'DROP_DB' && node.nodeType === NodeType.LoadBalancer) {
+        applies = true;
+      }
       if (chaosType === 'SPIKE_TRAFFIC' && node.nodeType === NodeType.TrafficGenerator)
         applies = true;
       if (chaosType === 'DLQ_REDRIVE' && node.nodeType === NodeType.DeadLetterQueue) {
@@ -402,6 +484,11 @@ export class SimulationEngine {
 
   getVirtualTime(): number {
     return this.virtualClockMs;
+  }
+
+  /** Live size of the request map — memory-boundedness observability (tests, diagnostics). */
+  get liveRequestCount(): number {
+    return this.requests.size;
   }
 
   // ─── Event Processing ────────────────────────────────────────
@@ -477,6 +564,9 @@ export class SimulationEngine {
       case SimEventType.NodeRestored:
         this.handleNodeRestored(event);
         break;
+      case SimEventType.LbHealthCheck:
+        this.handleLbHealthCheck(event);
+        break;
       default:
         break;
     }
@@ -502,10 +592,17 @@ export class SimulationEngine {
       emittedByNodeId: event.nodeId,
     };
     this.requests.set(requestId, request);
+    this.topLevelCreated++;
     this.updateInFlightWeightedSum();
     this.inFlightCount++;
 
-    // Route to first downstream node
+    // Record the offered-load arrival at the source itself so the generator's
+    // per-node row shows real λ (arrivalCount / Little's Law), not zeros. The
+    // matching departure is recorded when the response completes back here.
+    this.metricsCollector.recordArrival(event.nodeId, requestId, event.timestamp);
+    this.metricsCollector.recordAnalysisArrival(event.nodeId);
+
+    // Route to first downstream node(s), honoring the generator's routing policy
     const outEdges = this.getOutgoingEdges(event.nodeId);
     if (outEdges.length === 0) {
       this.terminateRequest(request, RequestStatus.NoRoute, event.nodeId, event.timestamp);
@@ -518,14 +615,29 @@ export class SimulationEngine {
         message: `No downstream route available from ${node.label}`,
       });
     } else {
-      const target = outEdges[0]!.target;
-      this.scheduleEvent({
-        type: SimEventType.RequestRoute,
-        timestamp: event.timestamp,
-        nodeId: target,
-        requestId,
-        payload: { fromNodeId: event.nodeId },
-      });
+      const targets = this.resolveTargets(event.nodeId, request);
+      if (targets.length <= 1) {
+        this.scheduleEvent({
+          type: SimEventType.RequestRoute,
+          timestamp: event.timestamp,
+          nodeId: (targets[0] ?? outEdges[0]!).target,
+          requestId,
+          payload: { fromNodeId: event.nodeId },
+        });
+      } else {
+        // Fan_Out at the source node — dispatch branches rooted here. The parent is
+        // suspended until the branches settle; traffic generation continues below.
+        dispatchBranches({
+          parent: request,
+          dispatchNodeId: event.nodeId,
+          edges: targets,
+          policy: SubRequestPolicy.FanOut,
+          timestamp: event.timestamp,
+          context: this.getProcessorContext(),
+          requestMap: this.requests,
+          getNextRequestId: () => `req-${this.requestCounter++}`,
+        });
+      }
     }
 
     // Schedule next arrival
@@ -554,8 +666,13 @@ export class SimulationEngine {
       return;
     }
 
-    request.hopCount++;
-    request.path.push(event.nodeId);
+    // A dequeue re-route (`fromQueue`) targets the same node that already counted
+    // this hop when the request was first routed here — don't double-count it
+    // against maxHops or duplicate the path entry.
+    if (event.payload['fromQueue'] !== true) {
+      request.hopCount++;
+      request.path.push(event.nodeId);
+    }
 
     // Cycle guard (task 328 — branches share the maxHops budget)
     if (request.hopCount > request.maxHops) {
@@ -637,7 +754,7 @@ export class SimulationEngine {
           if (request.parentRequestId) {
             this.metricsCollector.recordBranchTermination(request);
           } else {
-            this.metricsCollector.recordCompletion(request);
+            this.recordTopLevelCompletion(request);
           }
           this.notifySourceOfTerminal(request);
         }
@@ -681,7 +798,7 @@ export class SimulationEngine {
       } else {
         this.scheduleSubRequestSettled(request, event.timestamp);
       }
-      this.metricsCollector.recordCompletion(request);
+      this.recordTopLevelCompletion(request);
     }
   }
 
@@ -774,9 +891,14 @@ export class SimulationEngine {
     if (request.parentRequestId) return;
 
     request.completedAt = event.timestamp;
+    // The round trip ends where it started — record the source's matching
+    // departure so the generator's Little's Law λ/W pair is meaningful.
+    // (The analysis-aggregate departure is already emitted by
+    // recordTerminalStatus below; only the accumulator pair needs adding.)
+    this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
     this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
     this.markRequestDone(request.id);
-    this.metricsCollector.recordCompletion(request);
+    this.recordTopLevelCompletion(request);
 
     // Notify the emitting source node (Scheduler overlap tracking)
     this.notifySourceOfTerminal(request);
@@ -810,13 +932,32 @@ export class SimulationEngine {
     const branch = this.requests.get(event.requestId);
     if (!branch) return;
 
+    // A branch the parent already discarded (a sibling failed first) is unread
+    // garbage — its settle event just confirms it can be evicted.
+    if (branch.isDiscarded) {
+      this.requests.delete(branch.id);
+      return;
+    }
+
     const parent = branch.parentRequestId ? this.requests.get(branch.parentRequestId) : undefined;
-    if (!parent) return;
+    if (!parent) {
+      // Orphaned: the parent was evicted after all its branches settled or it
+      // terminated via failure mapping. Nothing can consume this settlement.
+      this.requests.delete(branch.id);
+      return;
+    }
 
     // If branch was discarded (sibling failed first), ignore
     if (branch.isDiscarded) return;
 
     const result = settleBranch(branch, parent, this.requests, event.timestamp);
+
+    // The branch has been fully consumed by settlement — evict it unless the DLQ
+    // still holds it for redrive (a redriven branch settles again later and is
+    // garbage-collected then, since its parent will be gone by that point).
+    if (branch.status !== RequestStatus.DeadLettered) {
+      this.requests.delete(branch.id);
+    }
 
     if (result.parentTerminated) {
       // Check if parent is at an Auth or Authz node — delegate to processor
@@ -943,7 +1084,7 @@ export class SimulationEngine {
           this.metricsCollector.recordBranchTermination(request);
         } else {
           this.markRequestDone(request.id);
-          this.metricsCollector.recordCompletion(request);
+          this.recordTopLevelCompletion(request);
         }
         this.notifySourceOfTerminal(request);
       } else if (postStatus === RequestStatus.Success) {
@@ -975,7 +1116,7 @@ export class SimulationEngine {
           this.metricsCollector.recordBranchTermination(request);
         } else {
           this.markRequestDone(request.id);
-          this.metricsCollector.recordCompletion(request);
+          this.recordTopLevelCompletion(request);
         }
         this.notifySourceOfTerminal(request);
       } else if (postStatus2 === RequestStatus.Success) {
@@ -1012,7 +1153,7 @@ export class SimulationEngine {
             this.metricsCollector.recordBranchTermination(request);
           } else {
             this.markRequestDone(request.id);
-            this.metricsCollector.recordCompletion(request);
+            this.recordTopLevelCompletion(request);
           }
         } else if (request.status === RequestStatus.Success) {
           // Success is handled by the routing — response traversal is triggered by RequestRoute
@@ -1043,13 +1184,24 @@ export class SimulationEngine {
           this.metricsCollector.recordBranchTermination(request);
         } else {
           this.markRequestDone(request.id);
-          this.metricsCollector.recordCompletion(request);
+          this.recordTopLevelCompletion(request);
         }
       }
     }
   }
 
   // ─── DLQ/ObjectStore/Scheduler Event Handlers ────────────────
+
+  private handleLbHealthCheck(event: SimEvent): void {
+    const state = this.nodeStates.get(event.nodeId);
+    if (state) {
+      (state.processor as LoadBalancerProcessor).onHealthCheck(
+        event.nodeId,
+        event.timestamp,
+        this.getProcessorContext(),
+      );
+    }
+  }
 
   private handleDlqRedrive(event: SimEvent): void {
     const state = this.nodeStates.get(event.nodeId);
@@ -1077,7 +1229,7 @@ export class SimulationEngine {
           this.metricsCollector.recordBranchTermination(request);
         } else {
           this.markRequestDone(request.id);
-          this.metricsCollector.recordCompletion(request);
+          this.recordTopLevelCompletion(request);
         }
         this.notifySourceOfTerminal(request);
       }
@@ -1094,6 +1246,7 @@ export class SimulationEngine {
       for (const jobId of processor.lastEmittedIds) {
         const req = this.requests.get(jobId);
         if (!req) continue;
+        this.topLevelCreated++;
 
         if (req.status === RequestStatus.NoRoute) {
           // NO_ROUTE Job — register and immediately complete
@@ -1101,7 +1254,7 @@ export class SimulationEngine {
           this.inFlightCount++;
           this.recordTerminalStatus(event.nodeId, RequestStatus.NoRoute, req);
           this.markRequestDone(req.id);
-          this.metricsCollector.recordCompletion(req);
+          this.recordTopLevelCompletion(req);
           this.notifySourceOfTerminal(req);
         } else {
           // In-flight Job — register in the in-flight counter
@@ -1140,7 +1293,7 @@ export class SimulationEngine {
           this.inFlightCount++;
           this.recordTerminalStatus(request.emittedByNodeId, RequestStatus.NoRoute, req);
           this.markRequestDone(req.id);
-          this.metricsCollector.recordCompletion(req);
+          this.recordTopLevelCompletion(req);
           // Don't recursively call notifySourceOfTerminal for NO_ROUTE Jobs
           // since the outstanding set is already empty at this point
         } else {
@@ -1214,6 +1367,19 @@ export class SimulationEngine {
   }
 
   private handleMetricsSnapshot(): void {
+    // A zero-width window (the completion path can re-enter right after a
+    // scheduled snapshot at the same virtual instant) would emit an all-zeros
+    // batch that overwrites the last meaningful readings on the dashboard.
+    // Skip the batch itself; log flushing below still runs.
+    const elapsedSinceLastSnapshot = this.virtualClockMs - this.lastSnapshotTime;
+    if (this.lastSnapshotTime > 0 && elapsedSinceLastSnapshot <= 0) {
+      if (this.pendingLogEntries.length > 0) {
+        this.onEventLog?.(this.pendingLogEntries);
+        this.pendingLogEntries = [];
+      }
+      return;
+    }
+
     this.updateInFlightWeightedSum();
     const windowDuration = this.virtualClockMs - this.lastSnapshotTime;
     // Keep one decimal place: low-traffic topologies have a true average well
@@ -1414,6 +1580,18 @@ export class SimulationEngine {
     for (const node of nodes) {
       if (node.nodeType === NodeType.TrafficGenerator) {
         const processor = this.nodeStates.get(node.id)?.processor as TrafficGeneratorProcessor;
+        const rps = (node.config as unknown as Record<string, unknown>)['rps'];
+        if (typeof rps !== 'number' || !Number.isFinite(rps) || rps <= 0) {
+          // A generator without a usable RPS would silently generate nothing —
+          // the exact "dashboard shows zeros" failure users cannot diagnose.
+          this.pendingLogEntries.push({
+            id: this.eventCounter,
+            timestamp: 0,
+            type: 'CONFIG_WARNING',
+            nodeId: node.id,
+            message: `${node.label}: RPS is missing or invalid (${String(rps)}) — no traffic will be generated.`,
+          });
+        }
         processor.scheduleNextArrival(node.id, 0, this.getProcessorContext());
       }
       // Schedule first trigger from each Scheduler
@@ -1444,6 +1622,49 @@ export class SimulationEngine {
   }
 
   /**
+   * Single funnel for top-level termination accounting: metrics collection,
+   * whole-run summary counters, and map eviction of the finished request.
+   * Every `metricsCollector.recordCompletion` call for a non-branch request
+   * goes through here (branch terminations use recordBranchTermination instead).
+   */
+  private recordTopLevelCompletion(request: SimRequest): void {
+    this.metricsCollector.recordCompletion(request);
+    this.topLevelTerminated++;
+    if (request.status === RequestStatus.Success) {
+      this.topLevelSuccesses++;
+      this.topLevelSuccessLatencySumMs += request.accumulatedLatencyMs;
+    }
+    if (this.sweepRecorder) {
+      const status = request.status as TerminalStatus;
+      const emitterType = this.nodeConfigs.get(request.emittedByNodeId)?.nodeType;
+      this.sweepRecorder(
+        request.accumulatedLatencyMs,
+        status,
+        FAILURE_CLASS_OF[status] !== null,
+        emitterType === NodeType.Scheduler,
+        this.virtualClockMs,
+      );
+    }
+    this.evictIfDisposable(request);
+  }
+
+  /**
+   * Remove a finished request from the live map once nothing can reference it
+   * by id anymore. Retained on purpose:
+   *   - branches — evicted when their SubRequestSettled event is consumed;
+   *   - DeadLettered Jobs — the DLQ holds them for a possible redrive;
+   *   - parents with outstanding branch ids — settlement reads them by id.
+   */
+  private evictIfDisposable(request: SimRequest): void {
+    if (request.parentRequestId) return;
+    if (request.status === RequestStatus.DeadLettered) return;
+    if (request.pendingBranchIds && request.pendingBranchIds.size > 0) return;
+    this.requests.delete(request.id);
+    // countedAsComplete entries live exactly as long as their request object.
+    this.countedAsComplete.delete(request.id);
+  }
+
+  /**
    * Task 339 — inverse of markRequestDone for DLQ Redrive.
    * Returns a dead-lettered Job to InFlight.
    */
@@ -1451,6 +1672,9 @@ export class SimulationEngine {
     if (!this.countedAsComplete.delete(requestId)) return;
     this.updateInFlightWeightedSum();
     this.inFlightCount++;
+    // The redriven Job terminates again after its new attempt; reverse the
+    // DeadLettered termination so run-summary counts stay unique-per-request.
+    this.topLevelTerminated = Math.max(0, this.topLevelTerminated - 1);
   }
 
   /**
@@ -1479,7 +1703,7 @@ export class SimulationEngine {
     } else {
       // Parent or top-level request
       this.markRequestDone(request.id);
-      this.metricsCollector.recordCompletion(request);
+      this.recordTopLevelCompletion(request);
     }
 
     // Notify the emitting source node (Scheduler overlap tracking)
@@ -1637,6 +1861,25 @@ export class SimulationEngine {
         this.metricsCollector.recordDeparture(nodeId, requestId, timestamp);
         this.metricsCollector.recordAnalysisDeparture(nodeId);
       },
+      markTerminal: (
+        request: SimRequest,
+        status: TerminalStatus,
+        nodeId: string,
+        timestamp: number,
+      ) => {
+        if (request.status !== RequestStatus.InFlight) return;
+        request.status = status;
+        request.completedAt = timestamp;
+        this.recordTerminalStatus(nodeId, status, request);
+        if (request.parentRequestId) {
+          this.scheduleSubRequestSettled(request, timestamp);
+          this.metricsCollector.recordBranchTermination(request);
+        } else {
+          this.markRequestDone(request.id);
+          this.recordTopLevelCompletion(request);
+        }
+        this.notifySourceOfTerminal(request);
+      },
       unmarkRequestDone: (requestId) => this.unmarkRequestDone(requestId),
       getRequestMap: () => this.requests,
       getNextRequestId: () => `req-${this.requestCounter++}`,
@@ -1652,27 +1895,24 @@ export class SimulationEngine {
     }
 
     const wallClockMs = Date.now() - this.startWallTime;
-    const allRequests = [...this.requests.values()];
-    // Only count non-branch requests for system-wide summary
-    const topLevelRequests = allRequests.filter((r) => !r.parentRequestId);
-    const successful = topLevelRequests.filter((r) => r.status === RequestStatus.Success);
-    const totalLatency = successful.reduce((sum, r) => sum + r.accumulatedLatencyMs, 0);
-    // Task 341: report unfinished In_Flight count
-    const unfinishedCount = topLevelRequests.filter(
-      (r) => r.status === RequestStatus.InFlight,
-    ).length;
+    // Summary comes from the whole-run counters, not the map — evicted terminal
+    // requests no longer exist here, and that is what keeps long runs bounded.
+    const totalRequests = this.topLevelCreated;
+    // Task 341: report unfinished In_Flight count (never terminated)
+    const unfinishedCount = Math.max(0, totalRequests - this.topLevelTerminated);
+    const finishedCount = totalRequests - unfinishedCount;
+    const successful = this.topLevelSuccesses;
 
     this.onComplete?.({
       totalEvents: this.eventCounter,
-      totalRequests: topLevelRequests.length,
-      successRate:
-        topLevelRequests.length > 0
-          ? successful.length / (topLevelRequests.length - unfinishedCount || 1)
-          : 0,
-      avgEndToEndLatencyMs: successful.length > 0 ? totalLatency / successful.length : 0,
+      totalRequests,
+      successRate: finishedCount > 0 ? successful / finishedCount : 0,
+      avgEndToEndLatencyMs: successful > 0 ? this.topLevelSuccessLatencySumMs / successful : 0,
       simulatedDurationMs: this.virtualClockMs,
       wallClockDurationMs: wallClockMs,
       eventsPerSecond: wallClockMs > 0 ? (this.eventCounter / wallClockMs) * 1000 : 0,
+      seed: this.config.seed,
+      wholeRun: this.metricsCollector.getWholeRunAggregates(this.virtualClockMs),
     });
   }
 

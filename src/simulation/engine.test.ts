@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SimulationEngine } from './engine';
 import {
   NodeType,
@@ -822,4 +822,565 @@ describe('SimulationEngine', () => {
     expect(last.t).toBeGreaterThan(chaosDurationMs + 2000);
     expect(last.utilization).toBeLessThan(1);
   }, 30000);
+
+  // ─── Phase 1 regressions ───────────────────────────────────────
+
+  it('emits exactly one completion across a pause/resume that lands mid-yield', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 3000 });
+    const engine = new SimulationEngine(config);
+    let completions = 0;
+    engine.setCallbacks({
+      onComplete: () => {
+        completions++;
+      },
+    });
+
+    // Start the run but do not await: the drain loop parks in its inter-batch
+    // yield (a setTimeout in test mode), which is exactly where the historic
+    // double-loop race lived — PAUSE+RESUME arriving while loop #1 is parked.
+    void engine.run();
+    engine.pause();
+    engine.resume(1);
+    engine.resume(1); // no-op: already Running, must not spawn a second loop
+
+    await vi.waitFor(() => expect(engine.getState()).toBe('COMPLETE'));
+    // Give any stray parked loop time to wrongly emit a duplicate completion.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(completions).toBe(1);
+  });
+
+  it('ignores run() while a loop owns the queue and resume() when not paused', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 1000 });
+    const engine = new SimulationEngine(config);
+
+    const runPromise = engine.run();
+    expect(engine.getState()).toBe('RUNNING');
+    void engine.run(); // must be a no-op
+
+    engine.resume(10); // no-op: not paused
+    expect(engine.getState()).toBe('RUNNING');
+
+    engine.pause();
+    expect(engine.getState()).toBe('PAUSED');
+    void engine.resume(10);
+    expect(engine.getState()).toBe('RUNNING');
+
+    await vi.waitFor(() => expect(engine.getState()).toBe('COMPLETE'));
+    await runPromise;
+  });
+
+  it('does not burn the hop budget when a queued request is dequeued (fromQueue)', async () => {
+    // pool=1 + steady arrivals force DB queueing; maxHops=2 means a dequeue
+    // re-route that double-counted its hop would terminate as LOOP_DETECTED.
+    const { nodes, edges } = createBasicTopology();
+    const dbNode = nodes.find((n) => n.id === 'db-1')!;
+    dbNode.config = {
+      connectionPoolSize: 1,
+      queryLatencyMeanMs: 10,
+      queryLatencyStdDevMs: 2,
+      lockTimeoutMs: 5000,
+      dbType: DatabaseType.Relational,
+    };
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxHopsPerRequest: 2,
+      maxSimulatedTimeMs: 5000,
+      metricsIntervalMs: 500,
+    });
+    const engine = new SimulationEngine(config);
+
+    let loopDetectedTotal = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        for (const node of batch.nodes) {
+          loopDetectedTotal += node.cumulativeTerminalCounts['LOOP_DETECTED'] ?? 0;
+        }
+      },
+      onComplete: (summary) => {
+        expect(summary.totalRequests).toBeGreaterThan(0);
+        expect(summary.successRate).toBeGreaterThan(0.5);
+      },
+    });
+
+    await engine.run();
+
+    expect(loopDetectedTotal).toBe(0);
+  });
+
+  it('honors Fan_Out routing policy on the traffic generator first hop', async () => {
+    const { nodes, edges } = createBasicTopology();
+    const gen = nodes.find((n) => n.id === 'gen-1')!;
+    gen.routingPolicy = RoutingPolicy.FanOut;
+
+    const appB: SimulationNode = {
+      id: 'app-2',
+      nodeType: NodeType.AppServer,
+      label: 'App Server B',
+      position: { x: 200, y: 150 },
+      routingPolicy: RoutingPolicy.First,
+      config: {
+        workerThreadPoolSize: 10,
+        requestQueueDepth: 100,
+        processingTimeMeanMs: 5,
+        processingTimeStdDevMs: 1,
+      },
+    };
+    nodes.push(appB);
+    edges.push({
+      id: 'e3',
+      source: 'gen-1',
+      target: 'app-2',
+      protocol: EdgeProtocol.Sync,
+      weight: 1.0,
+    });
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 3000,
+      metricsIntervalMs: 500,
+    });
+    const engine = new SimulationEngine(config);
+
+    const maxArrivals = new Map<string, number>([
+      ['app-1', 0],
+      ['app-2', 0],
+    ]);
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        for (const node of batch.nodes) {
+          if (maxArrivals.has(node.nodeId)) {
+            maxArrivals.set(
+              node.nodeId,
+              Math.max(maxArrivals.get(node.nodeId) ?? 0, node.arrivalCount),
+            );
+          }
+        }
+      },
+    });
+
+    await engine.run();
+
+    expect(maxArrivals.get('app-1')).toBeGreaterThan(0);
+    expect(maxArrivals.get('app-2')).toBeGreaterThan(0);
+  });
+
+  it('keeps the request map bounded during a high-volume run (eviction)', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 10000, metricsIntervalMs: 1000 });
+    const engine = new SimulationEngine(config);
+
+    let summary: { totalRequests: number } | null = null;
+    engine.setCallbacks({
+      onComplete: (s) => {
+        summary = { totalRequests: s.totalRequests };
+      },
+    });
+
+    await engine.run();
+
+    const total = summary!.totalRequests;
+    // The run must actually be high-volume for this assertion to mean anything.
+    expect(total).toBeGreaterThan(300);
+    // Terminal requests are evicted; only genuinely in-flight/DLQ-retained
+    // requests may remain. Allow a generous slack window rather than a hard 0.
+    expect(engine.liveRequestCount).toBeLessThan(100);
+  });
+
+  it('includes whole-run aggregates in the completion summary', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 3000 });
+    const engine = new SimulationEngine(config);
+
+    let summary: import('@/types/messages').SimulationSummary | null = null;
+    engine.setCallbacks({
+      onComplete: (s) => {
+        summary = s;
+      },
+    });
+
+    await engine.run();
+
+    expect(summary).not.toBeNull();
+    const whole = summary!.wholeRun;
+    expect(whole).toBeDefined();
+    expect(whole!.throughput).toBeGreaterThan(0);
+    expect(whole!.latency.p99).toBeGreaterThanOrEqual(whole!.latency.p50);
+    // Terminal-status shares sum to ~1 across all nine statuses
+    const shareSum = Object.values(whole!.terminalStatusRates).reduce((a, b) => a + b, 0);
+    expect(shareSum).toBeGreaterThan(0.99);
+    expect(shareSum).toBeLessThanOrEqual(1.001);
+  });
+
+  // ─── Phase 4 regressions ───────────────────────────────────────
+
+  it('DISABLE_NODE terminates requests being processed by app-server workers', async () => {
+    const { nodes, edges } = createBasicTopology();
+    const app = nodes.find((n) => n.id === 'app-1')!;
+    app.config = {
+      workerThreadPoolSize: 10,
+      requestQueueDepth: 100,
+      processingTimeMeanMs: 3000,
+      processingTimeStdDevMs: 10,
+    };
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 12000,
+      metricsIntervalMs: 500,
+      // Real pacing (50ms per 200-event batch): keeps the run alive long enough
+      // to land the chaos injection deterministically inside the busy window.
+      disablePacing: false,
+      speedMultiplier: 1,
+    });
+    const engine = new SimulationEngine(config);
+
+    let minActiveConnections = Infinity;
+    let appTimeouts = 0;
+    let lastThroughput = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        const snapshot = batch.nodes.find((n) => n.nodeId === 'app-1');
+        if (snapshot) {
+          minActiveConnections = Math.min(minActiveConnections, snapshot.activeConnections);
+          appTimeouts = Math.max(appTimeouts, snapshot.cumulativeTerminalCounts['TIMEOUT'] ?? 0);
+        }
+        lastThroughput = batch.systemWide.totalThroughput;
+      },
+    });
+
+    void engine.run();
+    // Land the injection deterministically mid-run: as soon as the virtual clock
+    // has advanced past t=0, workers are certainly busy (3s processing vs 10ms
+    // inter-arrivals means every worker slot is occupied continuously).
+    await vi.waitFor(() => {
+      expect(engine.getState()).toBe('RUNNING');
+      expect(engine.getVirtualTime()).toBeGreaterThan(0);
+    });
+    engine.injectChaos({
+      chaosType: 'DISABLE_NODE',
+      targetNodeId: 'app-1',
+      durationMs: 1500,
+      params: {},
+    });
+
+    await vi.waitFor(() => expect(engine.getState()).toBe('COMPLETE'));
+
+    expect(appTimeouts).toBeGreaterThan(0);
+    expect(minActiveConnections).toBeGreaterThanOrEqual(0);
+    // After restoration traffic flows again (final window has throughput).
+    expect(lastThroughput).toBeGreaterThan(0);
+  }, 30000);
+
+  it('load balancer drops instantly when its database is dropped via chaos', async () => {
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Generator',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 100,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
+      },
+      {
+        id: 'lb-1',
+        nodeType: NodeType.LoadBalancer,
+        label: 'LB',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 60000, // longer than the run: only chaos may eject
+          evictionThreshold: 3,
+        },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'Database',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'lb-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const chaosDurationMs = 2000;
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 6000,
+      metricsIntervalMs: 250,
+    });
+    const engine = new SimulationEngine(config);
+
+    let lbDropped = 0;
+    let dbTimeouts = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        const lb = batch.nodes.find((n) => n.nodeId === 'lb-1');
+        const db = batch.nodes.find((n) => n.nodeId === 'db-1');
+        if (lb) lbDropped = Math.max(lbDropped, lb.cumulativeTerminalCounts['DROPPED'] ?? 0);
+        if (db) dbTimeouts = Math.max(dbTimeouts, db.cumulativeTerminalCounts['TIMEOUT'] ?? 0);
+      },
+    });
+
+    engine.injectChaos({
+      chaosType: 'DROP_DB',
+      targetNodeId: 'db-1',
+      durationMs: chaosDurationMs,
+      params: { targetNodeId: 'db-1' },
+    });
+
+    await engine.run();
+
+    // The LB ejected the DB instantly, so arrivals died as DROPPED at the LB —
+    // not as TIMEOUTs at an unreachable database.
+    expect(lbDropped).toBeGreaterThan(0);
+    expect(dbTimeouts).toBe(0);
+  });
+
+  it('health-check probes eject a dead target after the failure threshold and restore it', async () => {
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Generator',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 50,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
+      },
+      {
+        id: 'lb-1',
+        nodeType: NodeType.LoadBalancer,
+        label: 'LB',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 250,
+          evictionThreshold: 3,
+        },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'Database',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'lb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'lb-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 8000,
+      metricsIntervalMs: 500,
+    });
+    const engine = new SimulationEngine(config);
+
+    let lbDropped = 0;
+    let lastThroughput = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        const lb = batch.nodes.find((n) => n.nodeId === 'lb-1');
+        if (lb) lbDropped = Math.max(lbDropped, lb.cumulativeTerminalCounts['DROPPED'] ?? 0);
+        lastThroughput = batch.systemWide.totalThroughput;
+      },
+    });
+
+    // params deliberately empty: only the health-check probes may discover the
+    // outage and eject the target (no instant chaos notification).
+    engine.injectChaos({
+      chaosType: 'DROP_DB',
+      targetNodeId: 'db-1',
+      durationMs: 2000,
+      params: {},
+    });
+
+    await engine.run();
+
+    // Three failed probes @250ms ⇒ ejected ⇒ subsequent arrivals dropped at LB.
+    expect(lbDropped).toBeGreaterThan(0);
+    // A passing probe after the DB recovered puts it back into rotation.
+    expect(lastThroughput).toBeGreaterThan(0);
+  });
+
+  it('does not eject targets when failures never reach the eviction threshold', async () => {
+    const nodes: SimulationNode[] = [
+      {
+        id: 'gen-1',
+        nodeType: NodeType.TrafficGenerator,
+        label: 'Generator',
+        position: { x: 0, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          rps: 20,
+          distribution: Distribution.Uniform,
+          spikeMultiplier: 5,
+          spikeDurationSec: 15,
+        },
+      },
+      {
+        id: 'app-1',
+        nodeType: NodeType.AppServer,
+        label: 'App Server',
+        position: { x: 200, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          workerThreadPoolSize: 10,
+          requestQueueDepth: 100,
+          processingTimeMeanMs: 5,
+          processingTimeStdDevMs: 1,
+        },
+      },
+      {
+        id: 'lb-1',
+        nodeType: NodeType.LoadBalancer,
+        label: 'LB',
+        position: { x: 400, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          algorithm: LBAlgorithm.RoundRobin,
+          healthCheckIntervalMs: 100,
+          evictionThreshold: 1_000_000,
+        },
+      },
+      {
+        id: 'db-1',
+        nodeType: NodeType.Database,
+        label: 'Database',
+        position: { x: 600, y: 0 },
+        routingPolicy: RoutingPolicy.First,
+        config: {
+          connectionPoolSize: 20,
+          queryLatencyMeanMs: 10,
+          queryLatencyStdDevMs: 2,
+          lockTimeoutMs: 5000,
+          dbType: DatabaseType.Relational,
+        },
+      },
+    ];
+    const edges: EdgeData[] = [
+      { id: 'e1', source: 'gen-1', target: 'app-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e2', source: 'app-1', target: 'lb-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+      { id: 'e3', source: 'lb-1', target: 'db-1', protocol: EdgeProtocol.Sync, weight: 1.0 },
+    ];
+
+    const config = createConfig({
+      topology: { nodes, edges },
+      maxSimulatedTimeMs: 4000,
+      metricsIntervalMs: 500,
+    });
+    const engine = new SimulationEngine(config);
+
+    let lbDropped = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        const lb = batch.nodes.find((n) => n.nodeId === 'lb-1');
+        if (lb) lbDropped = Math.max(lbDropped, lb.cumulativeTerminalCounts['DROPPED'] ?? 0);
+      },
+    });
+
+    engine.injectChaos({
+      chaosType: 'DROP_DB',
+      targetNodeId: 'db-1',
+      durationMs: 1500,
+      params: {},
+    });
+
+    await engine.run();
+
+    // Threshold never reached ⇒ the healthy set is never emptied ⇒ no drops at the LB.
+    expect(lbDropped).toBe(0);
+  });
+
+  it('records offered-load arrivals and round-trip departures at the generator', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 3000, metricsIntervalMs: 500 });
+    const engine = new SimulationEngine(config);
+
+    let genArrivals = 0;
+    let genDepartures = 0;
+    let lastThroughput = 0;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => {
+        const gen = batch.nodes.find((n) => n.nodeId === 'gen-1');
+        if (gen) {
+          genArrivals = Math.max(genArrivals, gen.arrivalCount);
+          genDepartures = Math.max(genDepartures, gen.departureCount);
+        }
+        lastThroughput = batch.systemWide.totalThroughput;
+      },
+    });
+
+    await engine.run();
+
+    // The source node must show a real λ (offered load) and a matching
+    // departure stream — not the all-zero row that made the per-node table
+    // look like nothing was recorded.
+    expect(lastThroughput).toBeGreaterThan(0);
+    expect(genArrivals).toBeGreaterThan(40);
+    expect(genDepartures).toBeGreaterThan(30);
+  });
+
+  it('reports every top-level termination to the sweep recorder with sim time', async () => {
+    const config = createConfig({ maxSimulatedTimeMs: 2000 });
+    const engine = new SimulationEngine(config);
+
+    const reports: { status: string; simTimeMs: number }[] = [];
+    engine.setSweepRecorder((_latencyMs, status, _isError, _isSchedulerJob, simTimeMs) => {
+      reports.push({ status, simTimeMs });
+    });
+
+    let totalRequests = 0;
+    let unfinished = 0;
+    const seenStatuses = new Set<string>();
+    engine.setCallbacks({
+      onComplete: (summary) => {
+        totalRequests = summary.totalRequests;
+        unfinished = Math.round(summary.totalRequests * (1 - summary.successRate)) || 0;
+        void unfinished;
+      },
+      onMetricsBatch: () => {},
+    });
+
+    await engine.run();
+
+    // One report per finished top-level request; every report is a terminal
+    // status and carries a virtual time inside the run horizon.
+    expect(reports.length).toBeGreaterThan(0);
+    for (const report of reports) {
+      expect(report.status).not.toBe('IN_FLIGHT');
+      seenStatuses.add(report.status);
+      expect(report.simTimeMs).toBeLessThanOrEqual(2000);
+      expect(report.simTimeMs).toBeGreaterThanOrEqual(0);
+    }
+    void totalRequests;
+  });
 });

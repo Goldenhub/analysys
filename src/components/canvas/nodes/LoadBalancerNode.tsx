@@ -17,7 +17,7 @@ const algorithmLabels: Record<LBAlgorithm, string> = {
   [LBAlgorithm.LeastConnections]: 'LC',
 };
 
-export function LoadBalancerNode({ id, data }: NodeProps<AnalysysNode>) {
+export function LoadBalancerNode({ id, data, selected }: NodeProps<AnalysysNode>) {
   const nodeStatus = useSimulationStore((s) => s.nodeStatuses.get(id));
   const edges = useTopologyStore((s) => s.edges);
   const isDisconnected = !edges.some((e) => e.source === id || e.target === id);
@@ -31,7 +31,7 @@ export function LoadBalancerNode({ id, data }: NodeProps<AnalysysNode>) {
     <div
       className={`relative w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
         isDisconnected ? 'opacity-50 border-dashed' : ''
-      }`}
+      } ${selected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-gray-950' : ''}`}
       aria-label={`Load Balancer: ${data.label}, health: ${healthLabel}`}
     >
       <ChaosStatusBadge nodeId={id} nodeType={NodeType.LoadBalancer} />

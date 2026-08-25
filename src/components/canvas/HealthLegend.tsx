@@ -3,7 +3,7 @@
 
 export function HealthLegend() {
   return (
-    <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-gray-700 bg-gray-900/90 px-3 py-2 shadow-lg backdrop-blur-sm">
+    <div className="absolute bottom-16 left-3 z-10 rounded-lg border border-gray-700 bg-gray-900/90 px-3 py-2 shadow-lg backdrop-blur-sm">
       <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-400">
         Node Health
       </span>

@@ -13,7 +13,7 @@ export interface SpofListProps {
   /** SPOF Findings from the analysis engine. */
   spofFindings: Finding[];
   /** Nodes excluded from SPOF candidacy with reasons. */
-  exclusions: ExcludedNode[];
+  exclusions?: ExcludedNode[];
   /** Raw SPOF designations for additional detail. */
   spofDesignations?: SpofDesignation[];
   /** Topology node labels for display. */
@@ -24,7 +24,7 @@ export interface SpofListProps {
 
 export function SpofList({
   spofFindings,
-  exclusions,
+  exclusions = [],
   spofDesignations = [],
   nodeLabels,
 }: SpofListProps) {

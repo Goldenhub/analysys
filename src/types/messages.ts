@@ -41,6 +41,7 @@ export type MainToWorkerMessage =
   | { type: 'START'; payload: { speedMultiplier: number } }
   | { type: 'PAUSE' }
   | { type: 'RESUME'; payload: { speedMultiplier: number } }
+  | { type: 'UPDATE_SPEED'; payload: { speedMultiplier: number } }
   | { type: 'RESET' }
   | { type: 'CHAOS_EVENT'; payload: ChaosEventPayload }
   | { type: 'UPDATE_CONFIG'; payload: { nodeId: string; config: Record<string, unknown> } }
@@ -64,6 +65,8 @@ export interface SweepStepRequest {
   speedMultiplier: number;
   /** Seed for deterministic PRNG. */
   seed: number;
+  /** Service objective used to compute the step's pass/fail verdict. */
+  objective: { maxP99LatencyMs: number; maxErrorRate: number };
 }
 
 // ─── Worker → Main Thread Messages ──────────────────────────────
@@ -85,6 +88,18 @@ export interface SimulationSummary {
   simulatedDurationMs: number;
   wallClockDurationMs: number;
   eventsPerSecond: number;
+  /** The PRNG seed this run was driven with (reproducibility). */
+  seed: number;
+  /** Whole-run aggregates captured from the run-cumulative accumulator. */
+  wholeRun?: {
+    latency: { p50: number; p90: number; p99: number };
+    /** Successes per second over the full simulated duration. */
+    throughput: number;
+    /** Non-success terminations over total terminations. */
+    errorRate: number;
+    /** Per terminal-status share of all terminations. */
+    terminalStatusRates: Record<string, number>;
+  };
 }
 
 export type WorkerToMainMessage =

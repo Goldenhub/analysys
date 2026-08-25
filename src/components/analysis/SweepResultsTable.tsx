@@ -1,4 +1,6 @@
 import type { SweepStepResult } from '@/analysis/CapacitySweepController';
+import { downloadTextFile } from '@/utils/download';
+import { toCsv } from '@/utils/csv';
 
 // ─── Terminal Status Names ───────────────────────────────────────
 
@@ -33,8 +35,51 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
     return <p className="text-xs text-gray-500 italic">No sweep results available.</p>;
   }
 
+  const exportCsv = () => {
+    const csv = toCsv(
+      [
+        'step',
+        'requested_rps',
+        'applied_rps',
+        'throughput_req_s',
+        'p50_ms',
+        'p90_ms',
+        'p99_ms',
+        'error_rate_pct',
+        ...TERMINAL_STATUSES.map((s) => s.toLowerCase()),
+        'interval_start_ms',
+        'interval_end_ms',
+        'verdict',
+      ],
+      steps.map((step) => [
+        step.stepIndex + 1,
+        step.requestedRps,
+        step.appliedRps,
+        step.achievedThroughput.toFixed(2),
+        step.latency.p50.toFixed(2),
+        step.latency.p90.toFixed(2),
+        step.latency.p99.toFixed(2),
+        (step.totalErrorRate * 100).toFixed(2),
+        ...TERMINAL_STATUSES.map((s) => step.terminalCounts[s] ?? 0),
+        step.measurementInterval.startMs,
+        step.measurementInterval.endMs,
+        step.verdict,
+      ]),
+    );
+    downloadTextFile(csv, 'analysys-sweep.csv', 'text/csv');
+  };
+
   return (
     <div className="overflow-x-auto">
+      <div className="mb-1 flex justify-end">
+        <button
+          onClick={exportCsv}
+          className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100"
+          title="Download all sweep steps as CSV"
+        >
+          Export steps CSV
+        </button>
+      </div>
       <table
         aria-label="Capacity sweep results"
         className="w-full text-[10px] border-collapse whitespace-nowrap"

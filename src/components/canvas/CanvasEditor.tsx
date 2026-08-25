@@ -21,6 +21,8 @@ import { createDefaultNodeData } from '@/types/nodeDefaults';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import { validateEdgeConnection, getValidProtocols } from '@/validation';
+import { detectCycles } from '@/validation/cycleDetection';
+import { showToast } from '@/components/ui/toastStore';
 
 import {
   TrafficGeneratorNode,
@@ -43,10 +45,12 @@ import { SyncEdge, AsyncEdge } from './edges';
 import { HealthLegend } from './HealthLegend';
 import {
   SubsystemGroupNode,
+  SubsystemGroupFrameNode,
   MergedBoundaryEdge,
   GroupToolbar,
   useCollapsedTopologyView,
   SUBSYSTEM_GROUP_NODE_TYPE,
+  SUBSYSTEM_GROUP_FRAME_NODE_TYPE,
   MERGED_BOUNDARY_EDGE_TYPE,
 } from './groups';
 
@@ -69,6 +73,7 @@ const nodeTypes: NodeTypes = {
   [NodeType.ObjectStore]: ObjectStoreNode,
   [NodeType.Scheduler]: SchedulerNode,
   [SUBSYSTEM_GROUP_NODE_TYPE]: SubsystemGroupNode,
+  [SUBSYSTEM_GROUP_FRAME_NODE_TYPE]: SubsystemGroupFrameNode,
 };
 
 // ─── Custom Edge Type Registry ───────────────────────────────────
@@ -156,8 +161,26 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         nodesById,
       );
       if (!result.valid) {
-        // Could surface this to the user via toast/notification in the future
+        showToast(`Connection rejected: ${result.reason}`);
         console.warn('Connection rejected:', result.reason);
+        return;
+      }
+
+      // Reject connections that would introduce a routing cycle (the engine
+      // would only catch this at runtime via maxHops → LOOP_DETECTED).
+      const candidateEdge: EdgeData = {
+        id: 'candidate',
+        source: connection.source,
+        target: connection.target,
+        protocol: defaultProtocol,
+        weight: 1.0,
+      };
+      const cycles = detectCycles(
+        storeNodes.map((n) => n.data as SimulationNode),
+        [...existingEdgeData, candidateEdge],
+      );
+      if (cycles.length > 0) {
+        showToast('Connection rejected: this edge would create a routing cycle.');
         return;
       }
 
@@ -299,11 +322,11 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         deleteKeyCode={null} // We handle delete ourselves
         className="bg-gray-950"
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--color-gray-700)" />
         <Controls className="!bg-gray-800 !border-gray-700 [&>button]:!bg-gray-800 [&>button]:!border-gray-700 [&>button]:!text-gray-300 [&>button:hover]:!bg-gray-700" />
         <MiniMap
           className="!bg-gray-900 !border-gray-700"
-          nodeColor={() => '#6b7280'}
+          nodeColor={() => 'var(--color-gray-500)'}
           maskColor="rgba(0, 0, 0, 0.7)"
         />
         <HealthLegend />

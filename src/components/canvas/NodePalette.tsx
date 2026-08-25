@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NodeType } from '@/types/nodes';
 import { useTopologyStore } from '@/store/topologyStore';
 import type { AnalysysNode } from '@/types/nodes';
 import { createDefaultNodeData } from '@/types/nodeDefaults';
-import { CONNECTION_RULES } from '@/validation/edgeValidation';
+import { CONNECTION_RULES, getValidProtocols } from '@/validation/edgeValidation';
+import { EdgeProtocol } from '@/types/edges';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─── Palette Item Definition ─────────────────────────────────────
 
@@ -288,21 +291,36 @@ function DeadLetterQueueIcon() {
 // ─── Node Descriptions ───────────────────────────────────────────
 
 const NODE_DESCRIPTIONS: Record<NodeType, string> = {
-  [NodeType.TrafficGenerator]: 'Generates incoming requests at a configurable rate and distribution. Acts as the entry point for simulated traffic.',
-  [NodeType.Scheduler]: 'Emits requests on a periodic schedule with configurable overlap policies. Useful for batch job patterns.',
-  [NodeType.ApiGateway]: 'Routes, authenticates, and rate-limits incoming requests before forwarding to internal services.',
-  [NodeType.RateLimiter]: 'Token-bucket rate limiter that admits requests up to a sustained rate and burst capacity.',
-  [NodeType.CircuitBreaker]: 'Monitors downstream error rates and trips open to prevent cascading failures.',
-  [NodeType.AuthService]: 'Authenticates requests by verifying credentials. Adds latency for token verification.',
-  [NodeType.AuthzService]: 'Authorizes requests by checking permissions and policies against cached rules.',
-  [NodeType.LoadBalancer]: 'Distributes requests across multiple downstream targets using round-robin or least-connections.',
-  [NodeType.AppServer]: 'Processes requests using a thread pool with configurable concurrency and processing latency.',
-  [NodeType.WorkerPool]: 'Background task processor that pulls work from queues and processes asynchronously.',
-  [NodeType.Cache]: 'In-memory cache with configurable hit ratio and eviction policy. Cache hits bypass the database.',
-  [NodeType.Database]: 'Persistent data store with connection pooling. Terminal node (no outgoing connections).',
-  [NodeType.ObjectStore]: 'Blob/object storage (e.g., S3). Terminal node (no outgoing connections).',
-  [NodeType.MessageQueue]: 'Asynchronous message buffer with backpressure. Decouples producers from consumers.',
-  [NodeType.DeadLetterQueue]: 'Stores failed/undeliverable messages for later inspection or reprocessing.',
+  [NodeType.TrafficGenerator]:
+    'Generates incoming requests at a configurable rate and distribution. Acts as the entry point for simulated traffic.',
+  [NodeType.Scheduler]:
+    'Emits requests on a periodic schedule with configurable overlap policies. Useful for batch job patterns.',
+  [NodeType.ApiGateway]:
+    'Routes, authenticates, and rate-limits incoming requests before forwarding to internal services.',
+  [NodeType.RateLimiter]:
+    'Token-bucket rate limiter that admits requests up to a sustained rate and burst capacity.',
+  [NodeType.CircuitBreaker]:
+    'Monitors downstream error rates and trips open to prevent cascading failures.',
+  [NodeType.AuthService]:
+    'Authenticates requests by verifying credentials. Adds latency for token verification.',
+  [NodeType.AuthzService]:
+    'Authorizes requests by checking permissions and policies against cached rules.',
+  [NodeType.LoadBalancer]:
+    'Distributes requests across multiple downstream targets using round-robin or least-connections.',
+  [NodeType.AppServer]:
+    'Processes requests using a thread pool with configurable concurrency and processing latency.',
+  [NodeType.WorkerPool]:
+    'Background task processor that pulls work from queues and processes asynchronously.',
+  [NodeType.Cache]:
+    'In-memory cache with configurable hit ratio and eviction policy. Cache hits bypass the database.',
+  [NodeType.Database]:
+    'Persistent data store with connection pooling. Terminal node (no outgoing connections).',
+  [NodeType.ObjectStore]:
+    'Blob/object storage (e.g., S3). Terminal node (no outgoing connections).',
+  [NodeType.MessageQueue]:
+    'Asynchronous message buffer with backpressure. Decouples producers from consumers.',
+  [NodeType.DeadLetterQueue]:
+    'Stores failed/undeliverable messages for later inspection or reprocessing.',
 };
 
 /** Friendly label for a NodeType enum value */
@@ -322,6 +340,14 @@ function getAllowedInputs(target: NodeType): NodeType[] {
     }
   }
   return inputs;
+}
+
+/** Human label for a pair's permitted protocols, e.g. "Sync", "Async", "Sync/Async". */
+function protocolLabel(protocols: EdgeProtocol[]): string {
+  if (protocols.length === 0) return '';
+  const hasSync = protocols.includes(EdgeProtocol.Sync);
+  const hasAsync = protocols.includes(EdgeProtocol.Async);
+  return hasSync && hasAsync ? 'Sync/Async' : hasAsync ? 'Async' : 'Sync';
 }
 
 // ─── Palette Categories (R29.1 five groups) ──────────────────────
@@ -386,6 +412,8 @@ interface PaletteItemComponentProps {
 function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   const addNode = useTopologyStore((s) => s.addNode);
   const [showTooltip, setShowTooltip] = useState(false);
+  const infoBtnRef = useRef<HTMLButtonElement>(null);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
 
   const rules = CONNECTION_RULES[item.nodeType];
   const allowedOutputs = rules.allowedTargets;
@@ -421,6 +449,14 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
     [placeAtCenter],
   );
 
+  const toggleTooltip = useCallback(() => {
+    if (!showTooltip && infoBtnRef.current) {
+      const rect = infoBtnRef.current.getBoundingClientRect();
+      setTooltipPos({ top: rect.top, left: rect.right + 8 });
+    }
+    setShowTooltip((prev) => !prev);
+  }, [showTooltip]);
+
   return (
     <div className="group relative flex items-center gap-1">
       <div
@@ -437,48 +473,70 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
       </div>
       {/* Info button */}
       <button
+        ref={infoBtnRef}
         type="button"
-        onClick={(e) => { e.stopPropagation(); setShowTooltip((prev) => !prev); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleTooltip();
+        }}
         onBlur={() => setShowTooltip(false)}
         className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-gray-500 hover:bg-gray-700 hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         aria-label="Show node connection details"
       >
         ?
       </button>
-      {/* Tooltip popover */}
-      {showTooltip && (
-        <div className="absolute left-full top-0 z-50 ml-2 w-64 rounded-lg border border-gray-700 bg-gray-900 p-3 text-[11px] shadow-xl">
-          <p className="mb-2 text-gray-300">{NODE_DESCRIPTIONS[item.nodeType]}</p>
-          <div className="space-y-1.5">
-            {allowedOutputs.length > 0 ? (
-              <div>
-                <span className="font-semibold text-gray-400">Connects to: </span>
-                <span className="text-gray-300">
-                  {allowedOutputs.map(nodeTypeLabel).join(', ')}
-                </span>
-              </div>
-            ) : (
-              <div>
-                <span className="font-semibold text-gray-400">Connects to: </span>
-                <span className="text-gray-500 italic">None (terminal node)</span>
-              </div>
-            )}
-            {allowedInputs.length > 0 ? (
-              <div>
-                <span className="font-semibold text-gray-400">Receives from: </span>
-                <span className="text-gray-300">
-                  {allowedInputs.map(nodeTypeLabel).join(', ')}
-                </span>
-              </div>
-            ) : (
-              <div>
-                <span className="font-semibold text-gray-400">Receives from: </span>
-                <span className="text-gray-500 italic">None (source node)</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Tooltip popover — rendered via portal to avoid sidebar overflow */}
+      {showTooltip &&
+        createPortal(
+          <div
+            className="fixed z-[9999] w-64 rounded-lg border border-gray-700 bg-gray-900 p-3 text-[11px] shadow-xl"
+            style={{ top: tooltipPos.top, left: tooltipPos.left }}
+          >
+            <p className="mb-2 text-gray-300">{NODE_DESCRIPTIONS[item.nodeType]}</p>
+            <div className="space-y-1.5">
+              {allowedOutputs.length > 0 ? (
+                <div>
+                  <span className="font-semibold text-gray-400">Can connect to: </span>
+                  <span className="text-gray-300">
+                    {allowedOutputs
+                      .map((targetType) => {
+                        const protocols = getValidProtocols(item.nodeType, targetType);
+                        return `${nodeTypeLabel(targetType)} (${protocolLabel(protocols)})`;
+                      })
+                      .join(', ')}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <span className="font-semibold text-gray-400">Can connect to: </span>
+                  <span className="text-gray-500 italic">Nothing (terminal node)</span>
+                </div>
+              )}
+              {allowedInputs.length > 0 ? (
+                <div>
+                  <span className="font-semibold text-gray-400">Can receive from: </span>
+                  <span className="text-gray-300">
+                    {allowedInputs
+                      .map((sourceType) => {
+                        const protocols = getValidProtocols(sourceType, item.nodeType);
+                        return `${nodeTypeLabel(sourceType)} (${protocolLabel(protocols)})`;
+                      })
+                      .join(', ')}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <span className="font-semibold text-gray-400">Can receive from: </span>
+                  <span className="text-gray-500 italic">Nothing (source node)</span>
+                </div>
+              )}
+              <p className="border-t border-gray-800 pt-1.5 text-[10px] text-gray-500">
+                Connections are validated automatically when you drag an edge or import a file.
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -486,20 +544,37 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
 // ─── Node Palette Component ──────────────────────────────────────
 
 export function NodePalette() {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const toggleCategory = useCallback((name: string) => {
+    setCollapsed((prev) => ({ ...prev, [name]: !prev[name] }));
+  }, []);
+
   return (
-    <nav aria-label="Node palette" className="flex flex-col gap-4">
-      {PALETTE_CATEGORIES.map((category) => (
-        <div key={category.name}>
-          <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-gray-500">
-            {category.name}
-          </h3>
-          <div className="flex flex-col gap-1.5">
-            {category.items.map((item) => (
-              <PaletteItemComponent key={item.nodeType} item={item} />
-            ))}
+    <nav aria-label="Node palette" className="flex flex-1 flex-col gap-4 overflow-y-auto min-h-0">
+      {PALETTE_CATEGORIES.map((category) => {
+        const isOpen = !collapsed[category.name];
+        return (
+          <div key={category.name}>
+            <button
+              type="button"
+              onClick={() => toggleCategory(category.name)}
+              className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:text-gray-300"
+              aria-expanded={isOpen}
+            >
+              {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {category.name}
+            </button>
+            {isOpen && (
+              <div className="mt-1.5 flex flex-col gap-1.5">
+                {category.items.map((item) => (
+                  <PaletteItemComponent key={item.nodeType} item={item} />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }

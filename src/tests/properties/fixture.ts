@@ -34,8 +34,11 @@ export async function runEngine(
     topology,
     seed: overrides.seed ?? 42,
     speedMultiplier: overrides.speedMultiplier ?? 50,
-    maxSimulatedTimeMs: overrides.maxSimulatedTimeMs ?? 10_000,
-    metricsIntervalMs: overrides.metricsIntervalMs ?? 5_000,
+    // 2.5s of simulated time yields ≥5 metrics windows — enough for every
+    // windowed invariant — while keeping fast-check iterations fast now that
+    // POISSON generators emit their configured rates correctly.
+    maxSimulatedTimeMs: overrides.maxSimulatedTimeMs ?? 2_500,
+    metricsIntervalMs: overrides.metricsIntervalMs ?? 1_000,
     maxHopsPerRequest: overrides.maxHopsPerRequest ?? 20,
     disablePacing: true,
     ...overrides,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -30,6 +30,7 @@ import { DeadLetterQueueForm } from './forms/DeadLetterQueueForm';
 import { ObjectStoreForm } from './forms/ObjectStoreForm';
 import { SchedulerForm } from './forms/SchedulerForm';
 import { RoutingPolicyField } from './RoutingPolicyField';
+import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
 
 // ─── Validation Types ────────────────────────────────────────────
 
@@ -1000,14 +1001,6 @@ function hasNoCompletions(snapshot: NodeMetricsSnapshot): boolean {
   return snapshot.throughput === 0 && p50 === 0 && p90 === 0 && p99 === 0;
 }
 
-function formatSimTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  const millis = Math.floor(ms % 1000);
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-}
-
 function ActivitySection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -1206,6 +1199,72 @@ function ActivityPanel({
   );
 }
 
+// ─── Actual Connections Section ──────────────────────────────────
+
+/**
+ * The selected node's real upstream/downstream edges from the topology store —
+ * the per-instance counterpart to the palette's type-compatibility lists.
+ */
+function ConnectionsSection({ nodeId }: { nodeId: string }) {
+  const edges = useTopologyStore((s) => s.edges);
+  const nodes = useTopologyStore((s) => s.nodes);
+
+  const labelFor = (id: string): string => {
+    const n = nodes.find((node) => node.id === id);
+    return n ? (n.data as { label?: string }).label || id.slice(0, 8) : id.slice(0, 8);
+  };
+
+  const upstream = edges
+    .filter((e) => e.target === nodeId)
+    .map((e) => ({ peer: labelFor(e.source), protocol: e.type ?? 'Sync' }));
+  const downstream = edges
+    .filter((e) => e.source === nodeId)
+    .map((e) => ({ peer: labelFor(e.target), protocol: e.type ?? 'Sync' }));
+
+  return (
+    <section
+      aria-label="Actual connections"
+      className="mb-4 rounded-lg border border-gray-700/70 bg-gray-800/40 p-3"
+    >
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        Connections in this topology
+      </h3>
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <p className="mb-1 font-medium text-gray-500">← Receives from</p>
+          {upstream.length === 0 ? (
+            <p className="text-[11px] italic text-gray-600">No incoming connections</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {upstream.map((c, i) => (
+                <li key={i} className="text-gray-300">
+                  {c.peer}{' '}
+                  <span className="text-[10px] text-gray-500">({c.protocol.toLowerCase()})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <p className="mb-1 font-medium text-gray-500">→ Sends to</p>
+          {downstream.length === 0 ? (
+            <p className="text-[11px] italic text-gray-600">No outgoing connections</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {downstream.map((c, i) => (
+                <li key={i} className="text-gray-300">
+                  {c.peer}{' '}
+                  <span className="text-[10px] text-gray-500">({c.protocol.toLowerCase()})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Panel Component ────────────────────────────────────────
 
 interface NodeConfigPanelProps {
@@ -1220,7 +1279,22 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [tab, setTab] = useState<'config' | 'activity'>('config');
+  // While a simulation is running, live behavior is what users came for — open
+  // on the Activity tab. Otherwise default to Config.
+  const [tab, setTab] = useState<'config' | 'activity'>(
+    simState === SimState.Running ? 'activity' : 'config',
+  );
+  const wasRunningRef = useRef(simState === SimState.Running);
+
+  // Switch to Activity once per Idle→Running transition (never yanks the user
+  // back if they deliberately chose a tab mid-run).
+  useEffect(() => {
+    const isRunning = simState === SimState.Running;
+    if (isRunning && !wasRunningRef.current) {
+      setTab('activity');
+    }
+    wasRunningRef.current = isRunning;
+  }, [simState]);
 
   // Task 232: Escape closes config panel
   useEffect(() => {
@@ -1282,7 +1356,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
   return (
     <aside
-      className="flex w-[280px] flex-col border-l border-gray-800 bg-gray-900/50 transition-all duration-300"
+      className="absolute right-0 top-0 bottom-0 z-20 flex w-[280px] flex-col border-l border-gray-800 bg-gray-900/95 shadow-xl transition-all duration-300"
       aria-label="Node configuration panel"
       tabIndex={3}
     >
@@ -1329,10 +1403,16 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             type="button"
             onClick={() => setTab('activity')}
             aria-pressed={tab === 'activity'}
-            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
               tab === 'activity' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
+            {simState === SimState.Running && (
+              <span
+                className="inline-block size-1.5 animate-pulse rounded-full bg-green-400"
+                aria-hidden="true"
+              />
+            )}
             Activity
           </button>
         </div>
@@ -1344,6 +1424,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
       {/* Form Content */}
       <div className={tab === 'config' ? 'flex-1 overflow-y-auto px-4 py-3' : 'hidden'}>
+        <ConnectionsSection nodeId={selectedNodeId} />
         {nodeData.nodeType === NodeType.TrafficGenerator && (
           <TrafficGeneratorForm
             config={nodeData.config as unknown as Record<string, unknown>}

@@ -56,8 +56,12 @@ export class TrafficGeneratorProcessor implements NodeProcessor {
 
     switch (this.config.distribution) {
       case Distribution.Poisson:
-        // Exponential inter-arrival time (memoryless property of Poisson process)
-        return rng.exponential(effectiveRps / 1000) * 1000; // convert from per-ms rate
+        // Exponential inter-arrival (memoryless Poisson process).
+        // `rate` is per-millisecond, so the returned sample is ALREADY in ms:
+        // mean = 1000/effectiveRps. (A historical ×1000 here made POISSON
+        // generators run 1000× slower than configured — an 800 RPS generator
+        // emitted ~0.8 requests/sec.)
+        return rng.exponential(effectiveRps / 1000);
       case Distribution.Uniform:
         return 1000 / effectiveRps;
     }

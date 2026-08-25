@@ -7,7 +7,11 @@ import type { SubsystemGroup } from '@/types/groups';
 // ─── Constants ───────────────────────────────────────────────────
 
 export const SUBSYSTEM_GROUP_NODE_TYPE = 'SUBSYSTEM_GROUP';
+export const SUBSYSTEM_GROUP_FRAME_NODE_TYPE = 'SUBSYSTEM_GROUP_FRAME';
 export const MERGED_BOUNDARY_EDGE_TYPE = 'MERGED_BOUNDARY';
+
+/** Padding around member bounding boxes for expanded-group frames, in px. */
+const FRAME_PADDING = 28;
 
 // ─── Merged Edge Data ────────────────────────────────────────────
 
@@ -25,6 +29,14 @@ export interface SubsystemGroupNodeData {
   groupName: string;
   memberCount: number;
   memberNodeIds: string[];
+  memberLabels: string[];
+}
+
+/** Data for the non-interactive container drawn behind an expanded group's members. */
+export interface SubsystemGroupFrameData {
+  groupId: string;
+  groupName: string;
+  memberCount: number;
 }
 
 // ─── Hook ────────────────────────────────────────────────────────
@@ -32,8 +44,10 @@ export interface SubsystemGroupNodeData {
 /**
  * Maps the canonical topology + groups onto the node and edge arrays React Flow renders.
  *
- * Deliberately does NOT use React Flow `parentId`/`extent: 'parent'` so member positions
- * stay absolute and collapse/expand and group deletion are position-preserving no-ops.
+ * Expanded groups get a non-interactive FRAME node (dashed container with the group
+ * name) drawn behind their members — member positions stay absolute, so collapse/
+ * expand and group deletion remain position-preserving no-ops. Collapsed groups
+ * replace their members with a single named box node.
  */
 export function useCollapsedTopologyView(): { nodes: AnalysysNode[]; edges: AnalysysEdge[] } {
   const nodes = useTopologyStore((s) => s.nodes);
@@ -54,9 +68,52 @@ export function computeCollapsedView(
   edges: AnalysysEdge[],
   subsystemGroups: SubsystemGroup[],
 ): { nodes: AnalysysNode[]; edges: AnalysysEdge[] } {
-  const collapsedGroups = subsystemGroups.filter((g) => g.collapsed);
-  if (collapsedGroups.length === 0) {
+  if (subsystemGroups.length === 0) {
     return { nodes, edges };
+  }
+
+  const collapsedGroups = subsystemGroups.filter((g) => g.collapsed);
+  const expandedGroups = subsystemGroups.filter((g) => !g.collapsed);
+
+  // ─── Frames for expanded groups: dashed container behind members ──
+
+  const frameNodes: AnalysysNode[] = [];
+  for (const group of expandedGroups) {
+    const members = nodes.filter((n) => group.memberNodeIds.includes(n.id));
+    if (members.length === 0) continue;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    for (const n of members) {
+      minX = Math.min(minX, n.position.x);
+      maxX = Math.max(maxX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxY = Math.max(maxY, n.position.y);
+    }
+    const frameData: SubsystemGroupFrameData = {
+      groupId: group.id,
+      groupName: group.name,
+      memberCount: members.length,
+    };
+    frameNodes.push({
+      id: `frame:${group.id}`,
+      type: SUBSYSTEM_GROUP_FRAME_NODE_TYPE,
+      position: { x: minX - FRAME_PADDING, y: minY - FRAME_PADDING },
+      style: {
+        width: maxX - minX + FRAME_PADDING * 2,
+        height: maxY - minY + FRAME_PADDING * 2,
+      },
+      draggable: false,
+      selectable: false,
+      connectable: false,
+      zIndex: -1,
+      data: frameData as unknown as AnalysysNode['data'],
+    } as AnalysysNode);
+  }
+
+  if (collapsedGroups.length === 0) {
+    return { nodes: [...nodes, ...frameNodes], edges };
   }
 
   // Build a map of nodeId → collapsed group
@@ -100,11 +157,13 @@ export function computeCollapsedView(
   }
   for (const group of collapsedGroups) {
     const centre = groupCentres.get(group.id) ?? { x: 0, y: 0 };
+    const memberLabels = group.memberNodeIds.map((id) => nodeLabelMap.get(id) ?? id);
     const groupNodeData: SubsystemGroupNodeData = {
       groupId: group.id,
       groupName: group.name,
       memberCount: group.memberNodeIds.length,
       memberNodeIds: group.memberNodeIds,
+      memberLabels,
     };
     resultNodes.push({
       id: `grp:${group.id}`,
@@ -226,5 +285,5 @@ export function computeCollapsedView(
     } as AnalysysEdge);
   }
 
-  return { nodes: resultNodes, edges: resultEdges };
+  return { nodes: [...resultNodes, ...frameNodes], edges: resultEdges };
 }

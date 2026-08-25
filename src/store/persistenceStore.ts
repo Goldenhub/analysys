@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { MarkerType } from '@xyflow/react';
 import { useTopologyStore } from './topologyStore';
 import { validateEdgeConnection } from '@/validation';
+import { detectCycles } from '@/validation/cycleDetection';
+import { downloadTextFile } from '@/utils/download';
 import type { AnalysysNode, SimulationNode } from '@/types/nodes';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
 import type { MigrationWarning } from '@/types/migration';
@@ -144,7 +146,9 @@ function validateStructure(obj: unknown): { valid: boolean; errors: string[] } {
 }
 
 /**
- * Runs the canvas edge validator over an imported edge set (R30.16).
+ * Runs the canvas edge validator over an imported edge set (R30.16), and
+ * rejects any edge set that would introduce a routing cycle — mirroring the
+ * canvas connect-time rule so imports cannot bypass it.
  */
 function findFirstInvalidEdge(nodes: SimulationNode[], edges: EdgeData[]): string | null {
   const nodesById = new Map<string, SimulationNode>(nodes.map((n) => [n.id, n]));
@@ -162,6 +166,13 @@ function findFirstInvalidEdge(nodes: SimulationNode[], edges: EdgeData[]): strin
       return `Edge from "${source.label}" to "${target.label}" is not permitted: ${result.reason}`;
     }
     accepted.push(edge);
+
+    if (detectCycles(nodes, accepted).length > 0) {
+      return (
+        `Edge from "${source.label}" to "${target.label}" would create a routing cycle. ` +
+        'Cycles are rejected because requests can only be caught by the max-hop guard at runtime.'
+      );
+    }
   }
 
   return null;
@@ -190,18 +201,6 @@ function edgeDataToRFEdges(edges: EdgeData[]): AnalysysEdge[] {
     },
     data: edgeData as AnalysysEdge['data'],
   }));
-}
-
-function triggerDownload(content: string, filename: string): void {
-  const blob = new Blob([content], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 /**
@@ -285,7 +284,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
   exportJSON: () => {
     const data = serializeCurrentTopology();
-    triggerDownload(data, 'topology.analysys.json');
+    downloadTextFile(data, 'topology.analysys.json', 'application/json');
   },
 
   // ─── Import JSON ─────────────────────────────────────────────

@@ -376,8 +376,12 @@ describe('Subsystem Grouping', () => {
       expect(data.underlyingCount).toBe(2);
     });
 
-    it('returns original topology when no groups are collapsed', () => {
-      const nodes = [createTestNode('a'), createTestNode('b')];
+    it('wraps expanded-group members in a frame while preserving them', () => {
+      const nodes = [
+        { ...createTestNode('a'), position: { x: 0, y: 0 } },
+        { ...createTestNode('b'), position: { x: 200, y: 100 } },
+        createTestNode('c'),
+      ] as AnalysysNode[];
       const edges = [createTestEdge('e1', 'a', 'b')];
       const group: SubsystemGroup = {
         id: 'g1',
@@ -387,6 +391,51 @@ describe('Subsystem Grouping', () => {
       };
 
       const result = computeCollapsedView(nodes, edges, [group]);
+      // All members pass through untouched…
+      expect(result.nodes.find((n) => n.id === 'a')).toBe(nodes[0]);
+      expect(result.nodes.find((n) => n.id === 'b')).toBe(nodes[1]);
+      expect(result.edges).toEqual(edges);
+      // …and one frame node is appended behind them.
+      const frame = result.nodes.find((n) => n.id === 'frame:g1');
+      expect(frame).toBeTruthy();
+      expect(frame!.type).toBe('SUBSYSTEM_GROUP_FRAME');
+      // Bounding box of members (0..200, 0..100) plus padding on every side.
+      expect(frame!.position).toEqual({ x: -28, y: -28 });
+      const style = frame!.style as { width: number; height: number };
+      expect(style.width).toBe(200 + 56);
+      expect(style.height).toBe(100 + 56);
+      expect(frame!.zIndex).toBe(-1);
+      expect(frame!.draggable).toBe(false);
+      expect(frame!.selectable).toBe(false);
+    });
+
+    it('emits frames for expanded groups and boxes for collapsed groups together', () => {
+      const nodes = [
+        { ...createTestNode('a'), position: { x: 0, y: 0 } },
+        createTestNode('b'),
+        { ...createTestNode('c'), position: { x: 50, y: 50 } },
+        createTestNode('d'),
+      ] as AnalysysNode[];
+      const groups: SubsystemGroup[] = [
+        { id: 'expanded', name: 'Open', memberNodeIds: ['a'], collapsed: false },
+        { id: 'shut', name: 'Closed', memberNodeIds: ['c'], collapsed: true },
+      ];
+
+      const result = computeCollapsedView(nodes, [], groups);
+      expect(result.nodes.find((n) => n.id === 'frame:expanded')).toBeTruthy();
+      expect(result.nodes.find((n) => n.id === 'grp:shut')).toBeTruthy();
+      // Collapsed member hidden; expanded member kept
+      expect(result.nodes.find((n) => n.id === 'a')).toBeTruthy();
+      expect(result.nodes.find((n) => n.id === 'c')).toBeUndefined();
+      // A frame is never emitted for a collapsed group
+      expect(result.nodes.find((n) => n.id === 'frame:shut')).toBeUndefined();
+    });
+
+    it('returns the original topology untouched when no groups exist', () => {
+      const nodes = [createTestNode('a'), createTestNode('b')];
+      const edges = [createTestEdge('e1', 'a', 'b')];
+
+      const result = computeCollapsedView(nodes, edges, []);
       expect(result.nodes).toBe(nodes);
       expect(result.edges).toBe(edges);
     });

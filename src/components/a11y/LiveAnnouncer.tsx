@@ -3,6 +3,7 @@ import { useSimulationStore } from '@/store/simulationStore';
 import { useAnalysisStore } from '@/store/analysisStore';
 import { SimState } from '@/simulation/types';
 import type { Finding } from '@/types/findings';
+import { formatSimClock as formatSimTime } from "@/utils/simTime";
 
 /**
  * LiveAnnouncer provides aria-live regions for screen reader announcements.
@@ -144,9 +145,3 @@ export function LiveAnnouncer() {
   );
 }
 
-function formatSimTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-}

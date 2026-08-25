@@ -4,25 +4,31 @@
  */
 export function DashboardSkeleton() {
   return (
-    <div className="flex h-full gap-2 p-2" aria-label="Loading telemetry data">
-      {/* 2×2 Chart Grid Skeleton */}
-      <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-2">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      {/* Event Log Skeleton */}
-      <div className="w-72 rounded border border-gray-800 bg-gray-900 p-2">
-        <div className="mb-2 h-3 w-20 animate-pulse rounded bg-gray-700" />
-        <div className="flex flex-col gap-2">
-          {[85, 72, 90, 65, 78, 95].map((w, i) => (
-            <div
-              key={i}
-              className="h-4 animate-pulse rounded bg-gray-800"
-              style={{ width: `${w}%` }}
-            />
-          ))}
+    <div className="flex h-full flex-col gap-2 p-2" aria-label="Loading telemetry data">
+      <p className="shrink-0 text-[10px] text-gray-500">
+        Waiting for the first metrics window (every 500 ms of simulated time). Per-node
+        throughput, latency, queues, and utilization appear here once the simulation runs.
+      </p>
+      <div className="flex min-h-0 flex-1 gap-2">
+        {/* 2×2 Chart Grid Skeleton */}
+        <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-2">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        {/* Event Log Skeleton */}
+        <div className="w-72 rounded border border-gray-800 bg-gray-900 p-2">
+          <div className="mb-2 h-3 w-20 animate-pulse rounded bg-gray-700" />
+          <div className="flex flex-col gap-2">
+            {[85, 72, 90, 65, 78, 95].map((w, i) => (
+              <div
+                key={i}
+                className="h-4 animate-pulse rounded bg-gray-800"
+                style={{ width: `${w}%` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -1,19 +1,32 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useAnalysisStore } from '@/store/analysisStore';
 import { useTopologyStore } from '@/store/topologyStore';
+import { useSimulationStore } from '@/store/simulationStore';
+import { useSweepStore } from '@/store/sweepStore';
+import { useBaselineStore } from '@/store/baselineStore';
 import type { Finding, SuppressionEntry } from '@/types/findings';
 import type { SimulationNode } from '@/types/nodes';
+import { SimState } from '@/simulation/types';
 import { MIN_COMPLETED_WINDOWS } from '@/analysis/AnalysisWindowStore';
 import { FindingList } from './FindingList';
 import { ComparisonTable } from './ComparisonTable';
-import { HeadroomList } from './HeadroomList';
-import type { NodeHeadroom, SystemHeadroom } from './HeadroomList';
 import { SpofList } from './SpofList';
-import type { ExcludedNode } from './SpofList';
+import { BaselineManager } from './BaselineManager';
 import { CapacitySweepPanel } from './CapacitySweepPanel';
-import type { ComparisonResult } from '@/analysis/comparison';
-import type { SweepStepResult } from '@/analysis/CapacitySweepController';
+import {
+  compareRuns,
+  isComparisonError,
+  type ComparisonResult,
+  type ComparisonError,
+} from '@/analysis/comparison';
+import { computeStepLoads } from '@/analysis/CapacitySweepController';
+import {
+  exportJSON as buildReportJSON,
+  exportMarkdown as buildReportMarkdown,
+} from '@/analysis/report';
+import { downloadTextFile } from '@/utils/download';
+import { showToast } from '@/components/ui/toastStore';
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -21,11 +34,10 @@ const ZOOM_FLOOR = 0.25;
 
 // ─── Tab definitions ─────────────────────────────────────────────
 
-type PanelTab = 'findings' | 'headroom' | 'spof' | 'sweep' | 'comparison';
+type PanelTab = 'findings' | 'spof' | 'sweep' | 'comparison';
 
 const TABS: { id: PanelTab; label: string }[] = [
   { id: 'findings', label: 'Findings' },
-  { id: 'headroom', label: 'Headroom' },
   { id: 'spof', label: 'SPOF' },
   { id: 'sweep', label: 'Sweep' },
   { id: 'comparison', label: 'Comparison' },
@@ -38,27 +50,9 @@ export interface AnalysisPanelProps {
   openerRef: React.RefObject<HTMLElement | null>;
   /** Called to close the panel (e.g. on toggle). */
   onClose?: () => void;
-  /** Optional comparison result to display. */
-  comparisonResult?: ComparisonResult | null;
-  /** Optional sweep results. */
-  sweepSteps?: SweepStepResult[];
-  /** Optional per-node headroom data. */
-  headroomNodes?: NodeHeadroom[];
-  /** Optional system headroom data. */
-  systemHeadroom?: SystemHeadroom | null;
-  /** Optional SPOF exclusions. */
-  spofExclusions?: ExcludedNode[];
 }
 
-export function AnalysisPanel({
-  openerRef,
-  onClose,
-  comparisonResult = null,
-  sweepSteps = [],
-  headroomNodes = [],
-  systemHeadroom = null,
-  spofExclusions = [],
-}: AnalysisPanelProps) {
+export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
   const findings = useAnalysisStore((s) => s.findings);
   const suppressions = useAnalysisStore((s) => s.suppressions);
   const completedWindowCount = useAnalysisStore((s) => s.completedWindowCount);
@@ -68,6 +62,14 @@ export function AnalysisPanel({
   const nodes = useTopologyStore((s) => s.nodes);
   const subsystemGroups = useTopologyStore((s) => s.subsystemGroups);
   const setGroupCollapsed = useTopologyStore((s) => s.setGroupCollapsed);
+
+  // Capacity sweep: live progress + wired controls (Phase: sweep end-to-end)
+  const sweepStatus = useSweepStore((s) => s.status);
+  const sweepConfig = useSweepStore((s) => s.config);
+  const sweepResults = useSweepStore((s) => s.results);
+  const sweepReport = useSweepStore((s) => s.report);
+  const startCapacitySweep = useSimulationStore((s) => s.startCapacitySweep);
+  const cancelCapacitySweep = useSimulationStore((s) => s.cancelCapacitySweep);
 
   const [activeTab, setActiveTab] = useState<PanelTab>('findings');
   const [offscreenCount, setOffscreenCount] = useState(0);
@@ -216,6 +218,47 @@ export function AnalysisPanel({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose, openerRef]);
 
+  // ─── Report Export ────────────────────────────────────────────
+
+  const buildExportContext = useCallback(() => {
+    const topo = useTopologyStore.getState().getTopologySnapshot();
+    const runSummary = useSimulationStore.getState().runSummary;
+    const offeredLoadRps = topo.nodes
+      .filter((n) => n.nodeType === 'TRAFFIC_GENERATOR')
+      .reduce(
+        (sum, n) => sum + Number((n.config as unknown as Record<string, unknown>)['rps'] ?? 0),
+        0,
+      );
+    return {
+      findings,
+      topology: topo,
+      nodeConfigurations: Object.fromEntries(topo.nodes.map((n) => [n.id, n.config])) as Record<
+        string,
+        unknown
+      >,
+      seed: runSummary?.seed ?? 0,
+      simulatedDurationMs: runSummary?.simulatedDurationMs ?? 0,
+      offeredLoadRps,
+    };
+  }, [findings]);
+
+  const exportReport = (format: 'md' | 'json') => {
+    const stamp = new Date().toISOString().slice(0, 19).replaceAll(':', '-');
+    if (format === 'json') {
+      downloadTextFile(
+        buildReportJSON(buildExportContext()),
+        `analysys-report-${stamp}.json`,
+        'application/json',
+      );
+    } else {
+      downloadTextFile(
+        buildReportMarkdown(buildExportContext()),
+        `analysys-report-${stamp}.md`,
+        'text/markdown',
+      );
+    }
+  };
+
   return (
     <aside
       ref={panelRef}
@@ -226,17 +269,35 @@ export function AnalysisPanel({
       {/* Panel header */}
       <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Analysis</h2>
-        <button
-          type="button"
-          onClick={() => {
-            onClose?.();
-            openerRef.current?.focus();
-          }}
-          className="rounded p-0.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          aria-label="Close analysis panel"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => exportReport('md')}
+            title="Download the findings report as Markdown"
+            className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            ⬇ MD
+          </button>
+          <button
+            type="button"
+            onClick={() => exportReport('json')}
+            title="Download the findings report as JSON (re-importable)"
+            className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            ⬇ JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onClose?.();
+              openerRef.current?.focus();
+            }}
+            className="rounded p-0.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            aria-label="Close analysis panel"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -324,49 +385,283 @@ export function AnalysisPanel({
           </div>
         )}
 
-        {/* Headroom tab */}
-        {activeTab === 'headroom' && (
-          <div id="panel-headroom" role="tabpanel" aria-label="Headroom">
-            <HeadroomList
-              perNode={headroomNodes}
-              system={systemHeadroom}
-              projectionCaveat={systemHeadroom !== null && systemHeadroom.headroomPercent > 0}
-            />
-          </div>
-        )}
-
         {/* SPOF tab */}
         {activeTab === 'spof' && (
           <div id="panel-spof" role="tabpanel" aria-label="Single points of failure">
-            <SpofList
-              spofFindings={spofFindings}
-              exclusions={spofExclusions}
-              nodeLabels={nodeLabels}
-            />
+            <SpofList spofFindings={spofFindings} nodeLabels={nodeLabels} />
           </div>
         )}
 
         {/* Sweep tab */}
         {activeTab === 'sweep' && (
           <div id="panel-sweep" role="tabpanel" aria-label="Capacity sweep">
-            <CapacitySweepPanel completedSteps={sweepSteps} />
+            <CapacitySweepPanel
+              completedSteps={sweepResults}
+              onStartSweep={startCapacitySweep}
+              onCancelSweep={cancelCapacitySweep}
+              isRunning={sweepStatus === 'running'}
+              progress={
+                sweepStatus === 'running' && sweepConfig
+                  ? {
+                      currentStep: sweepResults.length + 1,
+                      totalSteps: sweepConfig.stepCount,
+                      currentRequestedRps:
+                        computeStepLoads(
+                          sweepConfig.startRps,
+                          sweepConfig.endRps,
+                          sweepConfig.stepCount,
+                        )?.[Math.min(sweepResults.length, sweepConfig.stepCount - 1)] ?? 0,
+                      elapsedMs: 0,
+                      completedSteps: sweepResults,
+                    }
+                  : null
+              }
+            />
+            {sweepReport && (
+              <div className="mt-3 rounded-md border border-gray-700 bg-gray-900/60 p-3 text-xs text-gray-300">
+                <p className="font-semibold text-gray-100">
+                  {sweepReport.status === 'completed' ? 'Sweep complete' : 'Sweep cancelled'}
+                </p>
+                {sweepReport.status === 'cancelled' && (
+                  <p className="mt-1">
+                    Cancelled at step {(sweepReport.cancelledAtStep ?? 0) + 1}.
+                  </p>
+                )}
+                <p className="mt-1">
+                  Sustainable load:{' '}
+                  <span className="font-mono">
+                    {sweepReport.sustainableLoad.offeredRps !== null
+                      ? `${sweepReport.sustainableLoad.offeredRps} RPS`
+                      : 'undetermined'}
+                  </span>
+                  {sweepReport.sustainableLoad.explanation && (
+                    <span className="block text-[11px] text-gray-500">
+                      {sweepReport.sustainableLoad.explanation}
+                    </span>
+                  )}
+                </p>
+                {sweepReport.kneePoint && (
+                  <p className="mt-1">
+                    Knee point:{' '}
+                    <span className="font-mono">
+                      {sweepReport.kneePoint.offeredRps} RPS (step{' '}
+                      {sweepReport.kneePoint.stepIndex + 1})
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* Comparison tab */}
         {activeTab === 'comparison' && (
-          <div id="panel-comparison" role="tabpanel" aria-label="Run comparison">
-            {comparisonResult ? (
-              <ComparisonTable result={comparisonResult} />
-            ) : (
-              <p className="text-xs text-gray-500 italic py-4 text-center">
-                Select two baseline runs to compare.
-              </p>
-            )}
+          <div
+            id="panel-comparison"
+            role="tabpanel"
+            aria-label="Run comparison"
+            className="flex flex-col gap-4"
+          >
+            {/* Retain the current run as a baseline */}
+            <RetainBaselineControl />
+
+            {/* Manage saved baselines */}
+            <section aria-label="Saved baselines">
+              <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Saved baselines
+              </h3>
+              <BaselineManager />
+            </section>
+
+            {/* A/B comparison */}
+            <ComparisonPicker />
           </div>
         )}
       </div>
     </aside>
+  );
+}
+
+// ─── Baseline retention + comparison wiring ──────────────────────
+
+/** Retain the finished run (whole-run totals + final per-node snapshot) as a named baseline. */
+function RetainBaselineControl() {
+  const runSummary = useSimulationStore((s) => s.runSummary);
+  const simState = useSimulationStore((s) => s.simState);
+  const metrics = useSimulationStore((s) => s.metrics);
+  const retainBaseline = useBaselineStore((s) => s.retainBaseline);
+  const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
+  const subsystemGroups = useTopologyStore((s) => s.subsystemGroups);
+  const [name, setName] = useState('');
+
+  const canRetain = simState === SimState.Complete && runSummary !== null;
+  const offeredRps = useMemo(() => {
+    if (!runSummary) return 0;
+    const topo = getTopologySnapshot();
+    return topo.nodes
+      .filter((n) => n.nodeType === 'TRAFFIC_GENERATOR')
+      .reduce(
+        (sum, n) => sum + Number((n.config as unknown as Record<string, unknown>)['rps'] ?? 0),
+        0,
+      );
+    // Recompute on demand only — topology churn is irrelevant while disabled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runSummary]);
+
+  function handleRetain() {
+    if (!runSummary) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      showToast('Give this baseline a name first.');
+      return;
+    }
+    const topo = getTopologySnapshot();
+    const configById = new Map(topo.nodes.map((n) => [n.id, n.config]));
+    const perNode: Record<string, import('@/types/baseline').PerNodeAggregates> = {};
+    for (const snap of metrics?.nodes ?? []) {
+      perNode[snap.nodeId] = {
+        nodeId: snap.nodeId,
+        nodeType: 'UNKNOWN',
+        label: snap.nodeId,
+        meanUtilization: snap.utilization.kind === 'value' ? snap.utilization.value : 0,
+        throughput: snap.throughput,
+        errorRate: snap.errorRate,
+        meanQueueDepth: snap.queueDepth,
+        config: (configById.get(snap.nodeId) ?? {}) as Record<string, unknown>,
+      };
+    }
+
+    const error = retainBaseline({
+      name: trimmed,
+      seed: runSummary.seed,
+      simulatedDurationMs: runSummary.simulatedDurationMs,
+      totalOfferedRps: offeredRps,
+      topology: {
+        schemaVersion: 2,
+        nodes: topo.nodes,
+        edges: topo.edges,
+        subsystemGroups,
+      },
+      wholeRun: runSummary.wholeRun ?? {
+        latency: { p50: 0, p90: 0, p99: 0 },
+        throughput: 0,
+        errorRate: 0,
+        terminalStatusRates: {},
+      },
+      perNode,
+    });
+    if (error) {
+      showToast(`Could not save baseline: ${error}`);
+    } else {
+      showToast(`Baseline "${trimmed}" saved.`, 'info');
+      setName('');
+    }
+  }
+
+  return (
+    <section
+      aria-label="Save current run as baseline"
+      className="rounded-md border border-gray-700 bg-gray-900/60 p-3"
+    >
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        Save current run
+      </h3>
+      {!canRetain ? (
+        <p className="text-[11px] text-gray-500">Finish a simulation to enable baseline capture.</p>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Baseline name…"
+            maxLength={40}
+            className="h-7 flex-1 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-indigo-500"
+            aria-label="Baseline name"
+          />
+          <button
+            onClick={handleRetain}
+            className="rounded-md border border-indigo-600 bg-indigo-900/40 px-2 py-1 text-[10px] font-medium text-indigo-200 hover:bg-indigo-800/50 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            title="Capture the finished run's totals and topology for later comparison"
+          >
+            Save baseline
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Two dropdowns over saved baselines; computes B − A with the existing comparison engine. */
+function ComparisonPicker() {
+  const baselines = useBaselineStore((s) => s.baselines);
+  const [nameA, setNameA] = useState('');
+  const [nameB, setNameB] = useState('');
+
+  const comparison: ComparisonResult | ComparisonError | null = useMemo(() => {
+    const runA = baselines.find((b) => b.name === nameA);
+    const runB = baselines.find((b) => b.name === nameB);
+    if (!runA || !runB) return null;
+    return compareRuns({ name: runA.name, run: runA }, { name: runB.name, run: runB });
+  }, [baselines, nameA, nameB]);
+
+  const selectClass =
+    'h-7 flex-1 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-indigo-500';
+
+  if (baselines.length < 2) {
+    return (
+      <p className="py-4 text-center text-xs italic text-gray-500">
+        Save at least two baselines to compare runs.
+      </p>
+    );
+  }
+
+  return (
+    <section aria-label="Compare two baselines" className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="w-6 text-[10px] font-semibold text-gray-500">A</span>
+        <select
+          value={nameA}
+          onChange={(e) => setNameA(e.target.value)}
+          className={selectClass}
+          aria-label="Baseline A"
+        >
+          <option value="">Select run A…</option>
+          {baselines.map((b) => (
+            <option key={b.name} value={b.name}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="w-6 text-[10px] font-semibold text-gray-500">B</span>
+        <select
+          value={nameB}
+          onChange={(e) => setNameB(e.target.value)}
+          className={selectClass}
+          aria-label="Baseline B"
+        >
+          <option value="">Select run B…</option>
+          {baselines.map((b) => (
+            <option key={b.name} value={b.name}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {comparison === null ? (
+        <p className="py-2 text-center text-xs italic text-gray-500">
+          Select two different saved runs to compare.
+        </p>
+      ) : isComparisonError(comparison) ? (
+        <p className="rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-[11px] text-amber-200">
+          {comparison.message}
+        </p>
+      ) : (
+        <ComparisonTable result={comparison} />
+      )}
+    </section>
   );
 }
 

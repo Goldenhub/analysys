@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { SimEventLogEntry } from '@/types/messages';
 import { useNodeLabels } from './useNodeLabel';
+import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const EVENT_ICONS: Record<string, string> = {
   CHAOS_END: '🔄',
   METRICS_SNAPSHOT: '📊',
   CONSUMER_POLL: '📨',
+  CONFIG_WARNING: '⚠️',
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -42,17 +44,10 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   CHAOS_END: 'Chaos Ended',
   METRICS_SNAPSHOT: 'Metrics Snapshot',
   CONSUMER_POLL: 'Consumer Poll',
+  CONFIG_WARNING: 'Config Warning',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────
-
-function formatSimTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  const millis = ms % 1000;
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-}
 
 // ─── Component ───────────────────────────────────────────────────
 

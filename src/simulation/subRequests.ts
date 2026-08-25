@@ -211,15 +211,3 @@ function discardUnsettledSiblings(
   parent.pendingBranchIds.clear();
   return discarded;
 }
-
-/**
- * Resolves same-timestamp tie-breaking for failed branches:
- * the branch on the lowest stored edge index wins (R32.12).
- */
-export function resolveFailureTie(
-  failedBranches: Array<{ branch: SimRequest; edgeIndex: number }>,
-): { branch: SimRequest; edgeIndex: number } {
-  return failedBranches.reduce((winner, current) =>
-    current.edgeIndex < winner.edgeIndex ? current : winner,
-  );
-}
