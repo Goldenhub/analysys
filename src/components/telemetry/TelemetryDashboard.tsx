@@ -92,7 +92,7 @@ export function TelemetryDashboard() {
 
   return (
     <section
-      className="border-t border-gray-800 bg-gray-900/50 transition-[height] duration-150"
+      className="border-t border-[#5b5347]/20 bg-[#5b5347] transition-[height] duration-150"
       style={{ height: collapsed ? COLLAPSED_HEIGHT : panelHeight }}
       tabIndex={6}
       aria-label="Telemetry dashboard"
@@ -106,24 +106,24 @@ export function TelemetryDashboard() {
           role="separator"
           aria-orientation="horizontal"
         >
-          <span className="h-[2px] w-8 rounded-full bg-gray-700 transition-colors group-hover:bg-gray-500" />
+          <span className="h-[2px] w-8 rounded-full bg-[#5b5347]/60 transition-colors group-hover:bg-[#5b5347]/80" />
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-800 px-4 py-1.5">
+      <div className="flex items-center justify-between border-b border-[#5b5347]/20 px-4 py-1.5">
         <div className="flex items-center gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#f3ede2]/80">
             Telemetry Dashboard
           </h2>
           {/* View Toggle */}
-          <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+          <div className="flex rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 p-0.5">
             <button
               onClick={() => setViewMode('charts')}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
                 viewMode === 'charts'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-[#b8402e] text-[#f3ede2]'
+                  : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
               }`}
             >
               Charts
@@ -132,8 +132,8 @@ export function TelemetryDashboard() {
               onClick={() => setViewMode('summary')}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
                 viewMode === 'summary'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-[#b8402e] text-[#f3ede2]'
+                  : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
               }`}
               title="Per-node breakdown: throughput, latency, queues, utilization for every node"
             >
@@ -145,8 +145,8 @@ export function TelemetryDashboard() {
             onClick={toggleAnalysisPanel}
             className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors border ${
               analysisPanelOpen
-                ? 'bg-indigo-600 text-white border-indigo-500'
-                : 'border-gray-700 bg-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                ? 'bg-[#b8402e] text-[#f3ede2] border-[#b8402e]'
+                : 'border-[#5b5347]/30 bg-[#5b5347]/80 text-[#f3ede2]/80 hover:text-[#f3ede2] hover:border-[#5b5347]/40'
             }`}
             aria-label={analysisPanelOpen ? 'Close analysis panel' : 'Open analysis panel'}
             aria-expanded={analysisPanelOpen}
@@ -158,7 +158,7 @@ export function TelemetryDashboard() {
         </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="rounded p-0.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+          className="rounded p-0.5 text-[#f3ede2]/80 hover:bg-[#5b5347]/80 hover:text-[#f3ede2]"
           aria-label={collapsed ? 'Expand telemetry panel' : 'Collapse telemetry panel'}
         >
           {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -170,7 +170,7 @@ export function TelemetryDashboard() {
         <div className="flex h-[calc(100%-2.5rem)] flex-col gap-1.5 p-2">
           {workerError && (
             <div
-              className="flex shrink-0 items-center justify-between rounded-md border border-red-800 bg-red-950/60 px-3 py-1.5 text-[11px] text-red-200"
+              className="flex shrink-0 items-center justify-between rounded-md border border-[#ef9a8b]/40 bg-[#ef9a8b]/15 px-3 py-1.5 text-[11px] text-[#ef9a8b]"
               role="alert"
             >
               <span>
@@ -206,7 +206,7 @@ export function TelemetryDashboard() {
               >
                 {lastConfigWarning && (
                   <div
-                    className="shrink-0 rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-1.5 text-[11px] text-amber-200"
+                    className="shrink-0 rounded-md border border-[#dfb357]/60/60 bg-[#dfb357]/15 px-3 py-1.5 text-[11px] text-[#dfb357]"
                     role="alert"
                   >
                     ⚠️ {lastConfigWarning.message}
@@ -214,7 +214,7 @@ export function TelemetryDashboard() {
                 )}
                 {idleSystemWarning && (
                   <div
-                    className="shrink-0 rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-1.5 text-[11px] text-amber-200"
+                    className="shrink-0 rounded-md border border-[#dfb357]/60/60 bg-[#dfb357]/15 px-3 py-1.5 text-[11px] text-[#dfb357]"
                     role="alert"
                   >
                     <span className="font-semibold">No traffic is reaching any node.</span> The
@@ -231,10 +231,10 @@ export function TelemetryDashboard() {
                   {metrics.nodes.map((node) => {
                     const healthColor =
                       node.healthStatus === 'red'
-                        ? 'bg-red-500'
+                        ? 'bg-[#8b2e1e]'
                         : node.healthStatus === 'yellow'
-                          ? 'bg-amber-400'
-                          : 'bg-green-500';
+                          ? 'bg-[#c49a3c]'
+                          : 'bg-[#6b8f71]';
                     const utilPct =
                       node.utilization.kind === 'value'
                         ? `${Math.round(node.utilization.value * 100)}%`
@@ -244,21 +244,21 @@ export function TelemetryDashboard() {
                         key={node.nodeId}
                         onClick={() => setViewMode('summary')}
                         title={`${labelFor(node.nodeId)} — throughput ${node.throughput.toFixed(1)} req/s, error ${(node.errorRate * 100).toFixed(1)}%, p50 ${node.latencyPercentiles.p50.toFixed(1)}ms, queue ${node.queueDepth}, utilization ${utilPct}. Click for the full per-node table.`}
-                        className="flex items-center gap-1.5 rounded border border-gray-800 bg-gray-900 px-2 py-0.5 text-[10px] text-gray-300 hover:border-gray-600"
+                        className="flex items-center gap-1.5 rounded border border-[#5b5347]/20 bg-[#211e1a] px-2 py-0.5 text-[10px] text-[#f3ede2]/90 hover:border-[#5b5347]/40"
                       >
                         <span
                           className={`size-1.5 rounded-full ${healthColor}`}
                           aria-hidden="true"
                         />
                         <span className="max-w-[7rem] truncate">{labelFor(node.nodeId)}</span>
-                        <span className="font-mono text-gray-400">
+                        <span className="font-mono text-[#f3ede2]/80">
                           {node.throughput.toFixed(0)}/s · q{node.queueDepth} · {utilPct}
                         </span>
                       </button>
                     );
                   })}
                   <span
-                    className="ml-auto text-[9px] text-gray-600"
+                    className="ml-auto text-[9px] text-[#f3ede2]/70"
                     title="These are trailing 5-second window values, sampled every 500ms of simulated time."
                   >
                     live · 5s windows
@@ -271,11 +271,11 @@ export function TelemetryDashboard() {
                   <div className="grid h-full flex-1 grid-cols-2 grid-rows-2 gap-2">
                     {/* Latency Chart */}
                     <div
-                      className="rounded border border-gray-800 bg-gray-900 p-1"
+                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-1"
                       aria-label={`End-to-End Latency chart: p50=${metrics.systemWide.endToEndLatency.p50.toFixed(1)}ms, p90=${metrics.systemWide.endToEndLatency.p90.toFixed(1)}ms, p99=${metrics.systemWide.endToEndLatency.p99.toFixed(1)}ms`}
                     >
                       <span
-                        className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                        className="mb-0.5 block text-[10px] font-medium text-[#f3ede2]/80 cursor-help"
                         title="Time from request creation to completion (p50/p90/p99 percentiles in ms)"
                       >
                         End-to-End Latency
@@ -287,11 +287,11 @@ export function TelemetryDashboard() {
 
                     {/* Throughput Chart */}
                     <div
-                      className="rounded border border-gray-800 bg-gray-900 p-1"
+                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-1"
                       aria-label={`Throughput chart: ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
                     >
                       <span
-                        className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                        className="mb-0.5 block text-[10px] font-medium text-[#f3ede2]/80 cursor-help"
                         title="Requests processed per second (green=success, red=errors)"
                       >
                         Throughput
@@ -303,11 +303,11 @@ export function TelemetryDashboard() {
 
                     {/* Queue/Pool Gauges */}
                     <div
-                      className="rounded border border-gray-800 bg-gray-900 p-1"
+                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-1"
                       aria-label={`Queue and connection pools gauge: ${metrics.nodes.length} nodes reporting`}
                     >
                       <span
-                        className="mb-0.5 block text-[10px] font-medium text-gray-400 cursor-help"
+                        className="mb-0.5 block text-[10px] font-medium text-[#f3ede2]/80 cursor-help"
                         title="Resource utilization per node. Green <70%, amber 70-90%, red >90%. Pulse = at capacity."
                       >
                         Queue / Connection Pools
@@ -319,10 +319,10 @@ export function TelemetryDashboard() {
 
                     {/* System-wide Summary */}
                     <div
-                      className="rounded border border-gray-800 bg-gray-900 p-2"
+                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-2"
                       aria-label={`System overview: throughput ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%, active requests ${metrics.systemWide.activeRequests}`}
                     >
-                      <span className="mb-1 block text-[10px] font-medium text-gray-400">
+                      <span className="mb-1 block text-[10px] font-medium text-[#f3ede2]/80">
                         System Overview
                       </span>
                       <div className="grid grid-cols-2 gap-2 overflow-auto">
@@ -347,7 +347,7 @@ export function TelemetryDashboard() {
                   </div>
 
                   {/* Event Log Sidebar */}
-                  <div className="w-72 shrink-0 rounded border border-gray-800 bg-gray-900">
+                  <div className="w-72 shrink-0 rounded border border-[#5b5347]/20 bg-[#5b5347]">
                     <EventLog entries={eventLog} />
                   </div>
                 </div>
@@ -374,19 +374,19 @@ const METRIC_TOOLTIPS: Record<string, string> = {
 function MetricCard({ label, value }: { label: string; value: string }) {
   const tooltip = METRIC_TOOLTIPS[label];
   return (
-    <div className="rounded bg-gray-800 px-2 py-1">
-      <span className="flex items-center gap-1 text-[9px] text-gray-500">
+    <div className="rounded bg-[#5b5347]/80 px-2 py-1">
+      <span className="flex items-center gap-1 text-[9px] text-[#f3ede2]/70">
         {label}
         {tooltip && (
           <span className="group relative cursor-help" aria-label={tooltip}>
-            <span className="inline-flex items-center text-gray-500 hover:text-gray-300">ℹ️</span>
-            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-normal rounded bg-gray-700 px-2 py-1 text-[10px] leading-tight text-gray-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 w-48">
+            <span className="inline-flex items-center text-[#f3ede2]/70 hover:text-[#f3ede2]/90">ℹ️</span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-normal rounded bg-[#5b5347]/60 px-2 py-1 text-[10px] leading-tight text-[#f3ede2] opacity-0 shadow-lg transition-opacity group-hover:opacity-100 w-48">
               {tooltip}
             </span>
           </span>
         )}
       </span>
-      <span className="text-xs font-medium text-gray-200">{value}</span>
+      <span className="text-xs font-medium text-[#f3ede2]">{value}</span>
     </div>
   );
 }

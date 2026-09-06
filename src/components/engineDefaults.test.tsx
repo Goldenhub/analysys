@@ -12,7 +12,7 @@ import {
   type MainToWorkerMessage,
   type SimulationEngineConfig,
 } from '@/types/messages';
-import { presets } from '@/presets';
+import { presets, referencePresets } from '@/presets';
 
 // ─── Worker mock ─────────────────────────────────────────────────
 //
@@ -91,6 +91,31 @@ describe('PresetSelector load', () => {
     const payload = initPayload();
     expect(payload.maxHopsPerRequest).toBe(DEFAULT_MAX_HOPS_PER_REQUEST);
     expect(payload.metricsIntervalMs).toBe(DEFAULT_METRICS_INTERVAL_MS);
+  });
+
+  it("runs at the preset's stored duration and syncs the toolbar Duration to it", () => {
+    // The regression: toolbar showed a stale 2min default while a 1min reference
+    // preset silently ran for 60s. Loading a preset must make every surface
+    // agree on the horizon that will actually run.
+    vi.useFakeTimers();
+    const target = referencePresets[0]!;
+    const expectedLabel = target.simulatedDurationMs / 60_000 + 'min';
+
+    useSimulationStore.setState({ durationMs: 120_000 });
+    render(<PresetSelector />);
+    fireEvent.click(screen.getByRole('button', { name: 'Presets' }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(target.name, 'i') }));
+
+    const payload = initPayload();
+    expect(payload.maxSimulatedTimeMs).toBe(target.simulatedDurationMs);
+    expect(useSimulationStore.getState().durationMs).toBe(target.simulatedDurationMs);
+
+    cleanup();
+    useSimulationStore.getState().terminateWorker();
+    posted.length = 0;
+
+    render(<SimulationToolbar />);
+    expect(screen.getByRole('option', { name: expectedLabel, selected: true })).toBeDefined();
   });
 });
 

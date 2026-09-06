@@ -39,7 +39,7 @@ function validTopology() {
 
 function validSchema(): AnalysysFileSchema {
   return {
-    schemaVersion: 2,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     name: 'test-topology',
     createdAt: '2024-01-01T00:00:00.000Z',
     topology: validTopology() as unknown as AnalysysFileSchema['topology'],
@@ -78,10 +78,10 @@ function v1Schema(): AnalysysFileSchema {
   };
 }
 
-function v2SchemaFull(): AnalysysFileSchema {
+function v3SchemaFull(): AnalysysFileSchema {
   return {
-    schemaVersion: 2,
-    name: 'v2-topology',
+    schemaVersion: 3,
+    name: 'v3-topology',
     createdAt: '2024-01-01T00:00:00.000Z',
     topology: {
       nodes: [
@@ -120,9 +120,6 @@ function v2SchemaFull(): AnalysysFileSchema {
           protocol: 'SYNC',
           weight: 2.5,
         },
-      ],
-      subsystemGroups: [
-        { id: 'g1', name: 'Backend', memberNodeIds: ['n1', 'n2'], collapsed: false },
       ],
     } as unknown as AnalysysFileSchema['topology'],
   };
@@ -232,40 +229,34 @@ describe('validateAnalysysSchema', () => {
   });
 });
 
-describe('serialize (version 2)', () => {
-  it('produces valid JSON with schemaVersion 2', () => {
+describe('serialize (version 3)', () => {
+  it('produces valid JSON with the current schemaVersion', () => {
     const topo = validTopology() as unknown as AnalysysFileSchema['topology'];
     const json = serialize(topo, 'my-topology');
     const parsed = JSON.parse(json);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(parsed.name).toBe('my-topology');
     expect(parsed.topology.nodes).toHaveLength(1);
     expect(parsed.topology.edges).toHaveLength(1);
     expect(parsed.createdAt).toBeDefined();
   });
 
-  it('includes subsystemGroups in the serialized output (Task 420)', () => {
-    const topo = {
-      ...validTopology(),
-      subsystemGroups: [{ id: 'g1', name: 'Backend', memberNodeIds: ['n1'], collapsed: true }],
-    } as unknown as AnalysysFileSchema['topology'];
+  it('does not emit the removed subsystemGroups field (group system removed)', () => {
+    const topo = validTopology() as unknown as AnalysysFileSchema['topology'];
     const json = serialize(topo, 'grouped');
     const parsed = JSON.parse(json);
-    expect(parsed.topology.subsystemGroups).toHaveLength(1);
-    expect(parsed.topology.subsystemGroups[0].name).toBe('Backend');
-    expect(parsed.topology.subsystemGroups[0].collapsed).toBe(true);
-    expect(parsed.topology.subsystemGroups[0].memberNodeIds).toEqual(['n1']);
+    expect(parsed.topology.subsystemGroups).toBeUndefined();
   });
 });
 
-describe('deserialize (version 2)', () => {
-  it('parses and validates valid v2 JSON', () => {
-    const json = JSON.stringify(v2SchemaFull());
+describe('deserialize (version 3)', () => {
+  it('parses and validates valid v3 JSON', () => {
+    const json = JSON.stringify(v3SchemaFull());
     const result = deserialize(json);
     expect(result.valid).toBe(true);
     expect(result.data).toBeDefined();
-    expect(result.data!.schemaVersion).toBe(2);
-    expect(result.data!.name).toBe('v2-topology');
+    expect(result.data!.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(result.data!.name).toBe('v3-topology');
   });
 
   it('rejects invalid JSON strings', () => {
@@ -280,11 +271,11 @@ describe('deserialize (version 2)', () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it('rejects schemaVersion above 2', () => {
-    const schema = { ...validSchema(), schemaVersion: 3 };
+  it('rejects schemaVersion above the current version', () => {
+    const schema = { ...validSchema(), schemaVersion: CURRENT_SCHEMA_VERSION + 1 };
     const result = deserialize(JSON.stringify(schema));
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('3');
+    expect(result.errors[0]).toContain(`${CURRENT_SCHEMA_VERSION + 1}`);
     expect(result.errors[0]).toContain(`${CURRENT_SCHEMA_VERSION}`);
   });
 
@@ -303,15 +294,15 @@ describe('deserialize (version 2)', () => {
   });
 });
 
-describe('migrateSchema (v1 → v2)', () => {
-  it('migrates v1 data to schema version 2', () => {
+describe('migrateSchema (v1 → v3)', () => {
+  it('migrates v1 data to the current schema version', () => {
     const data = v1Schema();
     const { data: migrated } = migrateSchema(data, 1);
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(migrated.name).toBe(data.name);
   });
 
-  it('preserves node positions and existing config during v1→v2 migration', () => {
+  it('preserves node positions and existing config during v1→v3 migration', () => {
     const data = v1Schema();
     const { data: migrated } = migrateSchema(data, 1);
     expect(migrated.topology.nodes[0].position).toEqual({ x: 10, y: 20 });
@@ -320,7 +311,7 @@ describe('migrateSchema (v1 → v2)', () => {
     expect(config.distribution).toBe(Distribution.Poisson);
   });
 
-  it('defaults routingPolicy to First on v1→v2 migration with a warning', () => {
+  it('defaults routingPolicy to First on v1→v3 migration with a warning', () => {
     const data = v1Schema();
     const { data: migrated, warnings } = migrateSchema(data, 1);
     const node = migrated.topology.nodes[0] as Record<string, unknown>;
@@ -328,7 +319,7 @@ describe('migrateSchema (v1 → v2)', () => {
     expect(warnings.some((w) => w.field === 'routingPolicy')).toBe(true);
   });
 
-  it('defaults edge weight to 1.0 on v1→v2 migration with a warning', () => {
+  it('defaults edge weight to 1.0 on v1→v3 migration with a warning', () => {
     const data = v1Schema();
     const { data: migrated, warnings } = migrateSchema(data, 1);
     const edge = migrated.topology.edges[0] as Record<string, unknown>;
@@ -336,10 +327,12 @@ describe('migrateSchema (v1 → v2)', () => {
     expect(warnings.some((w) => w.field === 'weight')).toBe(true);
   });
 
-  it('sets subsystemGroups to empty on v1→v2 migration', () => {
+  it('does not emit the removed subsystemGroups field', () => {
     const data = v1Schema();
     const { data: migrated } = migrateSchema(data, 1);
-    expect(migrated.topology.subsystemGroups).toEqual([]);
+    expect(
+      (migrated.topology as unknown as { subsystemGroups?: unknown }).subsystemGroups,
+    ).toBeUndefined();
   });
 
   it('produces one warning per applied default', () => {
@@ -355,18 +348,18 @@ describe('migrateSchema (v1 → v2)', () => {
     }
   });
 
-  it('preserves v2 data unchanged', () => {
-    const data = v2SchemaFull();
-    const { data: migrated, warnings } = migrateSchema(data, 2);
-    expect(migrated.schemaVersion).toBe(2);
-    // v2 with all fields present should generate no warnings
+  it('preserves current-version data unchanged', () => {
+    const data = v3SchemaFull();
+    const { data: migrated, warnings } = migrateSchema(data, CURRENT_SCHEMA_VERSION);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    // All fields present should generate no warnings
     expect(warnings).toHaveLength(0);
   });
 });
 
-describe('v2 serialize/deserialize round-trip (Task 421)', () => {
-  it('exporting a v2 record produces a record equal to the imported one', () => {
-    const original = v2SchemaFull();
+describe('v3 serialize/deserialize round-trip (Task 421)', () => {
+  it('exporting a v3 record produces a record equal to the imported one', () => {
+    const original = v3SchemaFull();
     const json = JSON.stringify(original);
     const deserialized = deserialize(json);
     expect(deserialized.valid).toBe(true);
@@ -376,7 +369,7 @@ describe('v2 serialize/deserialize round-trip (Task 421)', () => {
     const reserialized = serialize(data.topology, data.name);
     const reparsed = JSON.parse(reserialized);
 
-    // Verify equality across positions, configs, routing policies, protocols, weights, groups
+    // Verify equality across positions, configs, routing policies, protocols, weights
     const origNode = original.topology.nodes[0] as Record<string, unknown>;
     const roundNode = reparsed.topology.nodes[0];
     expect(roundNode.position).toEqual(origNode.position);
@@ -387,10 +380,6 @@ describe('v2 serialize/deserialize round-trip (Task 421)', () => {
     const roundEdge = reparsed.topology.edges[0];
     expect(roundEdge.protocol).toEqual(origEdge.protocol);
     expect(roundEdge.weight).toEqual(origEdge.weight);
-
-    expect(reparsed.topology.subsystemGroups).toEqual(
-      (original.topology as { subsystemGroups?: unknown }).subsystemGroups,
-    );
   });
 });
 

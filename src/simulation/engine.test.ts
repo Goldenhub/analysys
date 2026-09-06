@@ -850,7 +850,10 @@ describe('SimulationEngine', () => {
   });
 
   it('ignores run() while a loop owns the queue and resume() when not paused', async () => {
-    const config = createConfig({ maxSimulatedTimeMs: 1000 });
+    // Long horizon (>1 inter-batch chunk) so the first run() is guaranteed to be
+    // mid-flight when the synchronous control-assertions run — a short horizon
+    // completes within a single 2000-event batch and reports COMPLETE early.
+    const config = createConfig({ maxSimulatedTimeMs: 60000 });
     const engine = new SimulationEngine(config);
 
     const runPromise = engine.run();
@@ -1024,10 +1027,13 @@ describe('SimulationEngine', () => {
 
     const config = createConfig({
       topology: { nodes, edges },
-      maxSimulatedTimeMs: 12000,
+      // Long horizon: the (fast) paced run must still be alive when the chaos
+      // injection lands mid-run and must have ample post-restore traffic left so
+      // the final window carries throughput again.
+      maxSimulatedTimeMs: 60000,
       metricsIntervalMs: 500,
-      // Real pacing (50ms per 200-event batch): keeps the run alive long enough
-      // to land the chaos injection deterministically inside the busy window.
+      // Real pacing keeps the run alive across several 2000-event batches so the
+      // chaos injection can be landed deterministically inside the busy window.
       disablePacing: false,
       speedMultiplier: 1,
     });

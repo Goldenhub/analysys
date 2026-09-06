@@ -1,5 +1,3 @@
-import type { Edge as RFEdge } from '@xyflow/react';
-
 /** Communication protocol for edges between nodes. */
 export enum EdgeProtocol {
   Sync = 'SYNC',
@@ -25,4 +23,6 @@ export interface EdgeData {
 }
 
 /** React Flow edge wrapper for EdgeData. */
-export type AnalysysEdge = RFEdge<Record<string, unknown> & EdgeData>;
+import type { CanvasEdge } from '@/canvas/types';
+
+export type AnalysysEdge = CanvasEdge;

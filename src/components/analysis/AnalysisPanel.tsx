@@ -1,10 +1,10 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { useReactFlow } from '@xyflow/react';
 import { useAnalysisStore } from '@/store/analysisStore';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { useSweepStore } from '@/store/sweepStore';
 import { useBaselineStore } from '@/store/baselineStore';
+import { getViewportState, subscribeViewport, requestViewportChange } from '@/canvas/viewportBus';
 import type { Finding, SuppressionEntry } from '@/types/findings';
 import type { SimulationNode } from '@/types/nodes';
 import { SimState } from '@/simulation/types';
@@ -60,8 +60,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
   const importedFindings = useAnalysisStore((s) => s.importedFindings);
 
   const nodes = useTopologyStore((s) => s.nodes);
-  const subsystemGroups = useTopologyStore((s) => s.subsystemGroups);
-  const setGroupCollapsed = useTopologyStore((s) => s.setGroupCollapsed);
+  const onNodesChange = useTopologyStore((s) => s.onNodesChange);
 
   // Capacity sweep: live progress + wired controls (Phase: sweep end-to-end)
   const sweepStatus = useSweepStore((s) => s.status);
@@ -84,14 +83,11 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
     }
   }
 
-  // React Flow instance for viewport control
-  let reactFlowInstance: ReturnType<typeof useReactFlow> | null = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    reactFlowInstance = useReactFlow();
-  } catch {
-    // AnalysisPanel may be rendered outside ReactFlowProvider in tests
-  }
+  // Current canvas viewport, kept in sync via the viewport bus. The AnalysisPanel
+  // is rendered as a sibling of the canvas (outside the engine's React provider),
+  // so it reads/drives the viewport through the bus instead of React context.
+  const [, forceViewportVersion] = useState(0);
+  useEffect(() => subscribeViewport(() => forceViewportVersion((n) => n + 1)), []);
 
   // Determine display Findings: imported set or recomputed set
   const displayFindings = importedFindings ?? findings;
@@ -116,8 +112,6 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
   const activateFinding = useCallback(
     (finding: Finding) => {
-      if (!reactFlowInstance) return;
-
       // Task 542: system-wide or empty subject set — do nothing to Canvas
       if (finding.subjectNodeIds.length === 0) return;
 
@@ -129,64 +123,56 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
       // Task 542: fully absent — leave Canvas untouched
       if (presentIds.length === 0) return;
 
-      // Task 540: Expand collapsed groups containing present subject nodes
-      for (const group of subsystemGroups) {
-        if (group.collapsed) {
-          const hasSubjectNode = group.memberNodeIds.some((nid: string) =>
-            presentIds.includes(nid),
-          );
-          if (hasSubjectNode) {
-            setGroupCollapsed(group.id, false);
-          }
-        }
-      }
-
       // Set selection to present subject nodes
-      const rfNodes = reactFlowInstance.getNodes();
-      const updatedNodes = rfNodes.map((n) => ({
-        ...n,
-        selected: presentIds.includes(n.id),
-      }));
-      reactFlowInstance.setNodes(updatedNodes);
+      const selectionChanges = nodes
+        .filter((n) => !(n.data as unknown as SimulationNode)?.id || presentIds.includes((n.data as unknown as SimulationNode).id))
+        .map((n) => ({
+          type: 'select' as const,
+          id: n.id,
+          selected: presentIds.includes(n.id),
+        }));
+      onNodesChange(selectionChanges);
 
       // Compute bounding box of selected nodes
-      const selectedRfNodes = rfNodes.filter((n) => presentIds.includes(n.id));
-      if (selectedRfNodes.length === 0) return;
+      const selectedNodes = nodes.filter((n) => presentIds.includes(n.id));
+      if (selectedNodes.length === 0) return;
 
-      const minX = Math.min(...selectedRfNodes.map((n) => n.position.x));
-      const minY = Math.min(...selectedRfNodes.map((n) => n.position.y));
+      const minX = Math.min(...selectedNodes.map((n) => n.position.x));
+      const minY = Math.min(...selectedNodes.map((n) => n.position.y));
       const maxX = Math.max(
-        ...selectedRfNodes.map((n) => n.position.x + (n.measured?.width ?? 150)),
+        ...selectedNodes.map((n) => n.position.x + (n.width ?? 140)),
       );
       const maxY = Math.max(
-        ...selectedRfNodes.map((n) => n.position.y + (n.measured?.height ?? 50)),
+        ...selectedNodes.map((n) => n.position.y + (n.height ?? 80)),
       );
 
       const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
-      // Fit view with padding
-      reactFlowInstance.fitBounds(bounds, { padding: 0.2 });
+      // Fit view to the finding's nodes with padding
+      requestViewportChange({ type: 'fitBounds', bounds, padding: 60 });
 
-      // Task 541: Check zoom after fitting
+      // Task 541: after fitting, check whether the viewport fell below the zoom floor;
+      // if so snap to the floor centered on the finding and count the offscreen nodes.
       setTimeout(() => {
-        if (!reactFlowInstance) return;
-        const viewport = reactFlowInstance.getViewport();
-        if (viewport.zoom < ZOOM_FLOOR) {
-          reactFlowInstance.setViewport({
-            x: -(minX + (maxX - minX) / 2) * ZOOM_FLOOR + window.innerWidth / 2,
-            y: -(minY + (maxY - minY) / 2) * ZOOM_FLOOR + window.innerHeight / 2,
-            zoom: ZOOM_FLOOR,
+        const current = getViewportState();
+        const vp = current.viewport;
+        if (vp.zoom < ZOOM_FLOOR) {
+          const { width: sizeW, height: sizeH } = current.size;
+          requestViewportChange({
+            type: 'set',
+            viewport: {
+              x: -(minX + (maxX - minX) / 2) * ZOOM_FLOOR + sizeW / 2,
+              y: -(minY + (maxY - minY) / 2) * ZOOM_FLOOR + sizeH / 2,
+              zoom: ZOOM_FLOOR,
+            },
           });
 
-          // Count nodes outside viewport at 0.25 zoom
-          const vpWidth = window.innerWidth;
-          const vpHeight = window.innerHeight;
+          const halfVpW = sizeW / (2 * ZOOM_FLOOR);
+          const halfVpH = sizeH / (2 * ZOOM_FLOOR);
           const centerX = (minX + maxX) / 2;
           const centerY = (minY + maxY) / 2;
-          const halfVpW = vpWidth / (2 * ZOOM_FLOOR);
-          const halfVpH = vpHeight / (2 * ZOOM_FLOOR);
 
-          const offscreen = selectedRfNodes.filter((n) => {
+          const offscreen = selectedNodes.filter((n) => {
             const nx = n.position.x;
             const ny = n.position.y;
             return (
@@ -202,7 +188,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
         }
       }, 50);
     },
-    [reactFlowInstance, nodes, subsystemGroups, setGroupCollapsed],
+    [nodes, onNodesChange],
   );
 
   // Handle Escape to close panel and return focus (Task 545)
@@ -264,17 +250,17 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
       ref={panelRef}
       role="complementary"
       aria-label="Analysis panel"
-      className="flex flex-col h-full border-l border-gray-800 bg-gray-950 w-96 overflow-hidden"
+      className="flex flex-col h-full border-l border-[#5b5347]/20 bg-[#f3ede2] w-96 overflow-hidden"
     >
       {/* Panel header */}
-      <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Analysis</h2>
+      <div className="flex items-center justify-between border-b border-[#5b5347]/20 px-3 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[#211e1a]/80">Analysis</h2>
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => exportReport('md')}
             title="Download the findings report as Markdown"
-            className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded border border-[#5b5347]/40 bg-[#5b5347] px-1.5 py-0.5 text-[10px] text-[#f3ede2] hover:border-[#5b5347] hover:text-[#f3ede2] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
           >
             ⬇ MD
           </button>
@@ -282,7 +268,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
             type="button"
             onClick={() => exportReport('json')}
             title="Download the findings report as JSON (re-importable)"
-            className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded border border-[#5b5347]/40 bg-[#5b5347] px-1.5 py-0.5 text-[10px] text-[#f3ede2] hover:border-[#5b5347] hover:text-[#f3ede2] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
           >
             ⬇ JSON
           </button>
@@ -292,7 +278,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
               onClose?.();
               openerRef.current?.focus();
             }}
-            className="rounded p-0.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="rounded p-0.5 text-[#5b5347]/70 hover:bg-[#5b5347]/80 hover:text-[#f3ede2] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
             aria-label="Close analysis panel"
           >
             ✕
@@ -302,7 +288,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
       {/* Tabs */}
       <div
-        className="flex border-b border-gray-800 px-2"
+        className="flex border-b border-[#5b5347]/20 px-2"
         role="tablist"
         aria-label="Analysis sections"
       >
@@ -315,8 +301,8 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
             onClick={() => setActiveTab(tab.id)}
             className={`px-2 py-1.5 text-[10px] font-medium border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-indigo-500 text-indigo-300'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-[#b8402e] text-[#b8402e]'
+                : 'border-transparent text-[#5b5347]/70 hover:text-[#5b5347]'
             }`}
           >
             {tab.label}
@@ -331,9 +317,9 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
           <div id="panel-findings" role="tabpanel" aria-label="Findings">
             {/* Task 553: Insufficient windows state */}
             {!hasSufficientWindows && (
-              <div className="rounded border border-gray-700 bg-gray-900/60 px-3 py-2 text-xs text-gray-400 mb-3">
+              <div className="rounded border border-[#5b5347]/30 bg-[#5b5347]/60 px-3 py-2 text-xs text-[#211e1a]/85 mb-3">
                 <p>Analysis requires at least {MIN_COMPLETED_WINDOWS} completed metrics windows.</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-[10px] text-[#211e1a]/65 mt-0.5">
                   Completed: {completedWindowCount} / {MIN_COMPLETED_WINDOWS}
                 </p>
               </div>
@@ -341,10 +327,10 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
             {/* Task 553: No findings state */}
             {hasSufficientWindows && !hasFindings && (
-              <div className="rounded border border-green-900/50 bg-green-950/30 px-3 py-2 text-xs text-green-400 mb-3">
+              <div className="rounded border border-[#6b8f71]/50/50 bg-[#6b8f71]/10 px-3 py-2 text-xs text-[#4d6b52] mb-3">
                 <p>Analysis completed — no findings detected.</p>
                 {windowBounds && (
-                  <p className="text-[10px] text-gray-500 mt-0.5">
+                  <p className="text-[10px] text-[#5b5347]/70 mt-0.5">
                     Window: {windowBounds.start} ms – {windowBounds.end} ms
                   </p>
                 )}
@@ -353,7 +339,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
             {/* Offscreen count (Task 541) */}
             {offscreenCount > 0 && (
-              <div className="rounded border border-amber-800/50 bg-amber-950/30 px-3 py-1.5 text-[10px] text-amber-300 mb-2">
+              <div className="rounded border border-[#c49a3c]/50/50 bg-[#c49a3c]/10 px-3 py-1.5 text-[10px] text-[#8a6418] mb-2">
                 {offscreenCount} subject node{offscreenCount > 1 ? 's' : ''} outside viewport at
                 minimum zoom.
               </div>
@@ -375,9 +361,9 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
             {/* Task 554: Budget exhaustion */}
             {incompleteRules && incompleteRules.length > 0 && (
-              <div className="mt-3 rounded border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+              <div className="mt-3 rounded border border-[#c49a3c]/50/50 bg-[#c49a3c]/10 px-3 py-2 text-xs text-[#8a6418]">
                 <p className="font-medium mb-0.5">Budget Exhausted</p>
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[10px] text-[#5b5347]/70">
                   The following rules did not complete: {incompleteRules.join(', ')}
                 </p>
               </div>
@@ -418,8 +404,8 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
               }
             />
             {sweepReport && (
-              <div className="mt-3 rounded-md border border-gray-700 bg-gray-900/60 p-3 text-xs text-gray-300">
-                <p className="font-semibold text-gray-100">
+              <div className="mt-3 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/60 p-3 text-xs text-[#211e1a]/85">
+                <p className="font-semibold text-[#211e1a]">
                   {sweepReport.status === 'completed' ? 'Sweep complete' : 'Sweep cancelled'}
                 </p>
                 {sweepReport.status === 'cancelled' && (
@@ -435,7 +421,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
                       : 'undetermined'}
                   </span>
                   {sweepReport.sustainableLoad.explanation && (
-                    <span className="block text-[11px] text-gray-500">
+                    <span className="block text-[11px] text-[#211e1a]/70">
                       {sweepReport.sustainableLoad.explanation}
                     </span>
                   )}
@@ -467,7 +453,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
 
             {/* Manage saved baselines */}
             <section aria-label="Saved baselines">
-              <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#5b5347]/80">
                 Saved baselines
               </h3>
               <BaselineManager />
@@ -491,7 +477,6 @@ function RetainBaselineControl() {
   const metrics = useSimulationStore((s) => s.metrics);
   const retainBaseline = useBaselineStore((s) => s.retainBaseline);
   const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
-  const subsystemGroups = useTopologyStore((s) => s.subsystemGroups);
   const [name, setName] = useState('');
 
   const canRetain = simState === SimState.Complete && runSummary !== null;
@@ -537,10 +522,9 @@ function RetainBaselineControl() {
       simulatedDurationMs: runSummary.simulatedDurationMs,
       totalOfferedRps: offeredRps,
       topology: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         nodes: topo.nodes,
         edges: topo.edges,
-        subsystemGroups,
       },
       wholeRun: runSummary.wholeRun ?? {
         latency: { p50: 0, p90: 0, p99: 0 },
@@ -561,13 +545,13 @@ function RetainBaselineControl() {
   return (
     <section
       aria-label="Save current run as baseline"
-      className="rounded-md border border-gray-700 bg-gray-900/60 p-3"
+      className="rounded-md border border-[#5b5347]/30 bg-[#5b5347]/60 p-3"
     >
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#211e1a]/85">
         Save current run
       </h3>
       {!canRetain ? (
-        <p className="text-[11px] text-gray-500">Finish a simulation to enable baseline capture.</p>
+        <p className="text-[11px] text-[#211e1a]/70">Finish a simulation to enable baseline capture.</p>
       ) : (
         <div className="flex items-center gap-1.5">
           <input
@@ -576,12 +560,12 @@ function RetainBaselineControl() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Baseline name…"
             maxLength={40}
-            className="h-7 flex-1 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-indigo-500"
+            className="h-7 flex-1 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e]"
             aria-label="Baseline name"
           />
           <button
             onClick={handleRetain}
-            className="rounded-md border border-indigo-600 bg-indigo-900/40 px-2 py-1 text-[10px] font-medium text-indigo-200 hover:bg-indigo-800/50 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="rounded-md border border-transparent bg-[#b8402e] px-2 py-1 text-[10px] font-medium text-[#f3ede2] hover:bg-[#9a3525] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
             title="Capture the finished run's totals and topology for later comparison"
           >
             Save baseline
@@ -606,11 +590,11 @@ function ComparisonPicker() {
   }, [baselines, nameA, nameB]);
 
   const selectClass =
-    'h-7 flex-1 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-indigo-500';
+    'h-7 flex-1 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e]';
 
   if (baselines.length < 2) {
     return (
-      <p className="py-4 text-center text-xs italic text-gray-500">
+      <p className="py-4 text-center text-xs italic text-[#5b5347]/70">
         Save at least two baselines to compare runs.
       </p>
     );
@@ -619,7 +603,7 @@ function ComparisonPicker() {
   return (
     <section aria-label="Compare two baselines" className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="w-6 text-[10px] font-semibold text-gray-500">A</span>
+        <span className="w-6 text-[10px] font-semibold text-[#5b5347]/80">A</span>
         <select
           value={nameA}
           onChange={(e) => setNameA(e.target.value)}
@@ -635,7 +619,7 @@ function ComparisonPicker() {
         </select>
       </div>
       <div className="flex items-center gap-2">
-        <span className="w-6 text-[10px] font-semibold text-gray-500">B</span>
+        <span className="w-6 text-[10px] font-semibold text-[#5b5347]/80">B</span>
         <select
           value={nameB}
           onChange={(e) => setNameB(e.target.value)}
@@ -651,11 +635,11 @@ function ComparisonPicker() {
         </select>
       </div>
       {comparison === null ? (
-        <p className="py-2 text-center text-xs italic text-gray-500">
+        <p className="py-2 text-center text-xs italic text-[#5b5347]/70">
           Select two different saved runs to compare.
         </p>
       ) : isComparisonError(comparison) ? (
-        <p className="rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-[11px] text-amber-200">
+        <p className="rounded-md border border-[#c49a3c]/60/60 bg-[#c49a3c]/10 px-3 py-2 text-[11px] text-[#8a6418]">
           {comparison.message}
         </p>
       ) : (
@@ -676,16 +660,16 @@ function SuppressionList({
 }) {
   return (
     <section aria-label="Suppressed findings" className="mt-3">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[#5b5347]/80 mb-1">
         Suppressed Rules
       </h4>
-      <ul className="text-xs text-gray-400" role="list">
+      <ul className="text-xs text-[#5b5347]/85" role="list">
         {suppressions.map((s, i) => (
-          <li key={i} className="py-0.5 border-b border-gray-800/50 last:border-0">
-            <span className="text-gray-300">{s.ruleId}</span>
-            <span className="text-gray-500"> — metric: {s.metricName}</span>
+          <li key={i} className="py-0.5 border-b border-[#5b5347]/20/50 last:border-0">
+            <span className="text-[#211e1a]/85">{s.ruleId}</span>
+            <span className="text-[#5b5347]/70"> — metric: {s.metricName}</span>
             {s.affectedNodeLabels.length > 0 && (
-              <span className="text-gray-500">
+              <span className="text-[#5b5347]/70">
                 {' '}
                 affecting: {s.affectedNodeLabels.map((l) => nodeLabels.get(l) ?? l).join(', ')}
               </span>

@@ -2,22 +2,50 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { CanvasEditor } from '@/components/canvas/CanvasEditor';
 import { NodePalette } from '@/components/canvas/NodePalette';
 import { NodeConfigPanel } from '@/components/config/NodeConfigPanel';
+import { useTopologyStore } from '@/store/topologyStore';
+import { useSimulationStore } from '@/store/simulationStore';
+import { usePersistenceStore } from '@/store/persistenceStore';
+import { isVisualNode } from '@/canvas';
 import {
   SimulationToolbar,
   ChaosPanel,
   PersistenceToolbar,
   ActiveChaosStrip,
 } from '@/components/controls';
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher';
 import { PresetSelector } from '@/components/presets';
 import { TelemetryDashboard } from '@/components/telemetry';
 import { LiveAnnouncer } from '@/components/a11y/LiveAnnouncer';
 import { AnalysisPanel } from '@/components/analysis/AnalysisPanel';
 import { ToastViewport } from '@/components/ui/toast';
 import { useAnalysisPanelStore } from '@/store/analysisPanelStore';
+import { HelpModal, HelpIcon } from '@/components/help/HelpModal';
 
 function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Reload recovery: restore the autosaved working session (canvas + run settings).
+  useEffect(() => {
+    usePersistenceStore.getState().restoreAutosave();
+  }, []);
+
+  // Autosave on every topology/settings change, debounced so rapid drag
+  // interactions settle to a single write.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => usePersistenceStore.getState().autosave(), 400);
+    };
+    const unsubTopology = useTopologyStore.subscribe(schedule);
+    const unsubSimulation = useSimulationStore.subscribe(schedule);
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubTopology();
+      unsubSimulation();
+    };
+  }, []);
 
   // Task 232: Escape closes config panel and deselects node
   const handleKeyDown = useCallback(
@@ -35,25 +63,44 @@ function App() {
   }, [handleKeyDown]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-950 text-white max-xl:flex-col">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f3ede2] text-[#211e1a] max-xl:flex-col">
       {/* Aria-live announcement regions (Tasks 233-234) */}
       <LiveAnnouncer />
 
       {/* Application-wide rejection/notification toasts */}
       <ToastViewport />
 
+      {/* How-to-use help (opened from the sidebar, centered modal) */}
+      <HelpModal
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        openerRef={helpButtonRef}
+      />
+
       {/* Left Sidebar — Node Palette (tabIndex 1) */}
       <aside
-        className="flex w-60 flex-col overflow-y-auto min-h-0 border-r border-gray-800 bg-gray-900/50 p-4 transition-all duration-300 max-xl:w-full max-xl:flex-row max-xl:items-center max-xl:gap-4 max-xl:border-b max-xl:border-r-0 max-xl:py-2"
+        className="flex w-60 flex-col overflow-y-auto min-h-0 border-r border-[#5b5347]/20 bg-[#5b5347] p-4 transition-all duration-300 max-xl:w-full max-xl:flex-row max-xl:items-center max-xl:gap-4 max-xl:border-b max-xl:border-r-0 max-xl:py-2"
         tabIndex={1}
         aria-label="Node palette sidebar"
       >
-        <h1 className="text-lg font-bold">Analysys</h1>
-        <span className="mb-3 text-xs text-gray-500">Architecture Simulator</span>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400 max-xl:mb-0">
+        {/* App name — inline with the "How to use Analysys" help button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-[#f3ede2]">Analysys</h1>
+          <button
+            ref={helpButtonRef}
+            onClick={() => setHelpOpen(true)}
+            className="rounded-full p-1.5 text-[#f3ede2]/70 hover:bg-[#f3ede2]/10 hover:text-[#f3ede2] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
+            aria-label="How to use Analysys"
+            title="How to use Analysys"
+          >
+            <HelpIcon />
+          </button>
+        </div>
+        <span className="mb-3 text-xs text-[#f3ede2]/80">Architecture Simulator</span>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#f3ede2]/90 max-xl:mb-0">
           Node Palette
         </h2>
-        <p className="mb-4 text-xs text-gray-500 max-xl:mb-0 max-xl:hidden">
+        <p className="mb-4 text-xs text-[#f3ede2]/80 max-xl:mb-0 max-xl:hidden">
           Drag nodes onto the canvas to build your topology.
         </p>
         <NodePalette />
@@ -63,7 +110,7 @@ function App() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header / Toolbar (tabIndex 4) */}
         <header
-          className="flex flex-wrap items-center gap-4 border-b border-gray-800 px-4 py-2"
+          className="flex flex-wrap items-center gap-4 border-b border-[#5b5347]/20 px-4 py-2"
           tabIndex={4}
           aria-label="Simulation toolbar"
         >
@@ -73,18 +120,13 @@ function App() {
           </div>
 
           {/* Simulation Controls */}
-          <div className="ml-4 border-l border-gray-700 pl-4">
+          <div className="ml-4 border-l border-[#5b5347]/30 pl-4">
             <SimulationToolbar />
           </div>
 
           {/* Persistence Controls */}
-          <div className="ml-4 border-l border-gray-700 pl-4">
+          <div className="ml-4 border-l border-[#5b5347]/30 pl-4">
             <PersistenceToolbar />
-          </div>
-
-          {/* Theme Switcher */}
-          <div className="ml-4 border-l border-gray-700 pl-4">
-            <ThemeSwitcher />
           </div>
 
           {/* Chaos Controls (tabIndex 5) */}
@@ -101,7 +143,25 @@ function App() {
           aria-label="Topology canvas"
         >
           <div className="flex-1 relative">
-            <CanvasEditor onNodeSelect={setSelectedNodeId} />
+            <CanvasEditor
+              onNodeSelect={(nodeId) => {
+                // Visual nodes (sections / text notes) have no simulation config;
+                // selecting them must not open the NodeConfigPanel. Only simulation
+                // nodes do. Canvas selection (resize/move handles) is store-driven.
+                if (!nodeId) {
+                  setSelectedNodeId(null);
+                  return;
+                }
+                const n = useTopologyStore
+                  .getState()
+                  .nodes.find((node) => node.id === nodeId);
+                if (n && isVisualNode(n)) {
+                  setSelectedNodeId(null);
+                  return;
+                }
+                setSelectedNodeId(nodeId);
+              }}
+            />
           </div>
           {/* Analysis Panel (Task 536): renders alongside Canvas, Canvas pan/zoom/selection unchanged */}
           <AnalysisPanelWrapper />

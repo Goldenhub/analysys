@@ -60,14 +60,14 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
   const noTerminationsYet = totalCumulative === 0;
 
   return (
-    <div className="rounded-lg border border-gray-700 overflow-hidden">
+    <div className="rounded-lg border border-[#5b5347]/30 overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-800 text-left">
-            <th className="px-3 py-2 font-medium text-gray-300">Status</th>
-            <th className="px-3 py-2 font-medium text-gray-300 text-right">Count</th>
-            <th className="px-3 py-2 font-medium text-gray-300 text-right">Rate (term/s)</th>
-            <th className="px-3 py-2 font-medium text-gray-300 text-right">Percentage</th>
+          <tr className="bg-[#211e1a] text-left">
+            <th className="px-3 py-2 font-medium text-[#f3ede2]/80">Status</th>
+            <th className="px-3 py-2 font-medium text-[#f3ede2]/80 text-right">Count</th>
+            <th className="px-3 py-2 font-medium text-[#f3ede2]/80 text-right">Rate (term/s)</th>
+            <th className="px-3 py-2 font-medium text-[#f3ede2]/80 text-right">Percentage</th>
           </tr>
         </thead>
         <tbody>
@@ -77,15 +77,15 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
             const rate = windowDurationSec > 0 ? windowCount / windowDurationSec : 0;
 
             return (
-              <tr key={key} className="border-t border-gray-700">
-                <td className="px-3 py-1.5 text-gray-200">{label}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-gray-300">{count}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-gray-300">
+              <tr key={key} className="border-t border-[#5b5347]/30">
+                <td className="px-3 py-1.5 text-[#f3ede2]">{label}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-[#f3ede2]/80">{count}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-[#f3ede2]/80">
                   {rate.toFixed(2)} term/s
                 </td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-gray-300">
+                <td className="px-3 py-1.5 text-right tabular-nums text-[#f3ede2]/80">
                   {noTerminationsYet ? (
-                    <span className="text-gray-500 text-xs">No terminated requests yet</span>
+                    <span className="text-[#f3ede2]/70 text-xs">No terminated requests yet</span>
                   ) : (
                     `${((count / totalCumulative) * 100).toFixed(1)}%`
                   )}
@@ -95,12 +95,12 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
           })}
         </tbody>
         <tfoot>
-          <tr className="border-t border-gray-600 bg-gray-800">
-            <td className="px-3 py-1.5 font-medium text-gray-200">Total</td>
-            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-200">
+          <tr className="border-t border-[#5b5347]/40 bg-[#211e1a]">
+            <td className="px-3 py-1.5 font-medium text-[#f3ede2]">Total</td>
+            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-[#f3ede2]">
               {totalCumulative}
             </td>
-            <td className="px-3 py-1.5 text-right tabular-nums text-gray-300">
+            <td className="px-3 py-1.5 text-right tabular-nums text-[#f3ede2]/80">
               {windowDurationSec > 0
                 ? (
                     Object.values(aggregatedWindow).reduce((a, b) => a + b, 0) / windowDurationSec
@@ -108,8 +108,8 @@ export function TerminalStatusTable({ nodes, windowDurationSec }: TerminalStatus
                 : '0.00'}{' '}
               term/s
             </td>
-            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-200">
-              {noTerminationsYet ? <span className="text-gray-500 text-xs">N/A</span> : '100.0%'}
+            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-[#f3ede2]">
+              {noTerminationsYet ? <span className="text-[#f3ede2]/70 text-xs">N/A</span> : '100.0%'}
             </td>
           </tr>
         </tfoot>

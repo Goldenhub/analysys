@@ -1,75 +1,71 @@
 import { useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
-import type { AnalysysEdge } from '@/types/edges';
+import type { EdgeRenderContext } from '@/canvas';
+import { getBezierPath } from '@/canvas/path';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
 
-export function SyncEdge({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style,
-  markerEnd,
-  data,
-}: EdgeProps<AnalysysEdge>) {
+export function SyncEdge(ctx: EdgeRenderContext): React.ReactElement {
   const [hovered, setHovered] = useState(false);
   const simState = useSimulationStore((s) => s.simState);
   const isRunning = simState === SimState.Running;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  const d = getBezierPath(ctx.source, ctx.target, 'right', 'left');
+  const midX = (ctx.source.x + ctx.target.x) / 2;
+  const midY = (ctx.source.y + ctx.target.y) / 2;
+  const stroke = ctx.selected ? '#b8402e' : '#5b5347';
+  const strokeWidth = ctx.selected ? 3 : 2;
 
   return (
     <>
       {/* Invisible wider path for hover detection */}
       <path
-        d={edgePath}
+        d={d}
         fill="none"
         stroke="transparent"
         strokeWidth={14}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       />
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        style={{
-          ...style,
-          stroke: '#6b7280',
-          strokeWidth: 2,
-        }}
-        markerEnd={markerEnd}
+
+      {/* Selected glow beneath the main path */}
+      {ctx.selected && (
+        <path
+          d={d}
+          fill="none"
+          stroke="#b8402e"
+          opacity={0.3}
+          strokeWidth={6}
+        />
+      )}
+
+      {/* Main visible path */}
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        markerEnd="url(#edge-arrow)"
       />
 
       {/* Animated packet dots when simulation is running */}
       {isRunning && (
         <>
-          {/* Request packets (blue dots moving source → target) */}
+          {/* Request packets moving source → target */}
           <path
-            d={edgePath}
+            d={d}
             fill="none"
-            stroke="#3b82f6"
+            stroke="#b8402e"
             strokeWidth={4}
             strokeDasharray="3 15"
             strokeLinecap="round"
             opacity={0.85}
             className="animate-packet-forward"
           />
-          {/* Response packets (green dots moving target → source) */}
+          {/* Response packets moving target → source */}
           <path
-            d={edgePath}
+            d={d}
             fill="none"
-            stroke="#22c55e"
+            stroke="#6b8f71"
             strokeWidth={3}
             strokeDasharray="2 20"
             strokeLinecap="round"
@@ -79,18 +75,27 @@ export function SyncEdge({
         </>
       )}
 
-      {/* Protocol label on hover */}
+      {/* Protocol label chip on hover */}
       {hovered && (
-        <EdgeLabelRenderer>
-          <div
-            className="pointer-events-none absolute rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium text-gray-300 shadow-lg"
-            style={{
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            }}
+        <>
+          <rect
+            x={midX - 20}
+            y={midY - 8}
+            width={40}
+            height={16}
+            rx={8}
+            fill="#5b5347"
+          />
+          <text
+            x={midX}
+            y={midY + 3.5}
+            textAnchor="middle"
+            fill="#f3ede2"
+            fontSize="10"
           >
-            {data?.protocol ?? 'SYNC'}
-          </div>
-        </EdgeLabelRenderer>
+            {ctx.data.protocol}
+          </text>
+        </>
       )}
     </>
   );

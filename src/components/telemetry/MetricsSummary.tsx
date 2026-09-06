@@ -32,11 +32,11 @@ function healthBadge(status: 'green' | 'yellow' | 'red'): string {
  */
 function UtilizationCell({ reading }: { reading: UtilizationReading }) {
   if (reading.kind === 'not-applicable') {
-    return <span className="text-gray-500">{reading.reason}</span>;
+    return <span className="text-[#f3ede2]/70">{reading.reason}</span>;
   }
   return (
     <>
-      {(reading.value * 100).toFixed(0)} <span className="text-gray-500">%</span>
+      {(reading.value * 100).toFixed(0)} <span className="text-[#f3ede2]/70">%</span>
     </>
   );
 }
@@ -55,13 +55,13 @@ function SummaryCard({
   description: string;
 }) {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+    <div className="rounded-lg border border-[#5b5347]/30 bg-[#5b5347]/80/60 px-4 py-3">
+      <div className="text-[10px] uppercase tracking-wider text-[#f3ede2]/70">{label}</div>
       <div className="mt-1 flex items-baseline gap-1.5">
-        <span className="text-xl font-bold text-gray-100">{value}</span>
-        <span className="text-xs text-gray-400">{unit}</span>
+        <span className="text-xl font-bold text-[#f3ede2]/90">{value}</span>
+        <span className="text-xs text-[#f3ede2]/80">{unit}</span>
       </div>
-      <div className="mt-1 text-[10px] text-gray-500">{description}</div>
+      <div className="mt-1 text-[10px] text-[#f3ede2]/70">{description}</div>
     </div>
   );
 }
@@ -84,13 +84,13 @@ function RunReportCard() {
       ? Math.round(runSummary.simulatedDurationMs / runSummary.wallClockDurationMs)
       : 0;
   return (
-    <div className="rounded-lg border border-indigo-700/60 bg-indigo-950/30 p-4">
+    <div className="rounded-lg border border-[#b8402e]/30/60 bg-[#b8402e]/10 p-4">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[#ef9a8b]">
           Run Report — whole-run totals
         </h3>
         <span
-          className="rounded bg-gray-800 px-2 py-0.5 font-mono text-[10px] text-gray-400"
+          className="rounded bg-[#5b5347]/80 px-2 py-0.5 font-mono text-[10px] text-[#f3ede2]/80"
           title="The PRNG seed for this run. Enter the same seed in the toolbar to reproduce this run exactly."
         >
           seed {runSummary.seed}
@@ -99,7 +99,7 @@ function RunReportCard() {
 
       {runSummary.totalRequests === 0 && (
         <div
-          className="mb-3 rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-[11px] leading-relaxed text-amber-200"
+          className="mb-3 rounded-md border border-[#dfb357]/60/60 bg-[#dfb357]/15 px-3 py-2 text-[11px] leading-relaxed text-[#dfb357]"
           role="alert"
         >
           <span className="font-semibold">No requests were generated during this run.</span> The
@@ -153,7 +153,7 @@ function RunReportCard() {
           description="Discrete events processed per wall-clock second"
         />
       </div>
-      <p className="mt-2 text-[10px] text-gray-500">
+      <p className="mt-2 text-[10px] text-[#f3ede2]/70">
         Discrete-event simulation: the virtual clock jumps between events, so{' '}
         {formatSimDuration(runSummary.simulatedDurationMs)} of system time can execute in
         milliseconds of real time — wall clock measures computation, not duration.
@@ -203,7 +203,7 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
       {/* Run Report — only meaningful once a run has finished */}
       {isComplete && <RunReportCard />}
       {!isComplete && (
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-[#f3ede2]/70">
           Live values below are trailing 5-second windows. A whole-run Run Report appears here when
           the simulation completes.
         </p>
@@ -211,9 +211,9 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
 
       {/* System-Wide Metrics */}
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#f3ede2]/80">
           System-Wide Metrics{' '}
-          <span className="font-normal normal-case tracking-normal text-gray-500">
+          <span className="font-normal normal-case tracking-normal text-[#f3ede2]/70">
             (trailing 5s window)
           </span>
         </h3>
@@ -272,16 +272,16 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
       {/* Per-Node Breakdown */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#f3ede2]/80">
             Per-Node Breakdown{' '}
-            <span className="font-normal normal-case tracking-normal text-gray-500">
+            <span className="font-normal normal-case tracking-normal text-[#f3ede2]/70">
               (trailing 5s window · updated t={formatSimClockMs(metrics.simulatedTimeMs)})
             </span>
           </h3>
           {nodes.length > 0 && (
             <button
               onClick={exportNodesCsv}
-              className="rounded border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100"
+              className="rounded border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 py-0.5 text-[10px] text-[#f3ede2]/80 hover:border-[#5b5347]/40 hover:text-[#f3ede2]/90"
               title="Download the current per-node metrics as CSV"
             >
               Export nodes CSV
@@ -289,17 +289,17 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
           )}
         </div>
         {nodes.length === 0 ? (
-          <div className="rounded-lg border border-gray-700 bg-gray-800/40 px-4 py-6 text-center">
-            <p className="text-sm text-gray-400">Waiting for node metrics...</p>
-            <p className="mt-1 text-[10px] text-gray-500">
+          <div className="rounded-lg border border-[#5b5347]/30 bg-[#5b5347]/80/40 px-4 py-6 text-center">
+            <p className="text-sm text-[#f3ede2]/80">Waiting for node metrics...</p>
+            <p className="mt-1 text-[10px] text-[#f3ede2]/70">
               Per-node data will appear once the simulation has processed enough events.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-700">
+          <div className="overflow-x-auto rounded-lg border border-[#5b5347]/30">
             <table className="w-full text-left text-[11px]">
               <thead>
-                <tr className="border-b border-gray-700 bg-gray-800/80 text-gray-400">
+                <tr className="border-b border-[#5b5347]/30 bg-[#5b5347]/80/80 text-[#f3ede2]/80">
                   <th className="px-3 py-2 font-medium">Node</th>
                   <th className="px-3 py-2 font-medium">Health</th>
                   <th className="px-3 py-2 font-medium">Throughput</th>
@@ -312,28 +312,28 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
               </thead>
               <tbody>
                 {nodes.map((node: NodeMetricsSnapshot) => (
-                  <tr key={node.nodeId} className="border-b border-gray-800 hover:bg-gray-800/40">
-                    <td className="px-3 py-1.5 text-gray-300" title={node.nodeId}>
+                  <tr key={node.nodeId} className="border-b border-[#5b5347]/20 hover:bg-[#5b5347]/80/40">
+                    <td className="px-3 py-1.5 text-[#f3ede2]/80" title={node.nodeId}>
                       {labelFor(node.nodeId)}
                     </td>
                     <td className="px-3 py-1.5">{healthBadge(node.healthStatus)}</td>
-                    <td className="px-3 py-1.5 text-gray-200">
-                      {node.throughput.toFixed(1)} <span className="text-gray-500">req/s</span>
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
+                      {node.throughput.toFixed(1)} <span className="text-[#f3ede2]/70">req/s</span>
                     </td>
-                    <td className="px-3 py-1.5 text-gray-200">
-                      {(node.errorRate * 100).toFixed(1)} <span className="text-gray-500">%</span>
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
+                      {(node.errorRate * 100).toFixed(1)} <span className="text-[#f3ede2]/70">%</span>
                     </td>
-                    <td className="px-3 py-1.5 text-gray-200">
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
                       {node.latencyPercentiles.p50.toFixed(1)}{' '}
-                      <span className="text-gray-500">ms</span>
+                      <span className="text-[#f3ede2]/70">ms</span>
                     </td>
-                    <td className="px-3 py-1.5 text-gray-200">
-                      {node.queueDepth} <span className="text-gray-500">items</span>
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
+                      {node.queueDepth} <span className="text-[#f3ede2]/70">items</span>
                     </td>
-                    <td className="px-3 py-1.5 text-gray-200">
-                      {node.activeConnections} <span className="text-gray-500">active</span>
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
+                      {node.activeConnections} <span className="text-[#f3ede2]/70">active</span>
                     </td>
-                    <td className="px-3 py-1.5 text-gray-200">
+                    <td className="px-3 py-1.5 text-[#f3ede2]">
                       <UtilizationCell reading={node.utilization} />
                     </td>
                   </tr>
@@ -342,7 +342,7 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
             </table>
           </div>
         )}
-        <p className="mt-2 text-[10px] text-gray-500">
+        <p className="mt-2 text-[10px] text-[#f3ede2]/70">
           Throughput = requests processed per second at this node. Utilization = % of node capacity
           in use. Queue = requests waiting to be processed.
         </p>
@@ -351,9 +351,9 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
       {/* Terminal status distribution (cumulative across the run) */}
       {nodes.length > 0 && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#f3ede2]/80">
             Request Outcomes{' '}
-            <span className="font-normal normal-case tracking-normal text-gray-500">
+            <span className="font-normal normal-case tracking-normal text-[#f3ede2]/70">
               (cumulative)
             </span>
           </h3>

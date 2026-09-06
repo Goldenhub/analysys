@@ -5,8 +5,8 @@ import type { SimulationNode } from '@/types/nodes';
 // ─── Severity Contrast (R43.4, 4.5:1 minimum) ───────────────────
 
 const SEVERITY_STYLES: Record<string, string> = {
-  Critical: 'text-red-300 font-semibold', // red-300 on gray-900 ≈ 7.5:1
-  Warning: 'text-amber-300 font-medium', // amber-300 on gray-900 ≈ 6.8:1
+  Critical: 'text-[#8b2e1e] font-semibold', // red-300 on gray-900 ≈ 7.5:1
+  Warning: 'text-[#c49a3c] font-medium', // amber-300 on gray-900 ≈ 6.8:1
   Info: 'text-sky-300', // sky-300 on gray-900 ≈ 7.1:1
 };
 
@@ -83,31 +83,31 @@ export function FindingCard({ finding, isActive, onActivate }: FindingCardProps)
       tabIndex={-1}
       className={`rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
         isActive
-          ? 'border-indigo-500 bg-indigo-950/40 ring-2 ring-indigo-500/50'
-          : 'border-gray-700 bg-gray-900/60 hover:border-gray-600 hover:bg-gray-800/60'
+          ? 'border-[#b8402e] bg-[#b8402e]/10 ring-2 ring-[#b8402e]/50'
+          : 'border-[#5b5347]/30 bg-[#5b5347]/60 hover:border-[#5b5347]/40 hover:bg-[#5b5347]/80/60'
       }`}
       onClick={onActivate}
     >
       {/* Severity + Confidence */}
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className={SEVERITY_STYLES[finding.severity] ?? 'text-gray-300'}>
+        <span className={SEVERITY_STYLES[finding.severity] ?? 'text-[#f3ede2]/80'}>
           {finding.severity}
         </span>
-        <span className="text-gray-500 text-[10px]">Confidence: {finding.confidence}</span>
+        <span className="text-[#f3ede2]/50 text-[10px]">Confidence: {finding.confidence}</span>
       </div>
 
       {/* Subject nodes (Task 539) */}
       <div className="mb-1">
         {isSystemWide ? (
-          <span className="text-gray-400 italic">System-wide scope</span>
+          <span className="text-[#f3ede2]/60 italic">System-wide scope</span>
         ) : allAbsent ? (
-          <span className="text-gray-500 italic">
+          <span className="text-[#f3ede2]/50 italic">
             {subjectLabels.map((s) => s.label).join(', ')} — absent from current topology
           </span>
         ) : (
-          <span className="text-gray-300">
+          <span className="text-[#f3ede2]/80">
             {subjectLabels.map((s, i) => (
-              <span key={i} className={s.present ? '' : 'text-gray-500 line-through'}>
+              <span key={i} className={s.present ? '' : 'text-[#f3ede2]/50 line-through'}>
                 {s.label}
                 {i < subjectLabels.length - 1 ? ', ' : ''}
               </span>
@@ -117,20 +117,20 @@ export function FindingCard({ finding, isActive, onActivate }: FindingCardProps)
       </div>
 
       {/* Constraint */}
-      <p className="text-gray-300 mb-1 leading-snug">{finding.constraint}</p>
+      <p className="text-[#f3ede2]/80 mb-1 leading-snug">{finding.constraint}</p>
 
       {/* Recommended action */}
-      <p className="text-gray-400 mb-1">
-        <span className="text-gray-500">Action:</span> {formatAction(finding.action)}
+      <p className="text-[#f3ede2]/60 mb-1">
+        <span className="text-[#f3ede2]/50">Action:</span> {formatAction(finding.action)}
       </p>
 
       {/* Tradeoff */}
-      <p className="text-gray-400 mb-1">
-        <span className="text-gray-500">Tradeoff:</span> {finding.tradeoff}
+      <p className="text-[#f3ede2]/60 mb-1">
+        <span className="text-[#f3ede2]/50">Tradeoff:</span> {finding.tradeoff}
       </p>
 
       {/* Window bounds */}
-      <div className="flex items-center gap-3 text-[10px] text-gray-500 mt-1">
+      <div className="flex items-center gap-3 text-[10px] text-[#f3ede2]/50 mt-1">
         <span>
           Window: {windowStart} ms – {windowEnd} ms
         </span>

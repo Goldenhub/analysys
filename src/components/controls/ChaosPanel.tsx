@@ -405,7 +405,7 @@ export function ChaosPanel() {
         variant="outline"
         size="sm"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 ${
+        className={`border-[#8a6418]/60 text-[#8a6418] hover:bg-[#8a6418]/15 hover:text-[#8a6418] ${
           activeChaosEffects.length > 0 ? 'animate-pulse' : ''
         }`}
         aria-expanded={isOpen}
@@ -414,7 +414,7 @@ export function ChaosPanel() {
         <span>⚡</span>
         <span>Chaos</span>
         {activeChaosEffects.length > 0 && (
-          <span className="ml-1 rounded-full bg-amber-600 px-1.5 text-[10px] text-white">
+          <span className="ml-1 rounded-full bg-[#c49a3c] px-1.5 text-[10px] text-[#211e1a]">
             {activeChaosEffects.length}
           </span>
         )}
@@ -422,15 +422,15 @@ export function ChaosPanel() {
 
       {/* Floating Panel */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[480px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[480px] max-w-[90vw] rounded-lg border border-[#5b5347]/30 bg-[#5b5347] p-4 shadow-xl">
           <div className="flex flex-col gap-2">
             {/* Section Header */}
             <div className="flex items-center gap-1.5">
               <span className="text-xs">🔬</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/80">
                 Chaos Engineering
               </span>
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-[#f3ede2]/75">
                 — Inject failures to test resilience
               </span>
             </div>
@@ -445,12 +445,12 @@ export function ChaosPanel() {
                   disabled={chaosDisabled}
                   onClick={handleFlushCache}
                   title={chaosDisabled ? NOT_RUNNING_TITLE : CHAOS_TOOLTIPS.flushCache}
-                  className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
+                  className="border-[#dfb357]/70 text-[#dfb357] hover:bg-[#dfb357]/15 hover:text-[#dfb357] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/70"
                 >
                   <span>🔥</span>
                   <span>Flush Cache</span>
                 </Button>
-                <span className="text-[9px] text-gray-500">
+                <span className="text-[9px] text-[#f3ede2]/75">
                   Cold cache: 0% hit rate for 30s sim
                 </span>
               </div>
@@ -468,7 +468,7 @@ export function ChaosPanel() {
                           ? 'The only database in this topology'
                           : 'Which database to take down'
                       }
-                      className="h-7 max-w-[9rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
+                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
                     >
                       {dbNodes.length === 1 && <option value="">Any DB (1 in topology)</option>}
                       {dbNodes.map((node) => (
@@ -494,13 +494,13 @@ export function ChaosPanel() {
                           ? 'No database nodes in the topology — drag one onto the canvas.'
                           : CHAOS_TOOLTIPS.dropDb
                     }
-                    className="border-red-700 text-red-400 hover:bg-red-900/30 hover:text-red-300 disabled:border-gray-700 disabled:text-gray-500"
+                    className="border-[#ef9a8b]/60 text-[#ef9a8b] hover:bg-[#8b2e1e]/30 hover:text-[#ef9a8b] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/70"
                   >
                     <span>💀</span>
                     <span>Drop DB</span>
                   </Button>
                 </div>
-                <span className="text-[9px] text-gray-500">
+                <span className="text-[9px] text-[#f3ede2]/75">
                   Node outage: DB unreachable for 30s sim
                 </span>
               </div>
@@ -513,12 +513,12 @@ export function ChaosPanel() {
                   disabled={chaosDisabled}
                   onClick={handleSpikeTraffic}
                   title={chaosDisabled ? NOT_RUNNING_TITLE : CHAOS_TOOLTIPS.spikeTraffic}
-                  className="border-amber-700 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300 disabled:border-gray-700 disabled:text-gray-500"
+                  className="border-[#dfb357]/70 text-[#dfb357] hover:bg-[#dfb357]/15 hover:text-[#dfb357] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/70"
                 >
                   <span>⚡</span>
                   <span>5× Traffic</span>
                 </Button>
-                <span className="text-[9px] text-gray-500">Surge: 5× request rate for 15s sim</span>
+                <span className="text-[9px] text-[#f3ede2]/75">Surge: 5× request rate for 15s sim</span>
               </div>
             </div>
 
@@ -531,7 +531,7 @@ export function ChaosPanel() {
                     onChange={(e) => setSelectedDisableNodeId(e.target.value)}
                     disabled={disableNodeDisabled}
                     title={disableNodeDisabled ? NOT_RUNNING_TITLE : 'Which node to take offline'}
-                    className="h-7 max-w-[10rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
+                    className="h-7 max-w-[10rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
                   >
                     <option value="">Select node…</option>
                     {allNodes.map((node) => (
@@ -549,7 +549,7 @@ export function ChaosPanel() {
                       setDisableDurationMs(Math.max(100, Math.min(600000, Number(e.target.value))))
                     }
                     disabled={disableNodeDisabled}
-                    className="h-7 w-20 rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
+                    className="h-7 w-20 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
                     title="Duration in simulated ms (100–600,000)"
                   />
                   <Button
@@ -558,13 +558,13 @@ export function ChaosPanel() {
                     disabled={disableNodeDisabled || !selectedDisableNodeId}
                     onClick={handleDisableNode}
                     title={CHAOS_TOOLTIPS.disableNode}
-                    className="border-red-700 text-red-400 hover:bg-red-900/30 hover:text-red-300 disabled:border-gray-700 disabled:text-gray-500"
+                    className="border-[#ef9a8b]/60 text-[#ef9a8b] hover:bg-[#8b2e1e]/30 hover:text-[#ef9a8b] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/70"
                   >
                     <span>🔌</span>
                     <span>Disable</span>
                   </Button>
                 </div>
-                <span className="text-[9px] text-gray-500">
+                <span className="text-[9px] text-[#f3ede2]/75">
                   Node failure: all requests timeout for duration
                 </span>
               </div>
@@ -582,7 +582,7 @@ export function ChaosPanel() {
                           ? 'The only dead letter queue in this topology'
                           : 'Which dead letter queue to redrive'
                       }
-                      className="h-7 max-w-[9rem] rounded-md border border-gray-700 bg-gray-800 px-1.5 text-xs text-gray-200 outline-none focus:border-red-500 disabled:opacity-50"
+                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
                     >
                       {dlqNodes.length === 1 && <option value="">Any DLQ (1 in topology)</option>}
                       {dlqNodes.map((node) => (
@@ -597,13 +597,13 @@ export function ChaosPanel() {
                       disabled={chaosDisabled || (dlqNodes.length > 1 && !effectiveDlqNodeId)}
                       onClick={handleRedriveDlq}
                       title={chaosDisabled ? NOT_RUNNING_TITLE : CHAOS_TOOLTIPS.redriveDlq}
-                      className="border-purple-700 text-purple-400 hover:bg-purple-900/30 hover:text-purple-300 disabled:border-gray-700 disabled:text-gray-500"
+                      className="border-[#ef9a8b]/60 text-[#f3ede2] hover:bg-[#8b2e1e]/40 hover:text-[#f3ede2] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/60"
                     >
                       <span>🔄</span>
                       <span>Redrive DLQ</span>
                     </Button>
                   </div>
-                  <span className="text-[9px] text-gray-500">
+                  <span className="text-[9px] text-[#f3ede2]/75">
                     Manual redrive of dead-lettered messages
                   </span>
                 </div>
@@ -612,9 +612,9 @@ export function ChaosPanel() {
 
             {/* Active Chaos Effects — Clear Sentences */}
             {visibleEffects.length > 0 && (
-              <div className="flex flex-col gap-1.5 rounded-md border border-amber-800/50 bg-amber-950/30 p-2">
+              <div className="flex flex-col gap-1.5 rounded-md border border-[#c49a3c]/50/50 bg-[#c49a3c]/10 p-2">
                 {visibleEffects.map((effect) => (
-                  <div key={effect.id} className="flex items-start gap-1.5 text-xs text-amber-200">
+                  <div key={effect.id} className="flex items-start gap-1.5 text-xs text-[#dfb357]/90">
                     <span className="shrink-0">{getActiveEffectIcon(effect.chaosType)}</span>
                     <span className="leading-tight">
                       {getActiveEffectMessage(effect, effect.remainingSec)}
@@ -630,9 +630,9 @@ export function ChaosPanel() {
                 {impactSummaries.map((summary, idx) => (
                   <div
                     key={`${summary.label}-${idx}`}
-                    className="rounded-md border border-amber-700/50 bg-amber-950/40 px-2.5 py-1.5 text-[10px] text-amber-200"
+                    className="rounded-md border border-[#c49a3c]/60/50 bg-[#c49a3c]/10 px-2.5 py-1.5 text-[10px] text-[#dfb357]/90"
                   >
-                    <span className="font-semibold text-amber-300">{summary.label} Impact:</span>{' '}
+                    <span className="font-semibold text-[#dfb357]">{summary.label} Impact:</span>{' '}
                     Latency {summary.latencyChange >= 0 ? '+' : ''}
                     {summary.latencyChange}%, Error rate {summary.errorRateBefore}% →{' '}
                     {summary.errorRateAfter}%
@@ -649,10 +649,10 @@ export function ChaosPanel() {
 
             {/* SPOF Reachability Status (task 522) */}
             {spofStatus && (
-              <div className="rounded-md border border-gray-700 bg-gray-900/50 p-2 text-[10px]">
-                <span className="font-semibold text-gray-300">SPOF Analysis:</span>{' '}
+              <div className="rounded-md border border-[#5b5347]/30 bg-[#5b5347]/50 p-2 text-[10px]">
+                <span className="font-semibold text-[#f3ede2]/80">SPOF Analysis:</span>{' '}
                 {spofStatus.spofs.length === 0 ? (
-                  <span className="text-green-400">
+                  <span className="text-[#8fbf97]">
                     Every source retains a path to a reachable terminal under any single removal.
                     {spofStatus.unreachableSources.length > 0 && (
                       <>
@@ -686,7 +686,7 @@ export function ChaosPanel() {
                     )}
                   </span>
                 ) : (
-                  <span className="text-amber-400">
+                  <span className="text-[#dfb357]">
                     {spofStatus.spofs.length} node{spofStatus.spofs.length > 1 ? 's' : ''}{' '}
                     designated as Single Point{spofStatus.spofs.length > 1 ? 's' : ''} of Failure.
                   </span>
@@ -722,10 +722,10 @@ export function ActiveChaosStrip() {
 
   return (
     <div
-      className="flex items-center gap-2 rounded-md border border-amber-800/60 bg-amber-950/40 px-2 py-1"
+      className="flex items-center gap-2 rounded-md border border-[#8a6418]/50 bg-[#8a6418]/10 px-2 py-1"
       aria-label="Active chaos effects"
     >
-      <span className="flex animate-pulse items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+      <span className="flex animate-pulse items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#8a6418]">
         Chaos
       </span>
       {activeChaosEffects.map((effect) => {
@@ -737,12 +737,12 @@ export function ActiveChaosStrip() {
           <span
             key={effect.id}
             title={effect.description}
-            className="flex items-center gap-1 rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] text-amber-200"
+            className="flex items-center gap-1 rounded bg-[#8a6418]/15 px-1.5 py-0.5 text-[10px] text-[#8a6418]/90"
           >
             {getActiveEffectIcon(effect.chaosType)}
             <span>{SHORT_EFFECT_LABELS[effect.chaosType] ?? effect.label}</span>
             {effect.durationMs > 0 && (
-              <span className="font-mono text-amber-400/80">{remainingSec}s</span>
+              <span className="font-mono text-[#8a6418]/90">{remainingSec}s</span>
             )}
           </span>
         );

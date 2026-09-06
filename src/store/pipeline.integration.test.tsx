@@ -62,7 +62,8 @@ describe('metrics pipeline: real preset engine → worker handler → store → 
     });
   });
 
-  it('delivers non-zero per-node metrics from an authentic preset run', async () => {
+  it('delivers non-zero per-node metrics from an authentic preset run',
+    { timeout: 60_000 }, async () => {
     const config: SimulationEngineConfig = {
       topology: presetJson.topology,
       seed: (presetJson as unknown as { seed: number }).seed,

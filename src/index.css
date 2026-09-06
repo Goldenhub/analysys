@@ -3,42 +3,52 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
+
+  /* ─── Analysys Palette ─────────────────────────────────────── */
+  --color-canvas: var(--palette-bg);
+  --color-surface: var(--palette-surface);
+  --color-ink: var(--palette-ink);
+  --color-accent: var(--palette-accent);
+  --color-accent-hover: var(--palette-accent-hover);
+
+  /* Health status */
+  --color-health-green: var(--palette-health-green);
+  --color-health-amber: var(--palette-health-amber);
+  --color-health-red: var(--palette-health-red);
+  --color-health-nominal: var(--palette-health-nominal);
+
+  /* ─── shadcn compat (mapped to palette) ────────────────────── */
+  --color-background: var(--palette-bg);
+  --color-foreground: var(--palette-ink);
+  --color-card: var(--palette-bg);
+  --color-card-foreground: var(--palette-ink);
+  --color-popover: var(--palette-bg);
+  --color-popover-foreground: var(--palette-ink);
+  --color-primary: var(--palette-accent);
+  --color-primary-foreground: var(--palette-bg);
+  --color-secondary: var(--palette-surface);
+  --color-secondary-foreground: var(--palette-bg);
+  --color-muted: color-mix(in srgb, var(--palette-surface) 12%, transparent);
+  --color-muted-foreground: var(--palette-surface);
+  --color-accent: var(--palette-surface);
+  --color-accent-foreground: var(--palette-bg);
+  --color-destructive: var(--palette-health-red);
+  --color-border: color-mix(in srgb, var(--palette-surface) 20%, transparent);
+  --color-input: color-mix(in srgb, var(--palette-surface) 20%, transparent);
+  --color-ring: var(--palette-accent);
+
+  --color-sidebar: var(--palette-surface);
+  --color-sidebar-foreground: var(--palette-bg);
+  --color-sidebar-primary: var(--palette-accent);
+  --color-sidebar-primary-foreground: var(--palette-bg);
+  --color-sidebar-accent: color-mix(in srgb, var(--palette-surface) 80%, transparent);
+  --color-sidebar-accent-foreground: var(--palette-bg);
+  --color-sidebar-border: color-mix(in srgb, var(--palette-bg) 15%, transparent);
+  --color-sidebar-ring: var(--palette-accent);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,73 +58,20 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ─── Palette Definition ──────────────────────────────────────── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  --palette-bg: #f3ede2;
+  --palette-surface: #5b5347;
+  --palette-ink: #211e1a;
+  --palette-accent: #b8402e;
+  --palette-accent-hover: #9a3525;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --palette-health-green: #6b8f71;
+  --palette-health-amber: #c49a3c;
+  --palette-health-red: #8b2e1e;
+  --palette-health-nominal: #5b534780;
+
+  --radius: 0.625rem;
 }
 
 @layer base {
@@ -129,7 +86,7 @@
   }
 }
 
-/* ─── Node Health Ring Transition (Task 201) ─────────────────────── */
+/* ─── Node Health Ring Transition ─────────────────────────────── */
 @layer utilities {
   .health-ring-transition {
     transition:
@@ -138,22 +95,7 @@
   }
 }
 
-/* ─── Health Color CSS Variables (Task 237) ──────────────────────── */
-:root {
-  --color-health-green: #4ade80;
-  --color-health-yellow: #facc15;
-  --color-health-red: #f87171;
-  --color-health-nominal: #6b7280;
-}
-
-.dark {
-  --color-health-green: #4ade80;
-  --color-health-yellow: #fbbf24;
-  --color-health-red: #f87171;
-  --color-health-nominal: #9ca3af;
-}
-
-/* ─── Screen reader only utility (Tasks 233-234) ─────────────────── */
+/* ─── Screen reader only utility ──────────────────────────────── */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -166,27 +108,27 @@
   border-width: 0;
 }
 
-/* ─── Panel animations (Task 240) ────────────────────────────────── */
+/* ─── Panel animations ────────────────────────────────────────── */
 @layer utilities {
   .panel-transition {
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
-/* ─── Chaos Pulse Animation ──────────────────────────────────────── */
+/* ─── Chaos Pulse Animation ──────────────────────────────────── */
 @keyframes chaos-pulse {
   0%,
   100% {
-    border-color: rgb(239 68 68 / 0.8);
-    box-shadow: 0 0 4px rgb(239 68 68 / 0.3);
+    border-color: rgb(139 46 30 / 0.8);
+    box-shadow: 0 0 4px rgb(139 46 30 / 0.3);
   }
   50% {
-    border-color: rgb(239 68 68 / 0.3);
-    box-shadow: 0 0 8px rgb(239 68 68 / 0.6);
+    border-color: rgb(139 46 30 / 0.3);
+    box-shadow: 0 0 8px rgb(139 46 30 / 0.6);
   }
 }
 
-/* ─── Edge Packet Animations ─────────────────────────────────────── */
+/* ─── Edge Packet Animations ─────────────────────────────────── */
 @keyframes packet-forward {
   0% {
     stroke-dashoffset: 18;
@@ -237,83 +179,4 @@
 
 .animate-packet-backward-slow {
   animation: packet-backward-slow 2.5s linear infinite;
-}
-
-/* ─── Light Theme ────────────────────────────────────────────────── */
-/* Applied by adding `theme-light` to <html>. Works by overriding the   */
-/* Tailwind v4 color variables that every utility compiles down to, so  */
-/* the whole app flips without touching component class names. Accent   */
-/* shades are inverted around the mid-tone so text stays readable.      */
-
-.theme-light {
-  /* Neutrals → light slate ramp */
-  --color-gray-50: #020617;
-  --color-gray-100: #0f172a;
-  --color-gray-200: #1e293b;
-  --color-gray-300: #334155;
-  --color-gray-400: #475569;
-  --color-gray-500: #64748b;
-  --color-gray-600: #94a3b8;
-  --color-gray-700: #cbd5e1;
-  --color-gray-800: #e2e8f0;
-  --color-gray-900: #f1f5f9;
-  --color-gray-950: #f8fafc;
-  --color-white: #0f172a;
-  --color-black: #f8fafc;
-
-  /* Accents (only shades actually used in the codebase) */
-  --color-amber-100: #78350f;
-  --color-amber-200: #92400e;
-  --color-amber-300: #b45309;
-  --color-amber-400: #d97706;
-  --color-amber-500: #f59e0b;
-  --color-amber-600: #fbbf24;
-  --color-amber-700: #fcd34d;
-  --color-amber-800: #fde68a;
-  --color-amber-900: #fef3c7;
-  --color-amber-950: #fffbeb;
-  --color-blue-100: #1e3a8a;
-  --color-blue-300: #1d4ed8;
-  --color-blue-400: #2563eb;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #60a5fa;
-  --color-blue-900: #dbeafe;
-  --color-emerald-300: #047857;
-  --color-emerald-400: #059669;
-  --color-emerald-600: #34d399;
-  --color-green-100: #14532d;
-  --color-green-300: #15803d;
-  --color-green-400: #16a34a;
-  --color-green-500: #22c55e;
-  --color-green-600: #4ade80;
-  --color-green-800: #bbf7d0;
-  --color-green-900: #dcfce7;
-  --color-green-950: #f0fdf4;
-  --color-indigo-100: #312e81;
-  --color-indigo-200: #3730a3;
-  --color-indigo-300: #4338ca;
-  --color-indigo-400: #4f46e5;
-  --color-indigo-500: #6366f1;
-  --color-indigo-600: #818cf8;
-  --color-indigo-700: #a5b4fc;
-  --color-indigo-800: #c7d2fe;
-  --color-indigo-900: #e0e7ff;
-  --color-indigo-950: #eef2ff;
-  --color-purple-300: #7e22ce;
-  --color-purple-400: #9333ea;
-  --color-purple-700: #d8b4fe;
-  --color-purple-900: #f3e8ff;
-  --color-red-100: #7f1d1d;
-  --color-red-200: #991b1b;
-  --color-red-300: #b91c1c;
-  --color-red-400: #dc2626;
-  --color-red-500: #ef4444;
-  --color-red-600: #f87171;
-  --color-red-700: #fca5a5;
-  --color-red-800: #fecaca;
-  --color-red-900: #fee2e2;
-  --color-red-950: #fef2f2;
-  --color-yellow-300: #a16207;
-  --color-yellow-400: #ca8a04;
-  --color-yellow-900: #fef9c3;
 }

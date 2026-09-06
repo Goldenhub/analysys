@@ -19,9 +19,9 @@ const TERMINAL_STATUSES = [
 // ─── Verdict styling ─────────────────────────────────────────────
 
 const VERDICT_STYLES: Record<string, string> = {
-  satisfied: 'text-green-400',
-  violated: 'text-red-400',
-  'not-evaluated': 'text-gray-500',
+  satisfied: 'text-[#4d6b52]',
+  violated: 'text-[#8b2e1e]',
+  'not-evaluated': 'text-[#5b5347]/75',
 };
 
 // ─── SweepResultsTable (Task 550) ────────────────────────────────
@@ -32,7 +32,7 @@ export interface SweepResultsTableProps {
 
 export function SweepResultsTable({ steps }: SweepResultsTableProps) {
   if (steps.length === 0) {
-    return <p className="text-xs text-gray-500 italic">No sweep results available.</p>;
+    return <p className="text-xs text-[#5b5347]/80 italic">No sweep results available.</p>;
   }
 
   const exportCsv = () => {
@@ -74,7 +74,7 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
       <div className="mb-1 flex justify-end">
         <button
           onClick={exportCsv}
-          className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 hover:border-gray-600 hover:text-gray-100"
+          className="rounded border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 py-0.5 text-[10px] text-[#f3ede2]/80 hover:border-[#5b5347]/40 hover:text-[#f3ede2]/90"
           title="Download all sweep steps as CSV"
         >
           Export steps CSV
@@ -86,7 +86,7 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
         role="table"
       >
         <thead>
-          <tr className="border-b border-gray-700 text-gray-400 font-medium">
+          <tr className="border-b border-[#5b5347]/30 text-[#211e1a]/75 font-medium">
             <th scope="col" className="py-1 px-1.5 text-left">
               Step
             </th>
@@ -129,40 +129,40 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
         </thead>
         <tbody>
           {steps.map((step) => (
-            <tr key={step.stepIndex} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-              <th scope="row" className="py-1 px-1.5 text-left text-gray-300 font-normal">
+            <tr key={step.stepIndex} className="border-b border-[#5b5347]/15 hover:bg-[#5b5347]/10 transition-colors">
+              <th scope="row" className="py-1 px-1.5 text-left text-[#211e1a]/85 font-normal">
                 {step.stepIndex + 1}
               </th>
-              <td className="py-1 px-1.5 text-right text-gray-300">{step.requestedRps}</td>
-              <td className="py-1 px-1.5 text-right text-gray-300">{step.appliedRps}</td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">{step.requestedRps}</td>
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">{step.appliedRps}</td>
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.achievedThroughput.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p50.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p90.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p99.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {(step.totalErrorRate * 100).toFixed(2)}%
               </td>
               {TERMINAL_STATUSES.map((status) => (
-                <td key={status} className="py-1 px-1.5 text-right text-gray-400">
+                <td key={status} className="py-1 px-1.5 text-right text-[#211e1a]/65">
                   {step.terminalCounts[status] ?? 0}
                 </td>
               ))}
-              <td className="py-1 px-1.5 text-right text-gray-400">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/65">
                 {step.measurementInterval.startMs}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-400">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/65">
                 {step.measurementInterval.endMs}
               </td>
               <td
-                className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-gray-400'}`}
+                className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-[#211e1a]/65'}`}
               >
                 {step.verdict}
               </td>

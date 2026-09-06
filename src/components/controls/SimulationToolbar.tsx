@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useSimulationStore } from '@/store';
 import { DEFAULT_MAX_HOPS_PER_REQUEST, DEFAULT_METRICS_INTERVAL_MS } from '@/types/messages';
 import { useTopologyStore } from '@/store';
@@ -87,25 +87,6 @@ function DicesIcon() {
   );
 }
 
-function HelpIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-3.5"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  );
-}
-
 // ─── Speed Options ───────────────────────────────────────────────
 
 const SPEED_OPTIONS = [1, 2, 5, 10, 50] as const;
@@ -120,20 +101,18 @@ const DURATION_OPTIONS = [
   { label: '10min', ms: 600_000 },
 ] as const;
 
-const DEFAULT_DURATION_MS = 120_000; // 2 min
-
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function getStateBadgeColor(state: SimState): string {
   switch (state) {
     case SimState.Idle:
-      return 'bg-gray-600 text-gray-200';
+      return 'bg-[#5b5347] text-[#f3ede2]';
     case SimState.Running:
-      return 'bg-green-600 text-green-100';
+      return 'bg-[#4d6b52] text-[#f3ede2]';
     case SimState.Paused:
-      return 'bg-amber-600 text-amber-100';
+      return 'bg-[#8a6418] text-[#f3ede2]';
     case SimState.Complete:
-      return 'bg-blue-600 text-blue-100';
+      return 'bg-[#b8402e] text-[#f3ede2]';
   }
 }
 
@@ -155,20 +134,18 @@ function getStateLabel(state: SimState): string {
 export function SimulationToolbar() {
   const simState = useSimulationStore((s) => s.simState);
   const speedMultiplier = useSimulationStore((s) => s.speedMultiplier);
+  const durationMs = useSimulationStore((s) => s.durationMs);
   const metrics = useSimulationStore((s) => s.metrics);
   const setSpeed = useSimulationStore((s) => s.setSpeed);
+  const setDuration = useSimulationStore((s) => s.setDuration);
   const setSimState = useSimulationStore((s) => s.setSimState);
   const initWorker = useSimulationStore((s) => s.initWorker);
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
   const resetMetrics = useSimulationStore((s) => s.resetMetrics);
   const terminateWorker = useSimulationStore((s) => s.terminateWorker);
   const getTopologySnapshot = useTopologyStore((s) => s.getTopologySnapshot);
-
-  const [showHelp, setShowHelp] = useState(false);
-  const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
-  // Reproducibility: runs are seeded explicitly instead of Date.now(), so a run
-  // can be repeated exactly. Randomized per mount; the dice button re-rolls.
-  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 0xffffffff));
+  const seed = useSimulationStore((s) => s.seed);
+  const setSeed = useSimulationStore((s) => s.setSeed);
 
   // ─── Button Handlers ─────────────────────────────────────────
 
@@ -287,7 +264,7 @@ export function SimulationToolbar() {
             size="sm"
             onClick={handleStart}
             title="Start simulation (Space)"
-            className="gap-1 text-green-400 hover:text-green-300"
+            className="gap-1 text-[#4d6b52] hover:text-[#4d6b52]"
           >
             <PlayIcon />
             <span>Start</span>
@@ -299,7 +276,7 @@ export function SimulationToolbar() {
             size="sm"
             onClick={handleResume}
             title="Resume simulation (Space)"
-            className="gap-1 text-green-400 hover:text-green-300"
+            className="gap-1 text-[#4d6b52] hover:text-[#4d6b52]"
           >
             <PlayIcon />
             <span>Resume</span>
@@ -313,7 +290,7 @@ export function SimulationToolbar() {
             size="sm"
             onClick={handlePause}
             title="Pause simulation (Space)"
-            className="gap-1 text-amber-400 hover:text-amber-300"
+            className="gap-1 text-[#8a6418] hover:text-[#8a6418]"
           >
             <PauseIcon />
             <span>Pause</span>
@@ -327,7 +304,7 @@ export function SimulationToolbar() {
             size="sm"
             onClick={handleStop}
             title="Stop simulation (keeps metrics)"
-            className="gap-1 text-red-400 hover:text-red-300"
+            className="gap-1 text-[#8b2e1e] hover:text-[#8b2e1e]"
           >
             <StopIcon />
             <span>Stop</span>
@@ -341,7 +318,7 @@ export function SimulationToolbar() {
             size="sm"
             onClick={handleReset}
             title="Reset everything (R)"
-            className="gap-1 text-gray-400 hover:text-gray-300"
+            className="gap-1 text-[#5b5347]/70 hover:text-[#5b5347]"
           >
             <RefreshIcon />
             <span>Reset</span>
@@ -353,7 +330,7 @@ export function SimulationToolbar() {
       <select
         value={speedMultiplier}
         onChange={handleSpeedChange}
-        className="h-7 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-blue-500"
+        className="h-7 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e]"
       >
         {SPEED_OPTIONS.map((speed) => (
           <option key={speed} value={speed}>
@@ -364,15 +341,15 @@ export function SimulationToolbar() {
 
       {/* Duration Selector */}
       <div className="flex items-center gap-1">
-        <label htmlFor="sim-duration" className="text-[10px] text-gray-500">
+        <label htmlFor="sim-duration" className="text-[10px] text-[#f3ede2]/50">
           Duration
         </label>
         <select
           id="sim-duration"
           value={durationMs}
-          onChange={(e) => setDurationMs(Number(e.target.value))}
+          onChange={(e) => setDuration(Number(e.target.value))}
           disabled={simState === SimState.Running || simState === SimState.Paused}
-          className="h-7 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs text-gray-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-7 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {DURATION_OPTIONS.map((opt) => (
             <option key={opt.ms} value={opt.ms}>
@@ -380,14 +357,14 @@ export function SimulationToolbar() {
             </option>
           ))}
         </select>
-        <span className="text-[10px] text-gray-500">sim</span>
+        <span className="text-[10px] text-[#f3ede2]/50">sim</span>
       </div>
 
       {/* Seed Control */}
       <div className="flex items-center gap-1">
         <label
           htmlFor="sim-seed"
-          className="text-[10px] text-gray-500"
+className="text-[10px] text-[#5b5347]/80"
           title="Random seed for the simulation's randomness (arrival times, latencies). The same seed always produces the identical run — enter it again to reproduce results exactly."
         >
           Seed
@@ -399,7 +376,7 @@ export function SimulationToolbar() {
           onChange={(e) => setSeed(Math.floor(Number(e.target.value) || 0))}
           disabled={simState === SimState.Running || simState === SimState.Paused}
           title="Random seed — same seed = identical run; dice button rolls a fresh one."
-          className="h-7 w-24 rounded-md border border-gray-700 bg-gray-800 px-2 font-mono text-xs text-gray-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-7 w-24 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 font-mono text-xs text-[#f3ede2] outline-none focus:border-[#b8402e] disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <Button
           variant="ghost"
@@ -408,14 +385,14 @@ export function SimulationToolbar() {
           disabled={simState === SimState.Running || simState === SimState.Paused}
           title="Randomize seed — new sample of arrival times and latencies"
           aria-label="Randomize seed"
-          className="h-7 w-7 p-0 text-gray-400 hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-7 w-7 p-0 text-[#5b5347]/70 hover:text-[#5b5347] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <DicesIcon />
         </Button>
       </div>
 
       {/* Simulation Time */}
-      <span className="font-mono text-xs text-gray-300">
+      <span className="font-mono text-xs text-[#5b5347]">
         {formatSimTime(metrics?.simulatedTimeMs ?? 0)}
       </span>
 
@@ -425,40 +402,6 @@ export function SimulationToolbar() {
       >
         {getStateLabel(simState)}
       </span>
-
-      {/* Help Tooltip */}
-      <div className="relative">
-        <button
-          onClick={() => setShowHelp(!showHelp)}
-          className="rounded-full p-1 text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
-          aria-label="How to use"
-          title="How to use"
-        >
-          <HelpIcon />
-        </button>
-        {showHelp && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowHelp(false)}
-              aria-hidden="true"
-            />
-            <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-700 bg-gray-800 p-3 shadow-xl">
-              <p className="text-xs text-gray-300 leading-relaxed">
-                <span className="font-semibold text-gray-100">How to use Analysys:</span>
-                <br />
-                1. Build a topology (drag nodes from palette)
-                <br />
-                2. Click <span className="text-green-400">Start</span> to run
-                <br />
-                3. Watch metrics in the dashboard below
-                <br />
-                4. Inject chaos to test resilience
-              </p>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 }

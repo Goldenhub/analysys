@@ -1,23 +1,13 @@
 /* oxlint-disable react/set-state-in-effect */
 import { useReducer, useMemo, useRef, useEffect } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  ReferenceLine,
-} from 'recharts';
 import type { MetricsBatchPayload } from '@/types/metrics';
 import { useSimulationStore } from '@/store/simulationStore';
 import { appendTelemetryPoint } from './telemetryBuffer';
+import { SvgTimeSeriesChart, type ChartDatum, type ReferenceLine } from './svg/SvgTimeSeriesChart';
 
 // ─── Types ───────────────────────────────────────────────────────
 
-interface ThroughputDataPoint {
+interface ThroughputDataPoint extends ChartDatum {
   time: number;
   timeLabel: string;
   success: number;
@@ -36,6 +26,11 @@ const CHAOS_LABELS: Record<string, string> = {
   DROP_DB: '\u26a0\ufe0f DB Outage',
   SPIKE_TRAFFIC: '\u26a1 Traffic Spike',
 };
+
+const SERIES = [
+  { key: 'success', name: 'Success', color: '#8fbf97', area: true, areaOpacity: 0.35, stackId: '1' },
+  { key: 'errors', name: 'Errors', color: '#e08d7c', area: true, areaOpacity: 0.3, stackId: '1' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -89,8 +84,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
     });
   }, [metrics, activeChaosEffects]);
 
-  // Compute reference lines for chaos start times that fall within our data window
-  const chaosReferenceLines = useMemo(() => {
+  const chaosReferenceLines: ReferenceLine[] = useMemo(() => {
     if (data.length === 0) return [];
     const minTime = data[0]!.time;
     const maxTime = data[data.length - 1]!.time;
@@ -98,82 +92,29 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
     return activeChaosEffects
       .filter((e) => e.startTimeMs >= minTime && e.startTimeMs <= maxTime)
       .map((e) => ({
-        time: formatTime(e.startTimeMs),
-        label: CHAOS_LABELS[e.chaosType] ?? e.label,
-        chaosType: e.chaosType,
         id: e.id,
+        x: e.startTimeMs,
+        label: CHAOS_LABELS[e.chaosType] ?? e.label,
+        color: e.chaosType === 'DROP_DB' ? '#ef9a8b' : '#dfb357',
+        labelColor: e.chaosType === 'DROP_DB' ? '#ef9a8b' : '#dfb357',
       }));
   }, [activeChaosEffects, data]);
 
   if (data.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+      <div className="flex h-full items-center justify-center text-xs text-[#f3ede2]/70">
         Awaiting throughput data…
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gray-700)" />
-        <XAxis
-          dataKey="timeLabel"
-          tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="var(--color-gray-600)"
-        />
-        <YAxis
-          tick={{ fill: '#9ca3af', fontSize: 10 }}
-          stroke="var(--color-gray-600)"
-          label={{ value: 'req/s', position: 'insideLeft', fill: '#9ca3af', fontSize: 10 }}
-        />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: '#1f2937',
-            border: '1px solid #374151',
-            borderRadius: 6,
-            fontSize: 11,
-          }}
-          labelStyle={{ color: '#9ca3af' }}
-        />
-        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
-
-        {/* Chaos event reference lines */}
-        {chaosReferenceLines.map((ref) => (
-          <ReferenceLine
-            key={ref.id}
-            x={ref.time}
-            stroke={ref.chaosType === 'DROP_DB' ? '#ef4444' : '#f59e0b'}
-            strokeDasharray="4 2"
-            strokeWidth={1.5}
-            label={{
-              value: ref.label,
-              position: 'top',
-              fill: ref.chaosType === 'DROP_DB' ? '#fca5a5' : '#fcd34d',
-              fontSize: 9,
-            }}
-          />
-        ))}
-
-        <Area
-          type="monotone"
-          dataKey="success"
-          name="Success"
-          stackId="1"
-          stroke="#22c55e"
-          fill="#22c55e"
-          fillOpacity={0.4}
-        />
-        <Area
-          type="monotone"
-          dataKey="errors"
-          name="Errors"
-          stackId="1"
-          stroke="#ef4444"
-          fill="#ef4444"
-          fillOpacity={0.4}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <SvgTimeSeriesChart
+      data={data}
+      series={SERIES}
+      referenceLines={chaosReferenceLines}
+      unit="req/s"
+      height={200}
+    />
   );
 }

@@ -50,6 +50,13 @@ export interface ChaosMetricsSnapshot {
 interface SimulationState {
   simState: SimState;
   speedMultiplier: number;
+  /** Simulation horizon the toolbar Duration selector drives (single source of truth). */
+  durationMs: number;
+  /**
+   * Explicit PRNG seed for the run — lives in the store (not toolbar-local state)
+   * so it can be persisted with a shared simulation for exact reproducibility.
+   */
+  seed: number;
   metrics: MetricsBatchPayload | null;
   eventLog: SimEventLogEntry[];
   nodeStatuses: Map<string, 'green' | 'yellow' | 'red'>;
@@ -66,6 +73,8 @@ interface SimulationState {
 interface SimulationActions {
   setSimState: (state: SimState) => void;
   setSpeed: (multiplier: number) => void;
+  setDuration: (ms: number) => void;
+  setSeed: (seed: number) => void;
   updateMetrics: (payload: MetricsBatchPayload) => void;
   appendEventLog: (entries: SimEventLogEntry[]) => void;
   setNodeStatus: (nodeId: string, status: 'green' | 'yellow' | 'red') => void;
@@ -101,6 +110,8 @@ const MAX_EVENT_LOG_ENTRIES = 5000;
 export const useSimulationStore = create<SimulationState & SimulationActions>()((set, get) => ({
   simState: SimState.Idle,
   speedMultiplier: 1,
+  durationMs: 120_000, // 2 min — matches the toolbar's default Duration option
+  seed: Math.floor(Math.random() * 0xffffffff),
   metrics: null,
   eventLog: [],
   nodeStatuses: new Map(),
@@ -114,6 +125,10 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
   setSimState: (simState) => set({ simState }),
 
   setSpeed: (multiplier) => set({ speedMultiplier: multiplier }),
+
+  setDuration: (ms) => set({ durationMs: ms }),
+
+  setSeed: (seed) => set({ seed }),
 
   updateMetrics: (payload) =>
     set((state) => {

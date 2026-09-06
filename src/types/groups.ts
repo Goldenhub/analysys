@@ -1,17 +1,14 @@
-// ─── Subsystem Grouping (Requirement 33) ─────────────────────────
+// ─── Legacy Subsystem Grouping (Requirement 33 — removed) ────────
 
 /**
- * A presentation-only container for a set of nodes.
- *
- * Groups exist to let a large topology be read at a coarser grain: they are held in
- * `topologyStore`, never sent to the Worker, and never influence simulation behaviour.
+ * The subsystem-group system was removed. This type is retained solely so that
+ * legacy v2 persisted records (which stored `subsystemGroups`) can still be
+ * read and migrated to the current schema, at which point the group data is
+ * discarded. No runtime group logic remains in the codebase.
  */
 export interface SubsystemGroup {
   id: string;
-  /** 1–40 chars trimmed, case-insensitively unique across groups. */
   name: string;
-  /** 2–50 members, disjoint across groups, one level deep — no group nesting. */
   memberNodeIds: string[];
-  /** Whether the group renders as a single collapsed element on the Canvas. */
   collapsed: boolean;
 }

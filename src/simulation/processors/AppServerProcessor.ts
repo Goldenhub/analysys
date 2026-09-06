@@ -8,6 +8,7 @@ import type {
   NodeRuntimeState,
 } from '../types';
 import { SimEventType, RequestStatus } from '../types';
+import { dispatchSideEffects } from '../subRequests';
 
 export class AppServerProcessor implements NodeProcessor {
   private config: AppServerConfig;
@@ -92,6 +93,23 @@ export class AppServerProcessor implements NodeProcessor {
 
     // Route downstream
     const edges = context.resolveTargets(event.nodeId, request);
+
+    // Fire independent side-effect calls to every downstream service except the
+    // primary edge (e.g. database / object store), without disturbing the main
+    // request's own downstream hop.
+    const allOutgoing = context.getOutgoingEdges(event.nodeId);
+    if (allOutgoing.length > 1) {
+      dispatchSideEffects({
+        dispatchNodeId: event.nodeId,
+        edges: allOutgoing.slice(1),
+        timestamp: event.timestamp,
+        maxHops: request.maxHops,
+        context,
+        requestMap: context.getRequestMap(),
+        getNextRequestId: context.getNextRequestId,
+      });
+    }
+
     if (edges.length > 0) {
       const target = edges[0]!.target;
       context.scheduleEvent({

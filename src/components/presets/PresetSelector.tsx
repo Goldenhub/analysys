@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { MarkerType } from '@xyflow/react';
 import {
   failureModePresets,
   referencePresets,
@@ -33,15 +32,7 @@ function edgeDataToRFEdges(edges: EdgeData[]): AnalysysEdge[] {
     id: edgeData.id,
     source: edgeData.source,
     target: edgeData.target,
-    // `type` selects the registered custom edge renderer (SyncEdge / AsyncEdge).
-    // Without it React Flow falls back to the default edge and packet dots never render.
     type: edgeData.protocol,
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      width: 16,
-      height: 16,
-      color: '#6b7280',
-    },
     data: edgeData as AnalysysEdge['data'],
   }));
 }
@@ -92,13 +83,7 @@ export function PresetSelector() {
       // Load topology
       const rfNodes = simulationNodesToRFNodes(preset.topology.nodes);
       const rfEdges = edgeDataToRFEdges(preset.topology.edges);
-
-      // Reference presets include subsystem groups
-      if (isReferencePreset(preset)) {
-        loadTopology(rfNodes, rfEdges, preset.subsystemGroups);
-      } else {
-        loadTopology(rfNodes, rfEdges);
-      }
+      loadTopology(rfNodes, rfEdges);
 
       // Auto-start simulation
       initWorker();
@@ -109,7 +94,16 @@ export function PresetSelector() {
       const isRef = isReferencePreset(preset);
       const seed = isRef ? preset.seed : Date.now();
       const speedMultiplier = isRef ? preset.speedMultiplier : 1;
-      const maxSimulatedTimeMs = isRef ? preset.simulatedDurationMs : 120000;
+
+      // Surface the preset's run parameters in the toolbar so the selectors
+      // reflect what actually ran. The run below uses the store's values — the
+      // same single source of truth the toolbar drives.
+      useSimulationStore.getState().setSeed(seed);
+      useSimulationStore.getState().setSpeed(speedMultiplier);
+      if (isRef) {
+        useSimulationStore.getState().setDuration(preset.simulatedDurationMs);
+      }
+      const maxSimulatedTimeMs = useSimulationStore.getState().durationMs;
 
       sendToWorker({
         type: 'INIT',
@@ -147,7 +141,7 @@ export function PresetSelector() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 transition-colors"
+        className="rounded bg-[#b8402e] px-3 py-1.5 text-xs font-medium text-[#f3ede2] hover:bg-[#b8402e] transition-colors"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -155,10 +149,10 @@ export function PresetSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-[#5b5347]/30 bg-[#5b5347]/80 shadow-xl">
           {/* Failure-Mode Presets */}
-          <div className="border-b border-gray-700 px-3 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="border-b border-[#5b5347]/30 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/50">
               Failure-Mode Scenarios
             </span>
           </div>
@@ -166,19 +160,19 @@ export function PresetSelector() {
             {failureModePresets.map((preset) => (
               <li key={preset.name}>
                 <button
-                  className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
+                  className="w-full px-3 py-2 text-left hover:bg-[#5b5347]/60/50 transition-colors"
                   onClick={() => loadPreset(preset)}
                 >
-                  <span className="block text-sm font-medium text-gray-200">{preset.name}</span>
-                  <span className="block text-xs text-gray-500 mt-0.5">{preset.description}</span>
+                  <span className="block text-sm font-medium text-[#f3ede2]">{preset.name}</span>
+                  <span className="block text-xs text-[#f3ede2]/50 mt-0.5">{preset.description}</span>
                 </button>
               </li>
             ))}
           </ul>
 
           {/* Reference Architecture Presets */}
-          <div className="border-t border-gray-700 px-3 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="border-t border-[#5b5347]/30 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/50">
               Reference Architectures
             </span>
           </div>
@@ -186,12 +180,12 @@ export function PresetSelector() {
             {referencePresets.map((preset) => (
               <li key={preset.name}>
                 <button
-                  className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
+                  className="w-full px-3 py-2 text-left hover:bg-[#5b5347]/60/50 transition-colors"
                   onClick={() => loadPreset(preset)}
                 >
-                  <span className="block text-sm font-medium text-gray-200">{preset.name}</span>
-                  <span className="block text-xs text-gray-500 mt-0.5">{preset.description}</span>
-                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400">
+                  <span className="block text-sm font-medium text-[#f3ede2]">{preset.name}</span>
+                  <span className="block text-xs text-[#f3ede2]/50 mt-0.5">{preset.description}</span>
+                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#f3ede2]/60">
                     <span>
                       Bottleneck:{' '}
                       {preset.topology.nodes.find((n) => n.id === preset.expectedBottleneckNodeId)
@@ -209,8 +203,8 @@ export function PresetSelector() {
           {/* Custom Scenarios */}
           {savedTopologies.length > 0 && (
             <>
-              <div className="border-t border-gray-700 px-3 py-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <div className="border-t border-[#5b5347]/30 px-3 py-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/50">
                   Custom Scenarios
                 </span>
               </div>
@@ -218,7 +212,7 @@ export function PresetSelector() {
                 {savedTopologies.map((entry) => (
                   <li key={entry.name}>
                     <button
-                      className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
+                      className="w-full px-3 py-2 text-left hover:bg-[#5b5347]/60/50 transition-colors"
                       onClick={() => {
                         if (hasCanvasChanges) {
                           const confirmed = window.confirm(
@@ -230,8 +224,8 @@ export function PresetSelector() {
                         setIsOpen(false);
                       }}
                     >
-                      <span className="block text-sm font-medium text-gray-200">{entry.name}</span>
-                      <span className="block text-xs text-gray-500 mt-0.5">
+                      <span className="block text-sm font-medium text-[#f3ede2]">{entry.name}</span>
+                      <span className="block text-xs text-[#f3ede2]/50 mt-0.5">
                         {new Date(entry.timestamp).toLocaleDateString()}
                       </span>
                     </button>
@@ -242,7 +236,7 @@ export function PresetSelector() {
           )}
 
           {/* Save As Custom */}
-          <div className="border-t border-gray-700 p-2">
+          <div className="border-t border-[#5b5347]/30 p-2">
             {showNameDialog ? (
               <div className="flex gap-2">
                 <input
@@ -251,19 +245,19 @@ export function PresetSelector() {
                   onChange={(e) => setCustomName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveCustom()}
                   placeholder="Scenario name..."
-                  className="flex-1 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-xs text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                  className="flex-1 rounded border border-[#5b5347]/40 bg-[#5b5347] px-2 py-1 text-xs text-[#f3ede2] placeholder-[#f3ede2]/50 focus:border-[#b8402e] focus:outline-none"
                   autoFocus
                 />
                 <button
                   onClick={handleSaveCustom}
                   disabled={!customName.trim()}
-                  className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-500 disabled:opacity-40"
+                  className="rounded bg-[#6b8f71] px-2 py-1 text-xs text-[#f3ede2] hover:bg-[#6b8f71] disabled:opacity-40"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setShowNameDialog(false)}
-                  className="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-500"
+                  className="rounded bg-[#5b5347]/50 px-2 py-1 text-xs text-[#f3ede2] hover:bg-[#5b5347]/80"
                 >
                   Cancel
                 </button>
@@ -272,7 +266,7 @@ export function PresetSelector() {
               <button
                 onClick={() => setShowNameDialog(true)}
                 disabled={nodes.length === 0}
-                className="w-full rounded bg-gray-700 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-600 disabled:opacity-40 transition-colors"
+                className="w-full rounded bg-[#5b5347]/60 px-3 py-1.5 text-xs text-[#f3ede2]/80 hover:bg-[#5b5347]/50 disabled:opacity-40 transition-colors"
               >
                 Save as Custom Scenario
               </button>

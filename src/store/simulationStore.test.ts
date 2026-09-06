@@ -339,4 +339,26 @@ describe('simulationStore', () => {
       spy.mockRestore();
     });
   });
+
+  describe('seed (shared-simulation reproducibility)', () => {
+    it('stores a seed via setSeed', () => {
+      useSimulationStore.getState().setSeed(987654);
+      expect(useSimulationStore.getState().seed).toBe(987654);
+    });
+
+    it('has a default numeric seed', () => {
+      expect(typeof useSimulationStore.getState().seed).toBe('number');
+      expect(Number.isInteger(useSimulationStore.getState().seed)).toBe(true);
+    });
+
+    it('setDuration and setSpeed feed the settings that survive a share round-trip', () => {
+      useSimulationStore.getState().setDuration(90_000);
+      useSimulationStore.getState().setSpeed(3);
+      useSimulationStore.getState().setSeed(555);
+      const s = useSimulationStore.getState();
+      expect({ durationMs: s.durationMs, speedMultiplier: s.speedMultiplier, seed: s.seed }).toEqual(
+        { durationMs: 90_000, speedMultiplier: 3, seed: 555 },
+      );
+    });
+  });
 });

@@ -6,12 +6,21 @@ import type { AnalysysNode } from '@/types/nodes';
 import { createDefaultNodeData } from '@/types/nodeDefaults';
 import { CONNECTION_RULES, getValidProtocols } from '@/validation/edgeValidation';
 import { EdgeProtocol } from '@/types/edges';
+import { SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas';
+import { createTextNoteNode } from '@/canvas';
+import { useCanvasToolStore } from '@/store/canvasToolStore';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─── Palette Item Definition ─────────────────────────────────────
 
+type PaletteNodeType = NodeType | typeof SECTION_NODE_TYPE | typeof TEXT_NOTE_NODE_TYPE;
+
+function isVisualPaletteType(nodeType: PaletteNodeType): boolean {
+  return nodeType === SECTION_NODE_TYPE || nodeType === TEXT_NOTE_NODE_TYPE;
+}
+
 interface PaletteItem {
-  nodeType: NodeType;
+  nodeType: PaletteNodeType;
   label: string;
   icon: React.ReactNode;
 }
@@ -288,6 +297,42 @@ function DeadLetterQueueIcon() {
   );
 }
 
+function SectionIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+      />
+    </svg>
+  );
+}
+
+function TextNoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
+      />
+    </svg>
+  );
+}
+
 // ─── Node Descriptions ───────────────────────────────────────────
 
 const NODE_DESCRIPTIONS: Record<NodeType, string> = {
@@ -401,6 +446,13 @@ const PALETTE_CATEGORIES: PaletteCategory[] = [
       },
     ],
   },
+  {
+    name: 'Annotations',
+    items: [
+      { nodeType: SECTION_NODE_TYPE, label: 'Section', icon: <SectionIcon /> },
+      { nodeType: TEXT_NOTE_NODE_TYPE, label: 'Text Note', icon: <TextNoteIcon /> },
+    ],
+  },
 ];
 
 // ─── Palette Item Component ──────────────────────────────────────
@@ -411,13 +463,23 @@ interface PaletteItemComponentProps {
 
 function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   const addNode = useTopologyStore((s) => s.addNode);
+  const drawTool = useCanvasToolStore((s) => s.drawTool);
+  const setDrawTool = useCanvasToolStore((s) => s.setDrawTool);
   const [showTooltip, setShowTooltip] = useState(false);
   const infoBtnRef = useRef<HTMLButtonElement>(null);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
 
-  const rules = CONNECTION_RULES[item.nodeType];
+  const visual = isVisualPaletteType(item.nodeType);
+  // Sections are NOT drop-placeable nodes. Clicking the palette item arms a
+  // "draw section" tool so the user can drag a rectangle out on the canvas.
+  const isSection = item.nodeType === SECTION_NODE_TYPE;
+  const sectionArmed = drawTool === 'section';
+
+  const rules = visual
+    ? { allowedTargets: [] as NodeType[] }
+    : CONNECTION_RULES[item.nodeType as NodeType];
   const allowedOutputs = rules.allowedTargets;
-  const allowedInputs = getAllowedInputs(item.nodeType);
+  const allowedInputs = visual ? [] : getAllowedInputs(item.nodeType as NodeType);
 
   const onDragStart = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -428,8 +490,19 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   );
 
   const placeAtCenter = useCallback(() => {
+    if (isSection) {
+      setDrawTool(sectionArmed ? null : 'section');
+      return;
+    }
     const position = { x: 250, y: 250 };
-    const nodeData = createDefaultNodeData(item.nodeType, position);
+    if (visual) {
+      if (item.nodeType === TEXT_NOTE_NODE_TYPE) {
+        addNode(createTextNoteNode(position));
+        return;
+      }
+      return;
+    }
+    const nodeData = createDefaultNodeData(item.nodeType as NodeType, position);
     const newNode: AnalysysNode = {
       id: nodeData.id,
       type: nodeData.nodeType,
@@ -437,16 +510,20 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
       data: nodeData as AnalysysNode['data'],
     };
     addNode(newNode);
-  }, [item.nodeType, addNode]);
+  }, [item.nodeType, visual, addNode, isSection, setDrawTool, sectionArmed]);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
+        if (isSection) {
+          setDrawTool(sectionArmed ? null : 'section');
+          return;
+        }
         placeAtCenter();
       }
     },
-    [placeAtCenter],
+    [isSection, setDrawTool, sectionArmed, placeAtCenter],
   );
 
   const toggleTooltip = useCallback(() => {
@@ -460,15 +537,31 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   return (
     <div className="group relative flex items-center gap-1">
       <div
-        draggable
+        draggable={!isSection}
         onDragStart={onDragStart}
+        onClick={() => {
+          if (isSection) setDrawTool(sectionArmed ? null : 'section');
+        }}
         onKeyDown={onKeyDown}
         tabIndex={0}
         role="button"
-        aria-label={`Add ${item.label} node. Drag to canvas or press Enter to place.`}
-        className="flex flex-1 cursor-grab items-center gap-2 rounded-md border border-gray-700/50 bg-gray-800/60 px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:ring-offset-gray-900 active:cursor-grabbing"
+        aria-pressed={isSection ? sectionArmed : undefined}
+        aria-label={
+          isSection
+            ? sectionArmed
+              ? 'Section drawing tool active. Click again to cancel, then drag on the canvas to draw.'
+              : 'Section drawing tool. Click to activate, then drag on the canvas to draw a section.'
+            : `Add ${item.label} node. Drag to canvas or press Enter to place.`
+        }
+        className={`flex flex-1 items-center gap-2 rounded-md border bg-[#5b5347]/80/60 px-3 py-2 text-sm text-[#f3ede2] transition-colors focus:outline-none focus:ring-2 focus:ring-[#b8402e] focus:ring-offset-1 focus:ring-offset-[#5b5347] ${
+          isSection
+            ? sectionArmed
+              ? 'cursor-crosshair border-[#b8402e] bg-[#b8402e]/25'
+              : 'cursor-pointer border-[#5b5347]/30 hover:border-[#b8402e]/60 hover:bg-[#5b5347]/60'
+            : 'cursor-grab border-[#5b5347]/30 hover:border-[#5b5347]/40 hover:bg-[#5b5347]/60 active:cursor-grabbing'
+        }`}
       >
-        <span className="flex-shrink-0 text-gray-400">{item.icon}</span>
+        <span className="flex-shrink-0 text-[#f3ede2]/60">{item.icon}</span>
         <span className="truncate">{item.label}</span>
       </div>
       {/* Info button */}
@@ -480,7 +573,7 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
           toggleTooltip();
         }}
         onBlur={() => setShowTooltip(false)}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-gray-500 hover:bg-gray-700 hover:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-[#f3ede2]/70 hover:bg-[#5b5347]/60 hover:text-[#f3ede2]/80 focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
         aria-label="Show node connection details"
       >
         ?
@@ -489,36 +582,46 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
       {showTooltip &&
         createPortal(
           <div
-            className="fixed z-[9999] w-64 rounded-lg border border-gray-700 bg-gray-900 p-3 text-[11px] shadow-xl"
+            className="fixed z-[9999] w-64 rounded-lg border border-[#5b5347]/30 bg-[#5b5347] p-3 text-[11px] shadow-xl"
             style={{ top: tooltipPos.top, left: tooltipPos.left }}
           >
-            <p className="mb-2 text-gray-300">{NODE_DESCRIPTIONS[item.nodeType]}</p>
-            <div className="space-y-1.5">
-              {allowedOutputs.length > 0 ? (
-                <div>
-                  <span className="font-semibold text-gray-400">Can connect to: </span>
-                  <span className="text-gray-300">
-                    {allowedOutputs
-                      .map((targetType) => {
-                        const protocols = getValidProtocols(item.nodeType, targetType);
-                        return `${nodeTypeLabel(targetType)} (${protocolLabel(protocols)})`;
-                      })
-                      .join(', ')}
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  <span className="font-semibold text-gray-400">Can connect to: </span>
-                  <span className="text-gray-500 italic">Nothing (terminal node)</span>
-                </div>
-              )}
-              {allowedInputs.length > 0 ? (
-                <div>
-                  <span className="font-semibold text-gray-400">Can receive from: </span>
-                  <span className="text-gray-300">
+            <p className="mb-2 text-[#f3ede2]/80">
+              {visual
+                ? item.nodeType === SECTION_NODE_TYPE
+                  ? 'A labelled container rectangle for visually grouping and organising nodes on the canvas. Does not affect simulation.'
+                  : 'A sticky-note style box for adding free-form text notes to the canvas. Does not affect simulation.'
+                : NODE_DESCRIPTIONS[item.nodeType as NodeType]}
+            </p>
+            {!visual && (
+              <div className="space-y-1.5">
+                {allowedOutputs.length > 0 ? (
+                  <div>
+                    <span className="font-semibold text-[#f3ede2]/60">Can connect to: </span>
+                    <span className="text-[#f3ede2]/80">
+                      {allowedOutputs
+                        .map((targetType) => {
+                          const protocols = getValidProtocols(
+                            item.nodeType as NodeType,
+                            targetType,
+                          );
+                          return `${nodeTypeLabel(targetType)} (${protocolLabel(protocols)})`;
+                        })
+                        .join(', ')}
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="font-semibold text-[#f3ede2]/60">Can connect to: </span>
+                    <span className="text-[#f3ede2]/70 italic">Nothing (terminal node)</span>
+                  </div>
+                )}
+                {allowedInputs.length > 0 ? (
+                  <div>
+                    <span className="font-semibold text-[#f3ede2]/60">Can receive from: </span>
+                    <span className="text-[#f3ede2]/80">
                     {allowedInputs
                       .map((sourceType) => {
-                        const protocols = getValidProtocols(sourceType, item.nodeType);
+                        const protocols = getValidProtocols(sourceType, item.nodeType as NodeType);
                         return `${nodeTypeLabel(sourceType)} (${protocolLabel(protocols)})`;
                       })
                       .join(', ')}
@@ -526,14 +629,15 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
                 </div>
               ) : (
                 <div>
-                  <span className="font-semibold text-gray-400">Can receive from: </span>
-                  <span className="text-gray-500 italic">Nothing (source node)</span>
+                  <span className="font-semibold text-[#f3ede2]/60">Can receive from: </span>
+                  <span className="text-[#f3ede2]/70 italic">Nothing (source node)</span>
                 </div>
               )}
-              <p className="border-t border-gray-800 pt-1.5 text-[10px] text-gray-500">
+              <p className="border-t border-[#5b5347]/20 pt-1.5 text-[10px] text-[#f3ede2]/70">
                 Connections are validated automatically when you drag an edge or import a file.
               </p>
             </div>
+            )}
           </div>,
           document.body,
         )}
@@ -559,7 +663,7 @@ export function NodePalette() {
             <button
               type="button"
               onClick={() => toggleCategory(category.name)}
-              className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:text-gray-300"
+              className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wider text-[#f3ede2]/70 hover:text-[#f3ede2]/80"
               aria-expanded={isOpen}
             >
               {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}

@@ -132,11 +132,11 @@ export function FindingList({ findings, onActivateFinding, openerRef }: FindingL
       aria-label="Analysis findings"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="flex flex-col gap-3 overflow-y-auto pr-1 outline-none focus:ring-2 focus:ring-indigo-500/50 rounded"
+      className="flex flex-col gap-3 overflow-y-auto pr-1 outline-none focus:ring-2 focus:ring-[#b8402e]/50 rounded"
     >
       {groups.map(({ category, items }) => (
         <section key={category} aria-label={`${category.replace(/_/g, ' ')} findings`}>
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5 sticky top-0 bg-gray-950/90 py-0.5 backdrop-blur-sm">
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[#211e1a]/70 mb-1.5 sticky top-0 bg-[#f3ede2]/90 py-0.5 backdrop-blur-sm">
             {category.replace(/_/g, ' ')} ({items.length})
           </h3>
           <div
@@ -172,7 +172,7 @@ export function FindingList({ findings, onActivateFinding, openerRef }: FindingL
       ))}
 
       {flatFindings.length === 0 && (
-        <p className="text-xs text-gray-500 italic py-4 text-center">No findings to display.</p>
+        <p className="text-xs text-[#5b5347]/70 italic py-4 text-center">No findings to display.</p>
       )}
     </div>
   );

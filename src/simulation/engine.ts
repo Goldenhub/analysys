@@ -128,7 +128,12 @@ export class SimulationEngine {
   private readonly COMPLETION_LOG_SAMPLE_RATE = 50; // log every Nth completion
 
   // Batch control
-  private readonly BATCH_SIZE = 200;
+  private readonly BATCH_SIZE = 2000;
+
+  // Reused across dispatch calls — all captured state is engine-bound and read
+  // live at call time, so a single instance is safe and avoids allocations on
+  // the per-event hot path.
+  private cachedProcessorContext: ProcessorContext | null = null;
 
   // Incremented on every run/resume/reset. Each drain loop captures the generation
   // at entry; a loop that wakes from its inter-batch yield and finds itself stale
@@ -1845,7 +1850,8 @@ export class SimulationEngine {
   }
 
   private getProcessorContext(): ProcessorContext {
-    return {
+    if (this.cachedProcessorContext) return this.cachedProcessorContext;
+    const ctx: ProcessorContext = {
       scheduleEvent: (partial) => this.scheduleEvent(partial),
       getOutgoingEdges: (nodeId) => this.getOutgoingEdges(nodeId),
       resolveTargets: (nodeId, request) => this.resolveTargets(nodeId, request),
@@ -1884,6 +1890,8 @@ export class SimulationEngine {
       getRequestMap: () => this.requests,
       getNextRequestId: () => `req-${this.requestCounter++}`,
     };
+    this.cachedProcessorContext = ctx;
+    return ctx;
   }
 
   private emitComplete(): void {
@@ -1921,9 +1929,9 @@ export class SimulationEngine {
       // In test mode, use immediate yield (no wall-clock delay)
       return new Promise((resolve) => setTimeout(resolve, 0));
     }
-    // At 1x speed, yield for ~50ms between batches to allow UI updates and user interaction
+    // At 1x speed, yield for ~10ms between batches to allow UI updates and user interaction
     // At higher speeds, reduce the delay proportionally
-    const delayMs = Math.max(1, Math.floor(50 / this.config.speedMultiplier));
+    const delayMs = Math.max(1, Math.floor(10 / this.config.speedMultiplier));
     return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }

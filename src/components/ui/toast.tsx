@@ -18,8 +18,8 @@ export function ToastViewport() {
           role="status"
           className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-lg border px-4 py-2 text-sm shadow-xl ${
             toast.variant === 'error'
-              ? 'border-red-800 bg-red-950/95 text-red-100'
-              : 'border-gray-700 bg-gray-900/95 text-gray-100'
+              ? 'border-[#8b2e1e] bg-[#8b2e1e]/10 text-[#8b2e1e]/70'
+              : 'border-[#5b5347]/30 bg-[#5b5347]/95 text-[#f3ede2]/90'
           }`}
         >
           <span>{toast.message}</span>

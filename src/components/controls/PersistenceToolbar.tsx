@@ -13,9 +13,9 @@ interface ToastMessage {
 let toastId = 0;
 
 const TOAST_CLASSES: Record<ToastMessage['type'], string> = {
-  success: 'bg-green-800/90 text-green-100 border border-green-600',
-  error: 'bg-red-800/90 text-red-100 border border-red-600',
-  warning: 'bg-amber-800/90 text-amber-100 border border-amber-600',
+  success: 'bg-[#6b8f71]/20/90 text-[#6b8f71]/80 border border-[#6b8f71]',
+  error: 'bg-[#8b2e1e]/20/90 text-[#8b2e1e]/70 border border-[#8b2e1e]',
+  warning: 'bg-[#c49a3c]/20/90 text-[#c49a3c]/70 border border-[#c49a3c]',
 };
 
 function Toast({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () => void }) {
@@ -164,7 +164,7 @@ export function PersistenceToolbar() {
         {/* Export */}
         <button
           onClick={handleExport}
-          className="rounded px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+          className="rounded px-2 py-1 text-xs text-[#5b5347]/80 hover:bg-[#5b5347]/15 hover:text-[#5b5347] transition-colors"
           title="Export topology as JSON"
         >
           Export
@@ -173,7 +173,7 @@ export function PersistenceToolbar() {
         {/* Import */}
         <button
           onClick={handleImportClick}
-          className="rounded px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+          className="rounded px-2 py-1 text-xs text-[#5b5347]/80 hover:bg-[#5b5347]/15 hover:text-[#5b5347] transition-colors"
           title="Import topology from JSON"
         >
           Import
@@ -190,34 +190,34 @@ export function PersistenceToolbar() {
         <div className="relative">
           <button
             onClick={() => setShowSaveDialog(!showSaveDialog)}
-            className="rounded px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+            className="rounded px-2 py-1 text-xs text-[#5b5347]/80 hover:bg-[#5b5347]/15 hover:text-[#5b5347] transition-colors"
             title="Save topology"
           >
             Save
           </button>
           {showSaveDialog && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-700 bg-gray-800 p-3 shadow-xl">
-              <label className="block text-xs text-gray-400 mb-1">Topology name</label>
+            <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-[#5b5347]/30 bg-[#5b5347]/80 p-3 shadow-xl">
+              <label className="block text-xs text-[#f3ede2]/80 mb-1">Topology name</label>
               <input
                 type="text"
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                 placeholder="My Topology"
-                className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1 text-xs text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded border border-[#5b5347]/40 bg-[#5b5347] px-2 py-1 text-xs text-[#f3ede2] placeholder-[#f3ede2]/50 focus:border-[#b8402e] focus:outline-none"
                 autoFocus
               />
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={handleSave}
                   disabled={!saveName.trim()}
-                  className="flex-1 rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-500 disabled:opacity-40"
+                  className="flex-1 rounded bg-[#b8402e] px-2 py-1 text-xs text-[#f3ede2] hover:bg-[#b8402e] disabled:opacity-40"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setShowSaveDialog(false)}
-                  className="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-500"
+                  className="rounded bg-[#5b5347]/50 px-2 py-1 text-xs text-[#f3ede2] hover:bg-[#5b5347]/80"
                 >
                   Cancel
                 </button>
@@ -231,15 +231,15 @@ export function PersistenceToolbar() {
           <button
             onClick={() => setShowLoadMenu(!showLoadMenu)}
             disabled={savedTopologies.length === 0}
-            className="rounded px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 disabled:opacity-40 transition-colors"
+            className="rounded px-2 py-1 text-xs text-[#5b5347]/80 hover:bg-[#5b5347]/15 hover:text-[#5b5347] disabled:opacity-40 transition-colors"
             title="Load saved topology"
           >
             Load
           </button>
           {showLoadMenu && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
-              <div className="px-3 py-2 border-b border-gray-700">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-[#5b5347]/30 bg-[#5b5347]/80 shadow-xl">
+              <div className="px-3 py-2 border-b border-[#5b5347]/30">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/75">
                   Saved Topologies
                 </span>
               </div>
@@ -247,17 +247,17 @@ export function PersistenceToolbar() {
                 {savedTopologies.map((entry) => (
                   <li
                     key={entry.name}
-                    className="flex items-center justify-between px-3 py-2 hover:bg-gray-700/50"
+                    className="flex items-center justify-between px-3 py-2 hover:bg-[#5b5347]/60/50"
                   >
                     <button onClick={() => handleLoad(entry.name)} className="flex-1 text-left">
-                      <span className="block text-sm text-gray-200">{entry.name}</span>
-                      <span className="block text-[10px] text-gray-500">
+                      <span className="block text-sm text-[#f3ede2]">{entry.name}</span>
+                      <span className="block text-[10px] text-[#f3ede2]/70">
                         {new Date(entry.timestamp).toLocaleString()}
                       </span>
                     </button>
                     <button
                       onClick={(e) => handleDelete(entry.name, e)}
-                      className="ml-2 rounded p-1 text-xs text-red-400 hover:bg-red-900/30 hover:text-red-300"
+                      className="ml-2 rounded p-1 text-xs text-[#f3ede2] hover:bg-[#8b2e1e]/40 hover:text-[#f3ede2]"
                       title={`Delete "${entry.name}"`}
                     >
                       ✕
@@ -266,16 +266,16 @@ export function PersistenceToolbar() {
                 ))}
               </ul>
               {/* Storage indicator */}
-              <div className="border-t border-gray-700 px-3 py-2">
+              <div className="border-t border-[#5b5347]/30 px-3 py-2">
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Storage used</span>
-                  <span className={warning ? 'text-amber-400' : 'text-gray-400'}>
+                  <span className="text-[#f3ede2]/75">Storage used</span>
+                  <span className={warning ? 'text-[#e8c473]' : 'text-[#f3ede2]/90'}>
                     {usageDisplay} / 5 MB
                   </span>
                 </div>
-                <div className="mt-1 h-1 w-full rounded-full bg-gray-700">
+                <div className="mt-1 h-1 w-full rounded-full bg-[#5b5347]/60">
                   <div
-                    className={`h-1 rounded-full transition-all ${warning ? 'bg-amber-400' : 'bg-indigo-500'}`}
+                    className={`h-1 rounded-full transition-all ${warning ? 'bg-[#c49a3c]' : 'bg-[#b8402e]'}`}
                     style={{ width: `${Math.min((bytes / (5 * 1024 * 1024)) * 100, 100)}%` }}
                   />
                 </div>
@@ -286,7 +286,7 @@ export function PersistenceToolbar() {
 
         {/* Storage usage inline indicator */}
         <span
-          className={`ml-1 text-[10px] ${warning ? 'text-amber-400' : 'text-gray-500'}`}
+          className={`ml-1 text-[10px] ${warning ? 'text-[#8a6418]' : 'text-[#5b5347]/70'}`}
           title={`localStorage: ${usageDisplay} / 5 MB`}
         >
           {usageDisplay}
