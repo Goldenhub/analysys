@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { NodePalette } from '@/components/canvas/NodePalette';
 import { TerminalStatusTable } from '@/components/telemetry/TerminalStatusTable';
-import { GroupToolbar } from '@/components/canvas/groups/GroupToolbar';
 import type { NodeMetricsSnapshot } from '@/types/metrics';
 import { RequestStatus } from '@/simulation/types';
 
@@ -118,17 +117,5 @@ describe('TerminalStatusTable', () => {
   });
 });
 
-// ─── GroupToolbar: renders and offers create action ──────────────
+// ─── GroupToolbar removed (group system deleted) ─────────────────
 
-describe('GroupToolbar', () => {
-  it('renders create group button when nodes are selected', () => {
-    render(<GroupToolbar selectedNodeIds={['node-1', 'node-2', 'node-3']} />);
-    expect(screen.getByRole('button', { name: /create group/i })).toBeDefined();
-  });
-
-  it('renders with empty selection without crashing', () => {
-    render(<GroupToolbar selectedNodeIds={[]} />);
-    // Should render without error
-    expect(screen.getByRole('button', { name: /create group/i })).toBeDefined();
-  });
-});

@@ -100,6 +100,77 @@ export function dispatchBranches(options: DispatchOptions): string[] {
   return branchIds;
 }
 
+// ─── Independent Side-Effect Dispatch ────────────────────────────
+
+export interface SideEffectOptions {
+  /** The node hosting the request that is invoking the side calls. */
+  dispatchNodeId: string;
+  /** The edges to fire independent requests along (typically all but the primary). */
+  edges: EdgeData[];
+  /** Current simulation time. */
+  timestamp: number;
+  /** Base hop budget for each independent request. */
+  maxHops: number;
+  /** ProcessorContext for scheduling events. */
+  context: ProcessorContext;
+  /** Engine-level request map for registering the requests. */
+  requestMap: Map<string, SimRequest>;
+  /** Engine-level request counter reference. */
+  getNextRequestId: () => string;
+}
+
+/**
+ * Fires independent, top-level requests (no parent lineage) along the given
+ * edges. Unlike `dispatchBranches`, these never suspend a parent and never
+ * feed settlement back — each is a self-contained request that is processed by
+ * the target service, terminates on its own (recording that service's
+ * throughput/latency), and counts as real completion work. Used so a service
+ * (e.g. the API gateway) can call its side services (auth/authz) without
+ * disturbing the main request's path.
+ */
+export function dispatchSideEffects(options: SideEffectOptions): string[] {
+  const {
+    dispatchNodeId,
+    edges,
+    timestamp,
+    maxHops,
+    context,
+    requestMap,
+    getNextRequestId,
+  } = options;
+
+  const ids: string[] = [];
+
+  for (const edge of edges) {
+    const id = getNextRequestId();
+    const request: SimRequest = {
+      id,
+      originNodeId: dispatchNodeId,
+      createdAt: timestamp,
+      status: RequestStatus.InFlight,
+      hopCount: 0,
+      maxHops,
+      path: [dispatchNodeId],
+      accumulatedLatencyMs: 0,
+      fanOutDepth: 0,
+      emittedByNodeId: dispatchNodeId,
+    };
+
+    requestMap.set(id, request);
+    ids.push(id);
+
+    context.scheduleEvent({
+      type: SimEventType.RequestRoute,
+      timestamp,
+      nodeId: edge.target,
+      requestId: id,
+      payload: { fromNodeId: dispatchNodeId, branchEdgeIndex: edges.indexOf(edge) },
+    });
+  }
+
+  return ids;
+}
+
 // ─── Branch Settlement ───────────────────────────────────────────
 
 export interface SettleResult {
@@ -210,16 +281,4 @@ function discardUnsettledSiblings(
   // Clear pending — parent is being terminated
   parent.pendingBranchIds.clear();
   return discarded;
-}
-
-/**
- * Resolves same-timestamp tie-breaking for failed branches:
- * the branch on the lowest stored edge index wins (R32.12).
- */
-export function resolveFailureTie(
-  failedBranches: Array<{ branch: SimRequest; edgeIndex: number }>,
-): { branch: SimRequest; edgeIndex: number } {
-  return failedBranches.reduce((winner, current) =>
-    current.edgeIndex < winner.edgeIndex ? current : winner,
-  );
 }

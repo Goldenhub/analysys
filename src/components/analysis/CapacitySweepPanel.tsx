@@ -70,7 +70,7 @@ export function CapacitySweepPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[#5b5347]/80">
         Capacity Sweep Configuration
       </h4>
 
@@ -161,7 +161,7 @@ export function CapacitySweepPanel({
           <button
             type="button"
             onClick={handleStart}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-md bg-[#b8402e] px-3 py-1.5 text-xs font-medium text-[#f3ede2] hover:bg-[#b8402e] focus:outline-none focus:ring-2 focus:ring-[#b8402e]"
             aria-label="Start capacity sweep"
           >
             Start Sweep
@@ -170,7 +170,7 @@ export function CapacitySweepPanel({
           <button
             type="button"
             onClick={onCancelSweep}
-            className="rounded-md bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="rounded-md bg-[#8b2e1e] px-3 py-1.5 text-xs font-medium text-[#f3ede2] hover:bg-[#8b2e1e] focus:outline-none focus:ring-2 focus:ring-[#8b2e1e]"
             aria-label="Cancel capacity sweep"
           >
             Cancel Sweep
@@ -181,21 +181,21 @@ export function CapacitySweepPanel({
       {/* Progress display (Task 556) */}
       {isRunning && progress && (
         <div
-          className="rounded border border-indigo-800/50 bg-indigo-950/30 px-3 py-2 text-xs"
+          className="rounded border border-[#b8402e]/50 bg-[#b8402e]/10 px-3 py-2 text-xs"
           role="status"
           aria-live="polite"
           aria-label="Sweep progress"
         >
-          <p className="text-indigo-300">
+          <p className="text-[#b8402e]">
             Step {progress.currentStep} of {progress.totalSteps} — {progress.currentRequestedRps}{' '}
             RPS
           </p>
-          <p className="text-gray-400 text-[10px] mt-0.5">
+          <p className="text-[#211e1a]/75 text-[10px] mt-0.5">
             Elapsed: {progress.elapsedMs.toFixed(0)} ms simulated time
           </p>
           {progress.completedSteps.length > 0 && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-gray-400 hover:text-gray-200">
+              <summary className="cursor-pointer text-[#211e1a]/75 hover:text-[#211e1a]">
                 Completed steps ({progress.completedSteps.length})
               </summary>
               <div className="mt-1">
@@ -209,7 +209,7 @@ export function CapacitySweepPanel({
       {/* Completed results */}
       {!isRunning && completedSteps.length > 0 && (
         <section aria-label="Completed sweep results">
-          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[#5b5347]/80 mb-1">
             Sweep Results
           </h4>
           <SweepResultsTable steps={completedSteps} />
@@ -246,7 +246,7 @@ function FormField({
 
   return (
     <div className="flex flex-col gap-0.5">
-      <label htmlFor={id} className="text-[10px] text-gray-400 font-medium">
+      <label htmlFor={id} className="text-[10px] text-[#211e1a]/80 font-medium">
         {label}
       </label>
       <input
@@ -260,12 +260,12 @@ function FormField({
         disabled={disabled}
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={`h-7 rounded-md border px-2 text-xs text-gray-200 bg-gray-800 outline-none focus:ring-1 disabled:opacity-50 ${
-          error ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-indigo-500'
+        className={`h-7 rounded-md border px-2 text-xs text-[#f3ede2] bg-[#5b5347]/80 outline-none focus:ring-1 disabled:opacity-50 ${
+          error ? 'border-[#8b2e1e] focus:ring-[#8b2e1e]' : 'border-[#5b5347]/30 focus:ring-[#b8402e]'
         }`}
       />
       {error && (
-        <span id={`${id}-error`} className="text-[10px] text-red-400" role="alert">
+        <span id={`${id}-error`} className="text-[10px] text-[#8b2e1e]" role="alert">
           {error}
         </span>
       )}

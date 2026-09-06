@@ -22,30 +22,30 @@ function getBadgeConfig(chaosType: string): ChaosBadgeConfig {
     case 'FLUSH_CACHE':
       return {
         label: 'FLUSHED',
-        bgColor: 'bg-amber-900/80',
-        textColor: 'text-amber-200',
-        borderColor: 'border-amber-500',
+        bgColor: 'bg-[#c49a3c]/20/80',
+        textColor: 'text-[#c49a3c]/90',
+        borderColor: 'border-[#c49a3c]',
       };
     case 'DROP_DB':
       return {
         label: 'PARTITIONED',
-        bgColor: 'bg-red-900/80',
-        textColor: 'text-red-200',
-        borderColor: 'border-red-500',
+        bgColor: 'bg-[#8b2e1e]/20/80',
+        textColor: 'text-[#8b2e1e]/90',
+        borderColor: 'border-[#8b2e1e]',
       };
     case 'SPIKE_TRAFFIC':
       return {
         label: '5\u00d7 LOAD',
-        bgColor: 'bg-amber-900/80',
-        textColor: 'text-amber-200',
-        borderColor: 'border-amber-500',
+        bgColor: 'bg-[#c49a3c]/20/80',
+        textColor: 'text-[#c49a3c]/90',
+        borderColor: 'border-[#c49a3c]',
       };
     default:
       return {
         label: 'CHAOS',
-        bgColor: 'bg-red-900/80',
-        textColor: 'text-red-200',
-        borderColor: 'border-red-500',
+        bgColor: 'bg-[#8b2e1e]/20/80',
+        textColor: 'text-[#8b2e1e]/90',
+        borderColor: 'border-[#8b2e1e]',
       };
   }
 }
@@ -91,7 +91,7 @@ export function ChaosStatusBadge({ nodeId, nodeType }: ChaosStatusBadgeProps) {
     <>
       {/* Chaos border pulse overlay */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-lg border-2 border-red-500 animate-[chaos-pulse_1s_ease-in-out_infinite]"
+        className="pointer-events-none absolute inset-0 rounded-lg border-2 border-[#8b2e1e] animate-[chaos-pulse_1s_ease-in-out_infinite]"
         style={{
           animation: 'chaos-pulse 1s ease-in-out infinite',
         }}
@@ -106,9 +106,9 @@ export function ChaosStatusBadge({ nodeId, nodeType }: ChaosStatusBadgeProps) {
 
       {/* Gray-out / slash overlay for partitioned DB */}
       {isPartitioned && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-gray-900/60">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-[#5b5347]/60">
           <svg
-            className="h-8 w-8 text-red-500 opacity-70"
+            className="h-8 w-8 text-[#8b2e1e] opacity-70"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

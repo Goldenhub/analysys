@@ -1,7 +1,6 @@
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import type { ChaosEventPayload } from '@/types/messages';
-import type { SubsystemGroup } from '@/types/groups';
 import type { RequestStatus } from '@/simulation/types';
 
 import dbExhaustionData from './dbExhaustion.json';
@@ -35,11 +34,11 @@ export interface PresetTopology {
 /**
  * Extended preset type for reference architectures (Requirement 42).
  * Stores all the metadata needed to auto-start the simulation with the correct
- * parameters and to assert expected analysis outcomes.
+ * parameters and to assert expected analysis outcomes. (The former
+ * `subsystemGroups` field was removed with the group system.)
  */
 export interface ReferencePreset extends PresetTopology {
   schemaVersion: 2;
-  subsystemGroups: SubsystemGroup[];
   seed: number;
   simulatedDurationMs: number;
   speedMultiplier: number;
@@ -50,7 +49,7 @@ export interface ReferencePreset extends PresetTopology {
 
 /** Type guard distinguishing reference architecture presets from failure-mode presets. */
 export function isReferencePreset(preset: PresetTopology): preset is ReferencePreset {
-  return preset.schemaVersion === 2 && 'subsystemGroups' in preset;
+  return preset.schemaVersion === 2 && 'seed' in preset;
 }
 
 // ─── Exported Presets ────────────────────────────────────────────

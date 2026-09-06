@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { SimEventLogEntry } from '@/types/messages';
 import { useNodeLabels } from './useNodeLabel';
+import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const EVENT_ICONS: Record<string, string> = {
   CHAOS_END: '🔄',
   METRICS_SNAPSHOT: '📊',
   CONSUMER_POLL: '📨',
+  CONFIG_WARNING: '⚠️',
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -42,17 +44,10 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   CHAOS_END: 'Chaos Ended',
   METRICS_SNAPSHOT: 'Metrics Snapshot',
   CONSUMER_POLL: 'Consumer Poll',
+  CONFIG_WARNING: 'Config Warning',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────
-
-function formatSimTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  const millis = ms % 1000;
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-}
 
 // ─── Component ───────────────────────────────────────────────────
 
@@ -105,7 +100,7 @@ export function EventLog({ entries }: EventLogProps) {
   if (entries.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-4 text-center">
-        <p className="text-xs text-gray-500 leading-relaxed">
+        <p className="text-xs text-[#f3ede2]/70 leading-relaxed">
           Events will appear here during simulation: timeouts, dropped requests, chaos effects, and
           sampled completions. Click any event to see details.
         </p>
@@ -116,11 +111,11 @@ export function EventLog({ entries }: EventLogProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Filter Controls */}
-      <div className="flex items-center gap-2 border-b border-gray-700 px-2 py-1.5">
+      <div className="flex items-center gap-2 border-b border-[#5b5347]/30 px-2 py-1.5">
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="rounded border border-gray-600 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded border border-[#5b5347]/40 bg-[#5b5347]/80 px-1.5 py-0.5 text-[10px] text-[#f3ede2]/80 focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
           aria-label="Filter by event type"
         >
           <option value="ALL">All Types</option>
@@ -133,7 +128,7 @@ export function EventLog({ entries }: EventLogProps) {
         <select
           value={nodeFilter}
           onChange={(e) => setNodeFilter(e.target.value)}
-          className="rounded border border-gray-600 bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded border border-[#5b5347]/40 bg-[#5b5347]/80 px-1.5 py-0.5 text-[10px] text-[#f3ede2]/80 focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
           aria-label="Filter by node"
         >
           <option value="ALL">All Nodes</option>
@@ -143,7 +138,7 @@ export function EventLog({ entries }: EventLogProps) {
             </option>
           ))}
         </select>
-        <span className="ml-auto text-[10px] text-gray-500">{filteredEntries.length} events</span>
+        <span className="ml-auto text-[10px] text-[#f3ede2]/70">{filteredEntries.length} events</span>
       </div>
 
       {/* Scrollable Log */}
@@ -161,9 +156,9 @@ export function EventLog({ entries }: EventLogProps) {
           return (
             <div
               key={entry.id}
-              className={`border-b border-gray-800 px-2 py-1 text-[10px] cursor-pointer ${
-                isChaos ? 'bg-red-950/30 border-red-900/30' : 'hover:bg-gray-800/50'
-              } ${isExpanded ? 'bg-gray-800/70' : ''}`}
+              className={`border-b border-[#5b5347]/20 px-2 py-1 text-[10px] cursor-pointer ${
+                isChaos ? 'bg-[#8b2e1e]/10 border-[#8b2e1e]/50/30' : 'hover:bg-[#5b5347]/70'
+              } ${isExpanded ? 'bg-[#5b5347]/80/70' : ''}`}
               onClick={() => setSelectedEntryId(isExpanded ? null : entry.id)}
               role="button"
               tabIndex={0}
@@ -176,38 +171,38 @@ export function EventLog({ entries }: EventLogProps) {
               }}
             >
               <div className="flex items-start gap-1.5">
-                <span className="shrink-0 font-mono text-gray-500">
+                <span className="shrink-0 font-mono text-[#f3ede2]/70">
                   {formatSimTime(entry.timestamp)}
                 </span>
                 <span className="shrink-0 w-4 text-center">{EVENT_ICONS[entry.type] ?? '•'}</span>
-                <span className="shrink-0 max-w-[70px] truncate text-blue-400" title={entry.nodeId}>
+                <span className="shrink-0 max-w-[70px] truncate text-[#b8402e]" title={entry.nodeId}>
                   {labelFor(entry.nodeId)}
                 </span>
-                <span className={isExpanded ? 'text-gray-300' : 'truncate text-gray-300'}>
+                <span className={isExpanded ? 'text-[#f3ede2]/80' : 'truncate text-[#f3ede2]/80'}>
                   {entry.message}
                 </span>
               </div>
               {isExpanded && (
-                <div className="mt-1 ml-6 space-y-0.5 text-[10px] text-gray-400 border-l-2 border-gray-700 pl-2">
+                <div className="mt-1 ml-6 space-y-0.5 text-[10px] text-[#f3ede2]/80 border-l-2 border-[#5b5347]/30 pl-2">
                   <div>
-                    <span className="text-gray-500">Time: </span>
+                    <span className="text-[#f3ede2]/70">Time: </span>
                     {formatSimTime(entry.timestamp)}
                   </div>
                   <div>
-                    <span className="text-gray-500">Type: </span>
+                    <span className="text-[#f3ede2]/70">Type: </span>
                     {EVENT_TYPE_LABELS[entry.type] ?? entry.type}
                   </div>
                   <div>
-                    <span className="text-gray-500">Node: </span>
+                    <span className="text-[#f3ede2]/70">Node: </span>
                     <span title={entry.nodeId}>{labelFor(entry.nodeId)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Message: </span>
+                    <span className="text-[#f3ede2]/70">Message: </span>
                     {entry.message}
                   </div>
                   {entry.requestId && (
                     <div>
-                      <span className="text-gray-500">Request: </span>
+                      <span className="text-[#f3ede2]/70">Request: </span>
                       <span className="font-mono">{entry.requestId}</span>
                     </div>
                   )}
@@ -227,7 +222,7 @@ export function EventLog({ entries }: EventLogProps) {
               scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
             }
           }}
-          className="border-t border-gray-700 bg-gray-800 px-2 py-1 text-[10px] text-blue-400 hover:bg-gray-700"
+          className="border-t border-[#5b5347]/30 bg-[#5b5347]/80 px-2 py-1 text-[10px] text-[#b8402e] hover:bg-[#5b5347]/60"
         >
           ↓ Scroll to latest
         </button>

@@ -3,34 +3,39 @@ import { useBaselineStore } from '@/store/baselineStore';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
-import type { SimulationNode } from '@/types/nodes';
 import type { AnalysysNode } from '@/types/nodes';
 import type { AnalysysEdge, EdgeData } from '@/types/edges';
-import { MarkerType } from '@xyflow/react';
+import type { CanvasNodeData } from '@/canvas/types';
+import { SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
-function simulationNodesToRFNodes(nodes: SimulationNode[]): AnalysysNode[] {
-  return nodes.map((simNode) => ({
-    id: simNode.id,
-    type: simNode.nodeType,
-    position: simNode.position,
-    data: simNode as AnalysysNode['data'],
-  }));
+function nodeDataToCanvasNodes(nodes: CanvasNodeData[]): AnalysysNode[] {
+  return nodes.map((data) => {
+    if ('nodeType' in data) {
+      return {
+        id: data.id,
+        type: data.nodeType,
+        position: data.position,
+        data: data as AnalysysNode['data'],
+      };
+    }
+    const visual = data as { kind: 'section' | 'text_note'; id: string; position: { x: number; y: number } };
+    return {
+      id: visual.id,
+      type: visual.kind === 'section' ? SECTION_NODE_TYPE : TEXT_NOTE_NODE_TYPE,
+      position: visual.position,
+      data: visual as AnalysysNode['data'],
+    };
+  });
 }
 
-function edgeDataToRFEdges(edges: EdgeData[]): AnalysysEdge[] {
+function edgeDataToCanvasEdges(edges: EdgeData[]): AnalysysEdge[] {
   return edges.map((edgeData) => ({
     id: edgeData.id,
     source: edgeData.source,
     target: edgeData.target,
     type: edgeData.protocol,
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      width: 16,
-      height: 16,
-      color: '#6b7280',
-    },
     data: edgeData as AnalysysEdge['data'],
   }));
 }
@@ -72,11 +77,11 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
       return;
     }
 
-    // Restore topology (Task 528): positions, configs, routing policies, protocols, weights, groups
+    // Restore topology (Task 528): positions, configs, routing policies, protocols, weights
     const topo = baseline.topology;
-    const rfNodes = simulationNodesToRFNodes(topo.nodes);
-    const rfEdges = edgeDataToRFEdges(topo.edges);
-    loadTopology(rfNodes, rfEdges, topo.subsystemGroups);
+    const canvasNodes = nodeDataToCanvasNodes(topo.nodes);
+    const canvasEdges = edgeDataToCanvasEdges(topo.edges);
+    loadTopology(canvasNodes, canvasEdges);
 
     setConfirmingReuse(null);
     setError(null);
@@ -108,7 +113,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
       <h2 className="text-sm font-semibold text-zinc-300">Stored Baselines</h2>
 
       {error && (
-        <div role="alert" className="text-xs text-red-400 py-1">
+        <div role="alert" className="text-xs text-[#8b2e1e] py-1">
           {error}
         </div>
       )}
@@ -120,7 +125,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
           {baselines.map((b) => (
             <li
               key={b.name}
-              className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 focus-within:ring-1 focus-within:ring-blue-400"
+              className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 focus-within:ring-1 focus-within:ring-[#b8402e]"
             >
               <span className="flex-1 truncate">
                 <span className="font-medium text-zinc-200">{b.name}</span>
@@ -130,7 +135,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
               </span>
               <button
                 type="button"
-                className="px-2 py-0.5 rounded text-zinc-400 hover:text-blue-300 hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="px-2 py-0.5 rounded text-zinc-400 hover:text-[#b8402e]/80 hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
                 aria-label={`Reuse baseline "${b.name}"`}
                 onClick={() => initiateReuse(b.name)}
                 onKeyDown={(e) => handleKeyDown(e, b.name, 'reuse')}
@@ -139,7 +144,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
               </button>
               <button
                 type="button"
-                className="px-2 py-0.5 rounded text-zinc-400 hover:text-red-300 hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-400"
+                className="px-2 py-0.5 rounded text-zinc-400 hover:text-[#8b2e1e] hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-[#8b2e1e]"
                 aria-label={`Delete baseline "${b.name}"`}
                 onClick={() => handleDelete(b.name)}
                 onKeyDown={(e) => handleKeyDown(e, b.name, 'delete')}
@@ -165,7 +170,7 @@ export function BaselineManager({ onReuse }: BaselineManagerProps) {
           <div className="flex gap-2">
             <button
               type="button"
-              className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="px-3 py-1 rounded bg-[#b8402e] text-[#f3ede2] hover:bg-[#b8402e] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
               onClick={() => performReuse(confirmingReuse)}
               autoFocus
             >

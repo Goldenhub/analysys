@@ -89,13 +89,4 @@ describe('SeededRNG', () => {
       expect(val).toBeGreaterThanOrEqual(0);
     }
   });
-
-  it('poisson distribution has expected mean', () => {
-    const rng = new SeededRNG(101);
-    const lambda = 5;
-    const samples = Array.from({ length: 5000 }, () => rng.poisson(lambda));
-    const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-    expect(mean).toBeGreaterThan(lambda * 0.85);
-    expect(mean).toBeLessThan(lambda * 1.15);
-  });
 });

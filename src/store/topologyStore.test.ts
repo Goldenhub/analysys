@@ -4,6 +4,8 @@ import { NodeType, RoutingPolicy } from '../types/nodes';
 import { EdgeProtocol } from '../types/edges';
 import type { AnalysysNode } from '../types/nodes';
 import type { AnalysysEdge } from '../types/edges';
+import type { CanvasNode } from '../canvas/types';
+import { SECTION_NODE_TYPE } from '../canvas/types';
 
 // ─── Test Helpers ────────────────────────────────────────────────
 
@@ -302,7 +304,7 @@ describe('topologyStore', () => {
   });
 
   describe('onNodesChange / onEdgesChange (React Flow)', () => {
-    it('onNodesChange applies position changes', () => {
+    it('onNodesChange applies position changes to node and data', () => {
       const node = createTestNode('node-1');
       useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
 
@@ -312,6 +314,38 @@ describe('topologyStore', () => {
 
       const { nodes } = useTopologyStore.getState();
       expect(nodes[0].position).toEqual({ x: 500, y: 600 });
+      // Persisted `data` must mirror the drag so save/export round-trips match the canvas.
+      expect(nodes[0].data.position).toEqual({ x: 500, y: 600 });
+    });
+
+    it('onNodesChange dimensions changes mirror size into data', () => {
+      const node: CanvasNode = {
+        id: 'section-1',
+        type: SECTION_NODE_TYPE,
+        position: { x: 0, y: 0 },
+        width: 200,
+        height: 120,
+        data: {
+          kind: 'section',
+          id: 'section-1',
+          label: 'Section',
+          position: { x: 0, y: 0 },
+          width: 200,
+          height: 120,
+        },
+      };
+      useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
+
+      useTopologyStore
+        .getState()
+        .onNodesChange([{ type: 'dimensions', id: 'section-1', dimensions: { width: 340, height: 90 } }]);
+
+      const { nodes } = useTopologyStore.getState();
+      expect(nodes[0].width).toBe(340);
+      expect(nodes[0].height).toBe(90);
+      const dta = nodes[0].data as { width?: number; height?: number };
+      expect(dta.width).toBe(340);
+      expect(dta.height).toBe(90);
     });
 
     it('onEdgesChange applies removal changes', () => {

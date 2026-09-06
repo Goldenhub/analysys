@@ -20,15 +20,21 @@ export class MetricsCollector {
   private lastBatchTime = 0;
   private nodeConfigs: Map<string, SimulationNode> = new Map();
   private analysisAggregates: AnalysisAggregatesAccumulator;
-  private runCumulative: RunCumulativeAccumulator = new RunCumulativeAccumulator();
+  private runCumulative: RunCumulativeAccumulator;
 
-  constructor(nodes: SimulationNode[], windowMs = 5000, edges: EdgeData[] = []) {
+  constructor(
+    nodes: SimulationNode[],
+    windowMs = 5000,
+    edges: EdgeData[] = [],
+    reservoirRng?: () => number,
+  ) {
     this.windowMs = windowMs;
     for (const node of nodes) {
       this.accumulators.set(node.id, new NodeMetricsAccumulator(node.id, windowMs));
       this.nodeConfigs.set(node.id, node);
     }
     this.analysisAggregates = new AnalysisAggregatesAccumulator(nodes, edges);
+    this.runCumulative = new RunCumulativeAccumulator(reservoirRng);
   }
 
   recordArrival(nodeId: string, requestId: string, timestamp: number): void {
@@ -89,12 +95,33 @@ export class MetricsCollector {
     this.runCumulative.setStartTime(startTimeMs);
   }
 
-  getRunCumulativeAccumulator(): RunCumulativeAccumulator {
-    return this.runCumulative;
-  }
-
   getAnalysisAggregates(): AnalysisAggregatesAccumulator {
     return this.analysisAggregates;
+  }
+
+  /**
+   * Whole-run aggregates for baselines and the run report — latency percentiles
+   * from the seeded reservoir, plus throughput/error/status shares over the
+   * full simulated duration.
+   */
+  getWholeRunAggregates(currentTimeMs: number): {
+    latency: { p50: number; p90: number; p99: number };
+    throughput: number;
+    errorRate: number;
+    terminalStatusRates: Record<string, number>;
+  } {
+    const counts = this.runCumulative.getTerminalCounts();
+    const total = Math.max(1, this.runCumulative.getTotalTerminations());
+    const terminalStatusRates: Record<string, number> = {};
+    for (const [status, count] of Object.entries(counts)) {
+      terminalStatusRates[status] = count / total;
+    }
+    return {
+      latency: this.runCumulative.getLatencyPercentiles(),
+      throughput: this.runCumulative.getThroughput(currentTimeMs),
+      errorRate: this.runCumulative.getErrorRate(),
+      terminalStatusRates,
+    };
   }
 
   generateBatch(

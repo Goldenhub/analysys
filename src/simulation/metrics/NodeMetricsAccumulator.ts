@@ -17,6 +17,7 @@ interface ArrivalRecord {
  */
 export class NodeMetricsAccumulator {
   private arrivals: ArrivalRecord[] = [];
+  private readonly unDeparted: Map<string, ArrivalRecord | ArrivalRecord[]> = new Map();
   private currentOccupancy = 0;
   private lastEventTime = 0;
   private weightedOccupancySum = 0;
@@ -30,16 +31,37 @@ export class NodeMetricsAccumulator {
   recordArrival(requestId: string, timestamp: number): void {
     this.updateWeightedOccupancy(timestamp);
     this.currentOccupancy++;
-    this.arrivals.push({ requestId, arrivedAt: timestamp });
+    const record: ArrivalRecord = { requestId, arrivedAt: timestamp };
+    this.arrivals.push(record);
+
+    const existing = this.unDeparted.get(requestId);
+    if (existing === undefined) {
+      this.unDeparted.set(requestId, record);
+    } else if (Array.isArray(existing)) {
+      existing.push(record);
+    } else {
+      this.unDeparted.set(requestId, [existing, record]);
+    }
   }
 
   recordDeparture(requestId: string, timestamp: number): void {
     this.updateWeightedOccupancy(timestamp);
     this.currentOccupancy = Math.max(0, this.currentOccupancy - 1);
 
-    const record = this.arrivals.find((a) => a.requestId === requestId && !a.departedAt);
+    const entry = this.unDeparted.get(requestId);
+    const record = Array.isArray(entry) ? entry.find((a) => !a.departedAt) : entry;
     if (record) {
       record.departedAt = timestamp;
+      if (Array.isArray(entry)) {
+        const remaining = entry.filter((a) => !a.departedAt);
+        if (remaining.length > 0) {
+          this.unDeparted.set(requestId, remaining);
+        } else {
+          this.unDeparted.delete(requestId);
+        }
+      } else {
+        this.unDeparted.delete(requestId);
+      }
     }
   }
 
@@ -94,6 +116,7 @@ export class NodeMetricsAccumulator {
 
   reset(): void {
     this.arrivals = [];
+    this.unDeparted.clear();
     this.currentOccupancy = 0;
     this.weightedOccupancySum = 0;
     this.lastEventTime = 0;
@@ -130,6 +153,20 @@ export class NodeMetricsAccumulator {
     this.arrivals = this.arrivals.filter(
       (a) => (a.departedAt ?? currentTime) >= this.windowStartTime,
     );
+
+    // Rebuild the un-departed index so evicted records don't leak
+    this.unDeparted.clear();
+    for (const a of this.arrivals) {
+      if (a.departedAt !== undefined) continue;
+      const existing = this.unDeparted.get(a.requestId);
+      if (existing === undefined) {
+        this.unDeparted.set(a.requestId, a);
+      } else if (Array.isArray(existing)) {
+        existing.push(a);
+      } else {
+        this.unDeparted.set(a.requestId, [existing, a]);
+      }
+    }
   }
 
   private emptyMetrics(): LittlesLawMetrics {

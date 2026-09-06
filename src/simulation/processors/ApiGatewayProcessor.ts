@@ -2,6 +2,7 @@ import type { ApiGatewayConfig } from '@/types/nodes';
 import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
+import { dispatchSideEffects } from '../subRequests';
 
 /**
  * Front door of the topology: applies an authentication latency to every
@@ -54,6 +55,23 @@ export class ApiGatewayProcessor implements NodeProcessor {
     }
 
     this.admittedInWindow++;
+
+    // Dispatch independent side-effect calls to every downstream service except
+    // the primary edge (e.g. auth / authz), without disturbing the main request.
+    const allOutgoing = context.getOutgoingEdges(event.nodeId);
+    if (allOutgoing.length > 1) {
+      dispatchSideEffects({
+        dispatchNodeId: event.nodeId,
+        edges: allOutgoing.slice(1),
+        timestamp: event.timestamp + authLatency,
+        maxHops: request.maxHops,
+        context,
+        requestMap: context.getRequestMap(),
+        getNextRequestId: context.getNextRequestId,
+      });
+    }
+
+    // Forward the main request along the primary edge.
     context.scheduleEvent({
       type: SimEventType.RequestRoute,
       timestamp: event.timestamp + authLatency,

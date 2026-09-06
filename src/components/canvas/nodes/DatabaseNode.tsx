@@ -1,42 +1,29 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { AnalysysNode } from '@/types/nodes';
-import type { DatabaseConfig } from '@/types/nodes';
+import type { NodeRendererProps } from '@/canvas/CanvasEngine';
+import type { CanvasNodeData } from '@/canvas/types';
+import type { DatabaseConfig, SimulationNode } from '@/types/nodes';
 import { NodeType } from '@/types/nodes';
 import { useSimulationStore } from '@/store/simulationStore';
 import { useTopologyStore } from '@/store/topologyStore';
-import { ChaosStatusBadge } from './ChaosStatusBadge';
+import { NodeFrame, MetricRow, ProgressBar } from './NodeFrame';
 
-const healthColors = {
-  green: 'border-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]',
-  yellow: 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]',
-  red: 'border-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]',
-} as const;
-
-export function DatabaseNode({ id, data }: NodeProps<AnalysysNode>) {
+export function DatabaseNode({ id, data, selected, onEdit, onConnectStart }: { id: string; data: CanvasNodeData; selected: boolean; onEdit: NodeRendererProps['onEdit']; onConnectStart: NodeRendererProps['onConnectStart']; }) {
+  const sim = data as SimulationNode;
   const nodeStatus = useSimulationStore((s) => s.nodeStatuses.get(id));
   const edges = useTopologyStore((s) => s.edges);
   const isDisconnected = !edges.some((e) => e.source === id || e.target === id);
 
-  const config = data.config as DatabaseConfig;
-  const healthClass = nodeStatus ? healthColors[nodeStatus] : 'border-rose-600';
-
-  // Connection pool gauge
+  const config = sim.config as DatabaseConfig;
   const poolPct = Math.min(100, (config.connectionPoolSize / 500) * 100);
-
   const healthLabel = nodeStatus ?? 'nominal';
 
   return (
-    <div
-      className={`relative w-[140px] rounded-lg border-2 bg-gray-900 px-3 py-2 shadow-md transition-all duration-300 ease-in-out ${healthClass} ${
-        isDisconnected ? 'opacity-50 border-dashed' : ''
-      }`}
-      aria-label={`Database: ${data.label}, health: ${healthLabel}`}
-    >
-      <ChaosStatusBadge nodeId={id} nodeType={NodeType.Database} />
-      {/* Icon + Label */}
-      <div className="flex items-center gap-2">
+    <NodeFrame
+      id={id}
+      nodeType={NodeType.Database}
+      label={sim.label}
+      icon={
         <svg
-          className="h-5 w-5 shrink-0 text-rose-400"
+          className="h-5 w-5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -48,29 +35,16 @@ export function DatabaseNode({ id, data }: NodeProps<AnalysysNode>) {
           <path d="M21 5v14c0 1.66-4.03 3-9 3s-9-1.34-9-3V5" />
           <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
         </svg>
-        <span className="truncate text-xs font-medium text-gray-200">{data.label}</span>
-      </div>
-
-      {/* Connection Pool Gauge */}
-      <div className="mt-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-gray-400">Pool</span>
-          <span className="text-[10px] text-rose-300">{config.connectionPoolSize}</span>
-        </div>
-        <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
-          <div
-            className="h-full rounded-full bg-rose-500 transition-all"
-            style={{ width: `${poolPct}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Target Handle (left) - database is a sink */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!h-2.5 !w-2.5 !border-2 !border-rose-400 !bg-gray-900"
-      />
-    </div>
+      }
+      selected={selected}
+      status={nodeStatus}
+      isDisconnected={isDisconnected}
+      ariaLabel={`Database: ${sim.label}, health: ${healthLabel}`}
+      onEdit={onEdit}
+      onConnectStart={onConnectStart}
+    >
+      <MetricRow label="Pool" value={`${config.connectionPoolSize}`} />
+      <ProgressBar pct={poolPct} />
+    </NodeFrame>
   );
 }

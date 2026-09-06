@@ -42,18 +42,6 @@ export class SeededRNG {
     return -Math.log(1 - this.next()) / rate;
   }
 
-  /** Poisson-distributed sample using inverse transform */
-  poisson(lambda: number): number {
-    const L = Math.exp(-lambda);
-    let k = 0;
-    let p = 1.0;
-    do {
-      k++;
-      p *= this.next();
-    } while (p > L);
-    return k - 1;
-  }
-
   /** Normal distribution via Box-Muller transform */
   normal(mean: number, stdDev: number): number {
     const u1 = this.next();

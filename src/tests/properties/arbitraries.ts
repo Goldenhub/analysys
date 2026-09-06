@@ -65,7 +65,11 @@ export function arbConfig(nodeType: NodeType): fc.Arbitrary<Record<string, unkno
   switch (nodeType) {
     case NodeType.TrafficGenerator:
       return fc.record<TrafficGeneratorConfig>({
-        rps: fc.integer({ min: 1, max: 100_000 }),
+        // Bounded so generated engines stay fast now that POISSON rates are
+        // honored correctly (a 100k-RPS generator over a 10s horizon would emit
+        // a million requests per fast-check iteration). Invariants under test
+        // do not depend on extreme magnitudes.
+        rps: fc.integer({ min: 1, max: 1_000 }),
         distribution: fc.constantFrom(Distribution.Poisson, Distribution.Uniform),
         spikeMultiplier: fc.integer({ min: 1, max: 20 }),
         spikeDurationSec: fc.integer({ min: 0, max: 300 }),

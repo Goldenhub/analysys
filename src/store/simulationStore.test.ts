@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useSimulationStore } from './simulationStore';
+import { useSimulationStore, handleWorkerMessage } from './simulationStore';
 import { SimState } from '@/simulation/types';
 import type { MetricsBatchPayload } from '@/types/metrics';
-import type { SimEventLogEntry } from '@/types/messages';
+import type { SimEventLogEntry, SimulationSummary } from '@/types/messages';
 
 // ─── Mock Worker ─────────────────────────────────────────────────
 
@@ -28,6 +28,7 @@ function resetStore() {
     metrics: null,
     eventLog: [],
     nodeStatuses: new Map(),
+    runSummary: null,
   });
   // Also terminate any existing worker to reset module-level state
   useSimulationStore.getState().terminateWorker();
@@ -60,6 +61,34 @@ describe('simulationStore', () => {
   beforeEach(() => {
     resetStore();
     vi.clearAllMocks();
+  });
+
+  describe('handleWorkerMessage: SIM_COMPLETE', () => {
+    const summary: SimulationSummary = {
+      totalEvents: 1234,
+      totalRequests: 100,
+      successRate: 0.95,
+      avgEndToEndLatencyMs: 42.5,
+      simulatedDurationMs: 5000,
+      wallClockDurationMs: 900,
+      eventsPerSecond: 1371,
+      seed: 424242,
+    };
+
+    it('stores the whole-run summary and flips state to Complete', () => {
+      handleWorkerMessage({ type: 'SIM_COMPLETE', payload: summary });
+
+      const state = useSimulationStore.getState();
+      expect(state.simState).toBe(SimState.Complete);
+      expect(state.runSummary).toEqual(summary);
+    });
+
+    it('clears the run summary on resetMetrics', () => {
+      handleWorkerMessage({ type: 'SIM_COMPLETE', payload: summary });
+      useSimulationStore.getState().resetMetrics();
+
+      expect(useSimulationStore.getState().runSummary).toBeNull();
+    });
   });
 
   describe('initial state', () => {
@@ -130,6 +159,27 @@ describe('simulationStore', () => {
       useSimulationStore.getState().appendEventLog(entries1);
       useSimulationStore.getState().appendEventLog(entries2);
       expect(useSimulationStore.getState().eventLog).toHaveLength(3);
+    });
+
+    it('drops the oldest entries once the ring-buffer cap is exceeded', () => {
+      const first: SimEventLogEntry[] = Array.from({ length: 5000 }, (_, i) => ({
+        id: i,
+        timestamp: i,
+        type: 'REQUEST_COMPLETE',
+        nodeId: 'app-1',
+        message: `e${i}`,
+      }));
+      useSimulationStore.getState().appendEventLog(first);
+      expect(useSimulationStore.getState().eventLog).toHaveLength(5000);
+
+      useSimulationStore.getState().appendEventLog([
+        { id: 9999, timestamp: 9999, type: 'REQUEST_COMPLETE', nodeId: 'app-1', message: 'new' },
+      ]);
+      const log = useSimulationStore.getState().eventLog;
+      expect(log).toHaveLength(5000);
+      // Oldest dropped, newest retained
+      expect(log[0]!.id).toBe(1);
+      expect(log[log.length - 1]!.id).toBe(9999);
     });
   });
 
@@ -287,6 +337,28 @@ describe('simulationStore', () => {
 
       expect(spy).toHaveBeenCalledWith('[SimWorker]', 'Something broke', 'at line 42');
       spy.mockRestore();
+    });
+  });
+
+  describe('seed (shared-simulation reproducibility)', () => {
+    it('stores a seed via setSeed', () => {
+      useSimulationStore.getState().setSeed(987654);
+      expect(useSimulationStore.getState().seed).toBe(987654);
+    });
+
+    it('has a default numeric seed', () => {
+      expect(typeof useSimulationStore.getState().seed).toBe('number');
+      expect(Number.isInteger(useSimulationStore.getState().seed)).toBe(true);
+    });
+
+    it('setDuration and setSpeed feed the settings that survive a share round-trip', () => {
+      useSimulationStore.getState().setDuration(90_000);
+      useSimulationStore.getState().setSpeed(3);
+      useSimulationStore.getState().setSeed(555);
+      const s = useSimulationStore.getState();
+      expect({ durationMs: s.durationMs, speedMultiplier: s.speedMultiplier, seed: s.seed }).toEqual(
+        { durationMs: 90_000, speedMultiplier: 3, seed: 555 },
+      );
     });
   });
 });

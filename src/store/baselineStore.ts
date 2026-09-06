@@ -11,10 +11,10 @@ import {
   validateBaselineName,
   validateBaselineLimit,
 } from '@/types/baseline';
-import type { SerializedTopologyV2 } from './schemaMigration';
+import type { SerializedTopologyV3 } from './schemaMigration';
 import type { ServiceObjective } from '@/analysis/AnalysisWindowStore';
 
-// ─── Required Fields for v2 Validation (Task 527) ────────────────
+// ─── Required Fields for v3 Validation (Task 527) ────────────────
 
 const REQUIRED_BASELINE_FIELDS: (keyof BaselineRun)[] = [
   'schemaVersion',
@@ -49,7 +49,7 @@ function loadBaselinesFromStorage(): { baselines: BaselineRun[]; warnings: strin
         continue;
       }
 
-      // R40.4 — only accept schema version 2
+      // R40.4 — only accept the current schema version
       if (record.schemaVersion !== BASELINE_SCHEMA_VERSION) {
         warnings.push(
           `[Baseline] Excluding record "${record.name ?? '(unnamed)'}" — schema version ${record.schemaVersion} is not ${BASELINE_SCHEMA_VERSION}.`,
@@ -106,7 +106,7 @@ interface BaselineActions {
     simulatedDurationMs: number;
     totalOfferedRps: number;
     objective?: ServiceObjective;
-    topology: SerializedTopologyV2;
+    topology: SerializedTopologyV3;
     wholeRun: WholeRunAggregates;
     perNode: Record<string, PerNodeAggregates>;
   }) => BaselineValidationError | null;
@@ -145,7 +145,7 @@ export const useBaselineStore = create<BaselineState & BaselineActions>()((set, 
     if (nameError) return nameError;
 
     const record: BaselineRun = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       name: params.name.trim(),
       createdAt: new Date().toISOString(),
       seed: params.seed,

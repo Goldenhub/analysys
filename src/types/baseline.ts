@@ -1,10 +1,10 @@
 import type { PercentileStats } from './metrics';
-import type { SerializedTopologyV2 } from '@/store/schemaMigration';
+import type { SerializedTopologyV3 } from '@/store/schemaMigration';
 import type { ServiceObjective } from '@/analysis/AnalysisWindowStore';
 
 // ─── Baseline Run Schema (Requirement 40, Task 523) ──────────────
 
-export const BASELINE_SCHEMA_VERSION = 2;
+export const BASELINE_SCHEMA_VERSION = 3;
 
 /**
  * Whole-run aggregates taken from RunCumulativeAccumulator at the Complete state.
@@ -40,10 +40,10 @@ export interface PerNodeAggregates {
 }
 
 /**
- * A retained baseline run at schema version 2 (Task 523).
+ * A retained baseline run at schema version 3 (Task 523).
  */
 export interface BaselineRun {
-  schemaVersion: 2;
+  schemaVersion: 3;
   /** 1–40 chars trimmed, case-insensitively unique. */
   name: string;
   /** ISO 8601 creation timestamp. */
@@ -52,8 +52,8 @@ export interface BaselineRun {
   simulatedDurationMs: number;
   totalOfferedRps: number;
   objective?: ServiceObjective;
-  /** Full v2 topology for reuse (positions, configs, policies, weights, groups). */
-  topology: SerializedTopologyV2;
+  /** Full topology for reuse (positions, configs, policies, weights). */
+  topology: SerializedTopologyV3;
   /** Whole-run aggregates from RunCumulativeAccumulator. */
   wholeRun: WholeRunAggregates;
   /** Per-node aggregates keyed by node id. */

@@ -1,9 +1,15 @@
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
-import type { SubsystemGroup } from '@/types/groups';
+import type { CanvasNodeData } from '@/canvas/types';
 import type { MigrationWarning } from '@/types/migration';
 import { NodeType } from '@/types/nodes';
-import { migrateV1ToV2, type SerializedTopology } from '@/store/schemaMigration';
+import {
+  migrateV1ToV2,
+  migrateV2ToV3,
+  applyV2Defaults,
+  applyV3Defaults,
+  type SerializedTopology,
+} from '@/store/schemaMigration';
 
 // ─── Schema Interface ────────────────────────────────────────────
 
@@ -12,9 +18,8 @@ export interface AnalysysFileSchema {
   name: string;
   createdAt: string;
   topology: {
-    nodes: SimulationNode[];
+    nodes: CanvasNodeData[];
     edges: EdgeData[];
-    subsystemGroups?: SubsystemGroup[];
   };
 }
 
@@ -27,7 +32,7 @@ export interface ValidationResult {
 
 // ─── Constants ───────────────────────────────────────────────────
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 /**
  * All valid node types — derived from the NodeType enum so that new members
@@ -107,6 +112,20 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
         if (!node.id || typeof node.id !== 'string') {
           errors.push(`Node at index ${i}: missing or invalid "id"`);
         }
+        if (!node.position || typeof node.position !== 'object') {
+          errors.push(`Node at index ${i}: missing or invalid "position"`);
+        }
+
+        // Visual-only canvas nodes (sections / text notes) carry a `kind` and do not
+        // enter the simulation. Accept them with a lighter schema.
+        if (node.kind === 'section' || node.kind === 'text_note') {
+          if (!node.label && node.kind === 'section') {
+            errors.push(`Node at index ${i}: missing or invalid "label"`);
+          }
+          continue;
+        }
+
+        // Simulation nodes: require nodeType, label, config.
         if (!node.nodeType || !VALID_NODE_TYPES.includes(node.nodeType as string)) {
           errors.push(
             `Node at index ${i}: invalid nodeType "${node.nodeType}". Expected one of: ${VALID_NODE_TYPES.join(', ')}`,
@@ -114,9 +133,6 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
         }
         if (!node.label || typeof node.label !== 'string') {
           errors.push(`Node at index ${i}: missing or invalid "label"`);
-        }
-        if (!node.position || typeof node.position !== 'object') {
-          errors.push(`Node at index ${i}: missing or invalid "position"`);
         }
         if (!node.config || typeof node.config !== 'object') {
           errors.push(`Node at index ${i}: missing or invalid "config"`);
@@ -159,7 +175,7 @@ export function validateAnalysysSchema(obj: unknown): ValidationResult {
 
 /** Serializes a topology to a JSON string conforming to the .analysys.json schema. */
 export function serialize(
-  topology: { nodes: SimulationNode[]; edges: EdgeData[]; subsystemGroups?: SubsystemGroup[] },
+  topology: { nodes: CanvasNodeData[]; edges: EdgeData[] },
   name: string,
 ): string {
   const schema: AnalysysFileSchema = {
@@ -169,7 +185,6 @@ export function serialize(
     topology: {
       nodes: topology.nodes,
       edges: topology.edges,
-      subsystemGroups: topology.subsystemGroups ?? [],
     },
   };
   return JSON.stringify(schema, null, 2);
@@ -202,26 +217,57 @@ export function migrateSchema(
   fromVersion: number,
 ): { data: AnalysysFileSchema; warnings: MigrationWarning[] } {
   let current = { ...data };
-  let allWarnings: MigrationWarning[] = [];
+  let allWarnings: MigrationWarning[];
 
   if (fromVersion < 2) {
-    // Build a SerializedTopology from the file schema and migrate to v2
+    // Build a SerializedTopology from the file schema and migrate to v2, then v3.
     const v1Payload: SerializedTopology = {
       schemaVersion: 1,
-      nodes: current.topology.nodes,
+      nodes: current.topology.nodes as SimulationNode[],
       edges: current.topology.edges,
     };
-    const { topology: migrated, warnings } = migrateV1ToV2(v1Payload);
+    const v2 = migrateV1ToV2(v1Payload);
+    const v3 = migrateV2ToV3(v2.topology);
     current = {
       ...current,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       topology: {
-        nodes: migrated.nodes,
-        edges: migrated.edges,
-        subsystemGroups: migrated.subsystemGroups,
+        nodes: v3.topology.nodes,
+        edges: v3.topology.edges,
       },
     };
-    allWarnings = warnings;
+    allWarnings = [...v2.warnings, ...v3.warnings];
+  } else if (fromVersion < 3) {
+    // v2 → v3: default missing fields, then drop the removed group system.
+    const v2 = applyV2Defaults({
+      schemaVersion: 2,
+      nodes: current.topology.nodes as SimulationNode[],
+      edges: current.topology.edges,
+      subsystemGroups: [],
+    });
+    const v3 = migrateV2ToV3(v2.topology);
+    current = {
+      ...current,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      topology: {
+        nodes: v3.topology.nodes,
+        edges: v3.topology.edges,
+      },
+    };
+    allWarnings = [...v2.warnings, ...v3.warnings];
+  } else {
+    // v3 — apply absent-field defaults (simulation nodes only).
+    const v3 = applyV3Defaults({
+      schemaVersion: 3,
+      nodes: current.topology.nodes,
+      edges: current.topology.edges,
+    });
+    current = {
+      ...current,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      topology: v3.topology,
+    };
+    allWarnings = v3.warnings;
   }
 
   // Ensure schema version is current

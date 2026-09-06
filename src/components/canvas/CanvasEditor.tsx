@@ -1,26 +1,22 @@
-import { useCallback, useRef, useEffect, useMemo } from 'react';
-import {
-  ReactFlow,
-  MiniMap,
-  Controls,
-  Background,
-  BackgroundVariant,
-  MarkerType,
-  useReactFlow,
-  ReactFlowProvider,
-  type Connection,
-  type NodeTypes,
-  type EdgeTypes,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useCallback, useEffect } from 'react';
+
+import { CanvasEngine, ZoomControls } from '@/canvas';
+import type { NodeRenderer } from '@/canvas';
+import { SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas';
+import { createSectionNode, createTextNoteNode } from '@/canvas';
+import type { SectionNodeData } from '@/canvas/types';
+import { SectionNode, TextNoteNode } from '@/canvas';
 
 import { useTopologyStore } from '@/store/topologyStore';
-import type { AnalysysNode, SimulationNode } from '@/types/nodes';
+import { useCanvasToolStore } from '@/store/canvasToolStore';
+import type { SimulationNode } from '@/types/nodes';
 import { NodeType } from '@/types/nodes';
 import { createDefaultNodeData } from '@/types/nodeDefaults';
-import type { AnalysysEdge, EdgeData } from '@/types/edges';
+import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import { validateEdgeConnection, getValidProtocols } from '@/validation';
+import { detectCycles } from '@/validation/cycleDetection';
+import { showToast } from '@/components/ui/toastStore';
 
 import {
   TrafficGeneratorNode,
@@ -41,64 +37,41 @@ import {
 } from './nodes';
 import { SyncEdge, AsyncEdge } from './edges';
 import { HealthLegend } from './HealthLegend';
-import {
-  SubsystemGroupNode,
-  MergedBoundaryEdge,
-  SUBSYSTEM_GROUP_NODE_TYPE,
-  MERGED_BOUNDARY_EDGE_TYPE,
-} from './groups';
 
-// ─── Custom Node Type Registry ───────────────────────────────────
+// ─── Renderer Registries ─────────────────────────────────────────
 
-const nodeTypes: NodeTypes = {
-  [NodeType.TrafficGenerator]: TrafficGeneratorNode,
-  [NodeType.ApiGateway]: ApiGatewayNode,
-  [NodeType.RateLimiter]: RateLimiterNode,
-  [NodeType.LoadBalancer]: LoadBalancerNode,
-  [NodeType.CircuitBreaker]: CircuitBreakerNode,
-  [NodeType.AppServer]: AppServerNode,
-  [NodeType.Cache]: CacheNode,
-  [NodeType.Database]: DatabaseNode,
-  [NodeType.MessageQueue]: MessageQueueNode,
-  [NodeType.AuthService]: AuthServiceNode,
-  [NodeType.AuthzService]: AuthzServiceNode,
-  [NodeType.WorkerPool]: WorkerPoolNode,
-  [NodeType.DeadLetterQueue]: DeadLetterQueueNode,
-  [NodeType.ObjectStore]: ObjectStoreNode,
-  [NodeType.Scheduler]: SchedulerNode,
-  [SUBSYSTEM_GROUP_NODE_TYPE]: SubsystemGroupNode,
+const nodeRegistry: Record<string, NodeRenderer> = {
+  [NodeType.TrafficGenerator]: (p) => <TrafficGeneratorNode {...p} />,
+  [NodeType.ApiGateway]: (p) => <ApiGatewayNode {...p} />,
+  [NodeType.RateLimiter]: (p) => <RateLimiterNode {...p} />,
+  [NodeType.LoadBalancer]: (p) => <LoadBalancerNode {...p} />,
+  [NodeType.CircuitBreaker]: (p) => <CircuitBreakerNode {...p} />,
+  [NodeType.AppServer]: (p) => <AppServerNode {...p} />,
+  [NodeType.Cache]: (p) => <CacheNode {...p} />,
+  [NodeType.Database]: (p) => <DatabaseNode {...p} />,
+  [NodeType.MessageQueue]: (p) => <MessageQueueNode {...p} />,
+  [NodeType.AuthService]: (p) => <AuthServiceNode {...p} />,
+  [NodeType.AuthzService]: (p) => <AuthzServiceNode {...p} />,
+  [NodeType.WorkerPool]: (p) => <WorkerPoolNode {...p} />,
+  [NodeType.DeadLetterQueue]: (p) => <DeadLetterQueueNode {...p} />,
+  [NodeType.ObjectStore]: (p) => <ObjectStoreNode {...p} />,
+  [NodeType.Scheduler]: (p) => <SchedulerNode {...p} />,
+  [SECTION_NODE_TYPE]: (p) => <SectionNode {...p} />,
+  [TEXT_NOTE_NODE_TYPE]: (p) => <TextNoteNode {...p} />,
 };
 
-// ─── Custom Edge Type Registry ───────────────────────────────────
-
-const edgeTypes: EdgeTypes = {
+const edgeRegistry = {
   [EdgeProtocol.Sync]: SyncEdge,
   [EdgeProtocol.Async]: AsyncEdge,
-  [MERGED_BOUNDARY_EDGE_TYPE]: MergedBoundaryEdge,
 };
 
-// ─── Default Edge Markers ────────────────────────────────────────
+// ─── Canvas Editor ───────────────────────────────────────────────
 
-const defaultEdgeOptions = {
-  markerEnd: {
-    type: MarkerType.ArrowClosed,
-    width: 16,
-    height: 16,
-    color: '#6b7280',
-  },
-};
-
-// ─── Inner Canvas (requires ReactFlowProvider ancestor) ──────────
-
-interface CanvasEditorInnerProps {
+export interface CanvasEditorProps {
   onNodeSelect?: (nodeId: string | null) => void;
 }
 
-function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
-
-  // Connect to topology store
+export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
@@ -107,36 +80,36 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
   const addEdge = useTopologyStore((s) => s.addEdge);
   const removeNode = useTopologyStore((s) => s.removeNode);
   const removeEdge = useTopologyStore((s) => s.removeEdge);
+  const updateNodeEdit = useTopologyStore((s) => s.updateNodeEdit);
   const undo = useTopologyStore((s) => s.undo);
   const redo = useTopologyStore((s) => s.redo);
 
   // ─── onConnect: validate then add edge ─────────────────────────
 
   const onConnect = useCallback(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
+    (connection: { source: string; target: string }) => {
+      const { source, target } = connection;
+      if (!source || !target) return;
 
-      // Find source and target node data for validation
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
+      const sourceNode = nodes.find((n) => n.id === source);
+      const targetNode = nodes.find((n) => n.id === target);
       if (!sourceNode || !targetNode) return;
 
       const sourceData = sourceNode.data as SimulationNode;
       const targetData = targetNode.data as SimulationNode;
+      if (!('nodeType' in sourceData) || !('nodeType' in targetData)) return;
 
-      // Extract existing edge data for duplicate check
-      const existingEdgeData: EdgeData[] = edges.map((e) => e.data as EdgeData);
+      const existingEdgeData: EdgeData[] = edges.map((e) => e.data);
 
       // The protocol is decided before validation because R30.13 validates it. Take the
-      // pair's first permitted protocol rather than assuming Sync: an async-only pair
-      // (Message_Queue → App_Server, Scheduler → Worker_Pool) would otherwise be created
-      // as Sync and then rejected by the protocol-mismatch rule.
+      // pair's first permitted protocol rather than assuming Sync.
       const permitted = getValidProtocols(sourceData.nodeType, targetData.nodeType);
       const defaultProtocol = permitted[0] ?? EdgeProtocol.Sync;
 
-      // Node lookup for the R30.11 cardinality rejection, which names a third node.
       const nodesById = new Map<string, SimulationNode>(
-        nodes.map((n) => [n.id, n.data as SimulationNode]),
+        nodes
+          .filter((n) => 'nodeType' in n.data)
+          .map((n) => [n.id, n.data as SimulationNode]),
       );
 
       const result = validateEdgeConnection(
@@ -147,91 +120,123 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         nodesById,
       );
       if (!result.valid) {
-        // Could surface this to the user via toast/notification in the future
+        showToast(`Connection rejected: ${result.reason}`);
         console.warn('Connection rejected:', result.reason);
         return;
       }
 
+      const candidateEdge: EdgeData = {
+        id: 'candidate',
+        source,
+        target,
+        protocol: defaultProtocol,
+        weight: 1.0,
+      };
+      const cycles = detectCycles(
+        nodes
+          .filter((n) => 'nodeType' in n.data)
+          .map((n) => n.data as SimulationNode),
+        [...existingEdgeData, candidateEdge],
+      );
+      if (cycles.length > 0) {
+        showToast('Connection rejected: this edge would create a routing cycle.');
+        return;
+      }
+
       const edgeId = crypto.randomUUID();
-      const newEdge: AnalysysEdge = {
+      addEdge({
         id: edgeId,
-        source: connection.source,
-        target: connection.target,
+        source,
+        target,
         type: defaultProtocol,
-        markerEnd: defaultEdgeOptions.markerEnd,
         data: {
           id: edgeId,
-          source: connection.source,
-          target: connection.target,
+          source,
+          target,
           protocol: defaultProtocol,
           // R32.4 — a new edge carries an equal share until the user reweights it.
           weight: 1.0,
         },
-      };
-
-      addEdge(newEdge);
+      });
     },
     [nodes, edges, addEdge],
   );
 
-  // ─── onDrop: create new node from palette ──────────────────────
+  // ─── onDrop: create a new node from the palette ────────────────
 
   const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
+    (canvasPos: { x: number; y: number } | null, event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
+      if (!canvasPos) return;
 
       const nodeTypeStr = event.dataTransfer.getData('application/analysys-node-type');
       if (!nodeTypeStr) return;
 
-      // Validate it's a known NodeType
+      if (nodeTypeStr === SECTION_NODE_TYPE) {
+        addNode(createSectionNode(canvasPos));
+        return;
+      }
+      if (nodeTypeStr === TEXT_NOTE_NODE_TYPE) {
+        addNode(createTextNoteNode(canvasPos));
+        return;
+      }
+
       if (!Object.values(NodeType).includes(nodeTypeStr as NodeType)) return;
 
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      const nodeData = createDefaultNodeData(nodeTypeStr as NodeType, position);
-      const newNode: AnalysysNode = {
+      const nodeData = createDefaultNodeData(nodeTypeStr as NodeType, canvasPos);
+      addNode({
         id: nodeData.id,
         type: nodeData.nodeType,
-        position,
-        data: nodeData as AnalysysNode['data'],
-      };
-
-      addNode(newNode);
+        position: canvasPos,
+        data: nodeData,
+      });
     },
-    [screenToFlowPosition, addNode],
+    [addNode],
   );
-
-  // ─── onDragOver: allow drop ────────────────────────────────────
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // ─── Node selection handler ────────────────────────────────────
+  // ─── Draw a section tool: create a section sized to the dragged rectangle ───
 
-  const onSelectionChange = useCallback(
-    ({ nodes: selectedNodes }: { nodes: AnalysysNode[] }) => {
-      const firstNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined;
-      onNodeSelect?.(firstNode?.id ?? null);
+  const onDrawSection = useCallback(
+    (bounds: { x: number; y: number; width: number; height: number }) => {
+      const id = crypto.randomUUID();
+      const position = { x: bounds.x, y: bounds.y };
+      const data: SectionNodeData = {
+        kind: 'section',
+        id,
+        label: 'Section',
+        position,
+        width: bounds.width,
+        height: bounds.height,
+      };
+      addNode({
+        id,
+        type: SECTION_NODE_TYPE,
+        position,
+        width: bounds.width,
+        height: bounds.height,
+        selected: false,
+        dragging: false,
+        data,
+      });
+      useCanvasToolStore.getState().setDrawTool(null);
     },
-    [onNodeSelect],
+    [addNode],
   );
 
   // ─── Keyboard shortcuts ────────────────────────────────────────
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Ignore if user is typing in an input
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
 
-      // Delete/Backspace: remove selected nodes and edges
       if (event.key === 'Delete' || event.key === 'Backspace') {
         const selectedNodes = nodes.filter((n) => n.selected);
         const selectedEdges = edges.filter((e) => e.selected);
@@ -240,13 +245,11 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
         selectedEdges.forEach((e) => removeEdge(e.id));
       }
 
-      // Ctrl+Z: Undo
       if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
         event.preventDefault();
         undo();
       }
 
-      // Ctrl+Y or Ctrl+Shift+Z: Redo
       if (
         ((event.ctrlKey || event.metaKey) && event.key === 'y') ||
         ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'z')
@@ -263,54 +266,29 @@ function CanvasEditorInner({ onNodeSelect }: CanvasEditorInnerProps) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onKeyDown]);
 
-  // ─── Memoize node/edge types to prevent re-renders ─────────────
-
-  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
-  const memoizedEdgeTypes = useMemo(() => edgeTypes, []);
-
   // ─── Render ────────────────────────────────────────────────────
 
   return (
-    <div ref={reactFlowWrapper} className="relative h-full w-full">
-      <ReactFlow
+    <div className="relative h-full w-full">
+      <CanvasEngine
         nodes={nodes}
         edges={edges}
+        nodeRegistry={nodeRegistry}
+        edgeRegistry={edgeRegistry}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeSelect={onNodeSelect}
+        onEditNode={updateNodeEdit}
+        onDrawSection={onDrawSection}
         onDrop={onDrop}
         onDragOver={onDragOver}
-        onSelectionChange={onSelectionChange}
-        nodeTypes={memoizedNodeTypes}
-        edgeTypes={memoizedEdgeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
         fitView
-        deleteKeyCode={null} // We handle delete ourselves
-        className="bg-gray-950"
+        showMiniMap={false}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
-        <Controls className="!bg-gray-800 !border-gray-700 [&>button]:!bg-gray-800 [&>button]:!border-gray-700 [&>button]:!text-gray-300 [&>button:hover]:!bg-gray-700" />
-        <MiniMap
-          className="!bg-gray-900 !border-gray-700"
-          nodeColor={() => '#6b7280'}
-          maskColor="rgba(0, 0, 0, 0.7)"
-        />
+        <ZoomControls />
         <HealthLegend />
-      </ReactFlow>
+      </CanvasEngine>
     </div>
-  );
-}
-
-// ─── Exported Component (wraps with ReactFlowProvider) ───────────
-
-export interface CanvasEditorProps {
-  onNodeSelect?: (nodeId: string | null) => void;
-}
-
-export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
-  return (
-    <ReactFlowProvider>
-      <CanvasEditorInner onNodeSelect={onNodeSelect} />
-    </ReactFlowProvider>
   );
 }

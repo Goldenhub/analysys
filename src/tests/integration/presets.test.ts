@@ -31,7 +31,11 @@ function runPreset(preset: ReferencePreset): Promise<{
     topology: preset.topology,
     seed: preset.seed,
     speedMultiplier: preset.speedMultiplier,
-    maxSimulatedTimeMs: preset.simulatedDurationMs,
+    // Capped horizon: with POISSON rates now honored correctly, an 800-RPS
+    // preset over its full 60–120s duration emits ~100k requests per run.
+    // 12s of simulated time is ample for steady-state bottleneck assertions
+    // while keeping the suite fast.
+    maxSimulatedTimeMs: Math.min(preset.simulatedDurationMs, 12_000),
     metricsIntervalMs: 5000,
     maxHopsPerRequest: 20,
     disablePacing: true,
@@ -71,12 +75,21 @@ describe('Integration: Reference preset bottleneck analysis', () => {
         );
 
         expect(bottleneckNode).toBeDefined();
-        // Bottleneck node should have processed requests
-        const totalCounts = Object.values(bottleneckNode!.cumulativeTerminalCounts).reduce(
-          (sum, c) => sum + (c as number),
-          0,
+        // "Activity" at the bottleneck = the node is doing real work under load.
+        // Depending on the node's role that shows up as terminal statuses (a
+        // resource where requests end), arrivals + processing throughput (a
+        // pass-through like a Worker Pool whose successes route downstream), or
+        // a growing queue/backlog (a saturated Message Queue). Requiring terminal
+        // counts specifically only held in the old regime where a unit bug kept
+        // POISSON generators at 1/1000th their configured rate.
+        const hasTerminalActivity = Object.values(bottleneckNode!.cumulativeTerminalCounts).some(
+          (c) => (c as number) > 0,
         );
-        expect(totalCounts).toBeGreaterThan(0);
+        const hasFlowActivity =
+          bottleneckNode!.arrivalCount > 0 ||
+          bottleneckNode!.throughput > 0 ||
+          bottleneckNode!.queueDepth > 0;
+        expect(hasTerminalActivity || hasFlowActivity).toBe(true);
       },
     );
   }

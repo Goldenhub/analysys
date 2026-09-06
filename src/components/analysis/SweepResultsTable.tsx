@@ -1,4 +1,6 @@
 import type { SweepStepResult } from '@/analysis/CapacitySweepController';
+import { downloadTextFile } from '@/utils/download';
+import { toCsv } from '@/utils/csv';
 
 // ─── Terminal Status Names ───────────────────────────────────────
 
@@ -17,9 +19,9 @@ const TERMINAL_STATUSES = [
 // ─── Verdict styling ─────────────────────────────────────────────
 
 const VERDICT_STYLES: Record<string, string> = {
-  satisfied: 'text-green-400',
-  violated: 'text-red-400',
-  'not-evaluated': 'text-gray-500',
+  satisfied: 'text-[#4d6b52]',
+  violated: 'text-[#8b2e1e]',
+  'not-evaluated': 'text-[#5b5347]/75',
 };
 
 // ─── SweepResultsTable (Task 550) ────────────────────────────────
@@ -30,18 +32,61 @@ export interface SweepResultsTableProps {
 
 export function SweepResultsTable({ steps }: SweepResultsTableProps) {
   if (steps.length === 0) {
-    return <p className="text-xs text-gray-500 italic">No sweep results available.</p>;
+    return <p className="text-xs text-[#5b5347]/80 italic">No sweep results available.</p>;
   }
+
+  const exportCsv = () => {
+    const csv = toCsv(
+      [
+        'step',
+        'requested_rps',
+        'applied_rps',
+        'throughput_req_s',
+        'p50_ms',
+        'p90_ms',
+        'p99_ms',
+        'error_rate_pct',
+        ...TERMINAL_STATUSES.map((s) => s.toLowerCase()),
+        'interval_start_ms',
+        'interval_end_ms',
+        'verdict',
+      ],
+      steps.map((step) => [
+        step.stepIndex + 1,
+        step.requestedRps,
+        step.appliedRps,
+        step.achievedThroughput.toFixed(2),
+        step.latency.p50.toFixed(2),
+        step.latency.p90.toFixed(2),
+        step.latency.p99.toFixed(2),
+        (step.totalErrorRate * 100).toFixed(2),
+        ...TERMINAL_STATUSES.map((s) => step.terminalCounts[s] ?? 0),
+        step.measurementInterval.startMs,
+        step.measurementInterval.endMs,
+        step.verdict,
+      ]),
+    );
+    downloadTextFile(csv, 'analysys-sweep.csv', 'text/csv');
+  };
 
   return (
     <div className="overflow-x-auto">
+      <div className="mb-1 flex justify-end">
+        <button
+          onClick={exportCsv}
+          className="rounded border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 py-0.5 text-[10px] text-[#f3ede2]/80 hover:border-[#5b5347]/40 hover:text-[#f3ede2]/90"
+          title="Download all sweep steps as CSV"
+        >
+          Export steps CSV
+        </button>
+      </div>
       <table
         aria-label="Capacity sweep results"
         className="w-full text-[10px] border-collapse whitespace-nowrap"
         role="table"
       >
         <thead>
-          <tr className="border-b border-gray-700 text-gray-400 font-medium">
+          <tr className="border-b border-[#5b5347]/30 text-[#211e1a]/75 font-medium">
             <th scope="col" className="py-1 px-1.5 text-left">
               Step
             </th>
@@ -84,40 +129,40 @@ export function SweepResultsTable({ steps }: SweepResultsTableProps) {
         </thead>
         <tbody>
           {steps.map((step) => (
-            <tr key={step.stepIndex} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-              <th scope="row" className="py-1 px-1.5 text-left text-gray-300 font-normal">
+            <tr key={step.stepIndex} className="border-b border-[#5b5347]/15 hover:bg-[#5b5347]/10 transition-colors">
+              <th scope="row" className="py-1 px-1.5 text-left text-[#211e1a]/85 font-normal">
                 {step.stepIndex + 1}
               </th>
-              <td className="py-1 px-1.5 text-right text-gray-300">{step.requestedRps}</td>
-              <td className="py-1 px-1.5 text-right text-gray-300">{step.appliedRps}</td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">{step.requestedRps}</td>
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">{step.appliedRps}</td>
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.achievedThroughput.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p50.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p90.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {step.latency.p99.toFixed(1)}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-300">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/85">
                 {(step.totalErrorRate * 100).toFixed(2)}%
               </td>
               {TERMINAL_STATUSES.map((status) => (
-                <td key={status} className="py-1 px-1.5 text-right text-gray-400">
+                <td key={status} className="py-1 px-1.5 text-right text-[#211e1a]/65">
                   {step.terminalCounts[status] ?? 0}
                 </td>
               ))}
-              <td className="py-1 px-1.5 text-right text-gray-400">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/65">
                 {step.measurementInterval.startMs}
               </td>
-              <td className="py-1 px-1.5 text-right text-gray-400">
+              <td className="py-1 px-1.5 text-right text-[#211e1a]/65">
                 {step.measurementInterval.endMs}
               </td>
               <td
-                className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-gray-400'}`}
+                className={`py-1 px-1.5 text-center font-medium ${VERDICT_STYLES[step.verdict] ?? 'text-[#211e1a]/65'}`}
               >
                 {step.verdict}
               </td>

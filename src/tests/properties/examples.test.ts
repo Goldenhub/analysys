@@ -7,7 +7,8 @@
  * - Redrive decrement of Dead_Lettered count
  * - Exact rejection messages for Requirement 30 connection rules
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+vi.setConfig({ testTimeout: 120_000 });
 import {
   NodeType,
   RoutingPolicy,

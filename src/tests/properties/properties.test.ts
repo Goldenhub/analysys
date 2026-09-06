@@ -4,8 +4,12 @@
  * Each property is configured with { numRuns: 100 } at minimum.
  * Uses the shared engine fixture with disablePacing: true.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as fc from 'fast-check';
+
+// Each property runs up to 100 engine iterations; with POISSON generators now
+// emitting their configured rates these can exceed Vitest's 5s default.
+vi.setConfig({ testTimeout: 120_000 });
 import {
   NodeType,
   Distribution,

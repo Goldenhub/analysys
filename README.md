@@ -8,15 +8,17 @@ A browser-based tool for backend engineers and software architects to **model**,
 
 This project was built entirely within [Kiro](https://kiro.dev), an AI-powered development environment. Kiro's spec-driven workflow guided every stage:
 
-1. **Requirements** (`.kiro/specs/analysys/requirements.md`) — 43 requirements in strict EARS format, each with numbered acceptance criteria, covering the 15 node types, routing policies, fan-out, subsystem grouping, the analysis engine, capacity sweeps, SPOF detection, baseline comparison, and reference presets.
+1. **Requirements** — 43 requirements in strict EARS format, each with numbered acceptance criteria, covering the 15 node types, routing policies, fan-out, subsystem grouping, the analysis engine, capacity sweeps, SPOF detection, baseline comparison, and reference presets.
 
-2. **Design** (`.kiro/specs/analysys/design.md`) — A 3,500-line technical design document grounded in the actual codebase. Covers the architecture, all type interfaces, the event-loop algorithm, routing and fan-out semantics, the cooperative-slicing analysis scheduler, schema migration, and 27 correctness properties.
+2. **Design** — A 3,500-line technical design document grounded in the actual codebase. Covers the architecture, all type interfaces, the event-loop algorithm, routing and fan-out semantics, the cooperative-slicing analysis scheduler, schema migration, and 27 correctness properties.
 
-3. **Tasks** (`.kiro/specs/analysys/tasks.md`) — 607 sequentially numbered implementation tasks across 28 phases, with a dependency DAG that kept the build green between phases. The spec tracked completion status as each task was dispatched to Kiro's sub-agents.
+3. **Tasks** — 607 sequentially numbered implementation tasks across 28 phases, with a dependency DAG that kept the build green between phases. The spec tracked completion status as each task was dispatched to Kiro's sub-agents.
 
 4. **Iterative refinement** — Kiro's analysis tools caught ambiguities and inconsistencies in the requirements (e.g. the `PresetSelector` vs `SimulationToolbar` maxHopsPerRequest divergence), which were fixed before implementation.
 
 5. **Code generation and testing** — Every phase was dispatched to Kiro's spec-task-execution agent, which wrote the code, ran the build and tests, and reported back. The final suite has 686 tests including property-based tests (fast-check) exercising all 27 correctness properties.
+
+(The spec documents themselves live in the development environment and are not part of this repository.)
 
 ---
 
@@ -27,9 +29,11 @@ This project was built entirely within [Kiro](https://kiro.dev), an AI-powered d
 | **15 Node Types** | Traffic Generator, Scheduler, API Gateway, Rate Limiter, Circuit Breaker, Auth Service, Authz Service, Load Balancer, App Server, Worker Pool, Cache, Database, Object Store, Message Queue, Dead Letter Queue |
 | **Routing Policies** | First, Round Robin, Weighted, Fan-Out (depth-capped at 4) |
 | **Subsystem Grouping** | Collapsible groups with boundary-edge merging |
-| **Discrete-Event Simulation** | Web Worker engine, min-heap event queue, seeded xoshiro128** PRNG for determinism |
+| **Discrete-Event Simulation** | Web Worker engine, min-heap event queue with FIFO same-timestamp ordering, seeded xoshiro128** PRNG for determinism |
+| **Load Balancer Health Checks** | Periodic virtual-time probes; targets ejected after `evictionThreshold` consecutive failures and restored by a passing probe |
+| **Reproducible Runs** | Seed control in the toolbar — repeat a run exactly or re-roll for a fresh sample |
 | **Telemetry** | Latency p50/p90/p99, throughput, error rate, queue gauges, Little's Law, per-node Activity view |
-| **Analysis Engine** | 12 rules producing evidence-backed Findings: bottleneck, saturation, instability, headroom, SPOF, DLQ growth, scheduler collision, admission dominance, comparison |
+| **Analysis Engine** | 13-rule registry (+2 comparison rules) producing evidence-backed Findings: bottleneck, saturation, instability, headroom, SPOF, DLQ growth, scheduler collision, admission dominance, comparison |
 | **Capacity Sweep** | Sequential step execution measuring Sustainable Load and Knee Point against a Service Objective |
 | **Baseline Comparison** | Retain up to 5 runs, compare B − A with controlled/uncontrolled labelling |
 | **Chaos Engineering** | Cache flush, DB drop, traffic spike, DISABLE_NODE (any type), DLQ redrive |

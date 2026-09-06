@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useSimulationStore } from '@/store/simulationStore';
 import { SimState } from '@/simulation/types';
@@ -30,6 +30,7 @@ import { DeadLetterQueueForm } from './forms/DeadLetterQueueForm';
 import { ObjectStoreForm } from './forms/ObjectStoreForm';
 import { SchedulerForm } from './forms/SchedulerForm';
 import { RoutingPolicyField } from './RoutingPolicyField';
+import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
 
 // ─── Validation Types ────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ interface NumberFieldProps {
 function NumberField({ label, field, value, onChange, error, min, max, step }: NumberFieldProps) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-400">{label}</label>
+      <label className="text-xs font-medium text-[#f3ede2]/80">{label}</label>
       <input
         type="number"
         value={value}
@@ -185,9 +186,9 @@ function NumberField({ label, field, value, onChange, error, min, max, step }: N
         max={max}
         step={step}
         onChange={(e) => onChange(field, parseFloat(e.target.value) || 0)}
-        className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
+        className="rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2.5 py-1.5 text-sm text-[#f3ede2] outline-none transition-colors focus:border-[#b8402e] focus:ring-1 focus:ring-[#b8402e]/50"
       />
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {error && <span className="text-xs text-[#8b2e1e]">{error}</span>}
     </div>
   );
 }
@@ -218,8 +219,8 @@ function SliderField({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-gray-400">{label}</label>
-        <span className="text-xs text-gray-500">{displayValue ?? value}</span>
+        <label className="text-xs font-medium text-[#f3ede2]/80">{label}</label>
+        <span className="text-xs text-[#f3ede2]/70">{displayValue ?? value}</span>
       </div>
       <input
         type="range"
@@ -228,9 +229,9 @@ function SliderField({
         max={max}
         step={step}
         onChange={(e) => onChange(field, parseFloat(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-indigo-500"
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#5b5347]/60 accent-indigo-500"
       />
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {error && <span className="text-xs text-[#8b2e1e]">{error}</span>}
     </div>
   );
 }
@@ -246,11 +247,11 @@ interface SelectFieldProps {
 function SelectField({ label, field, value, options, onChange }: SelectFieldProps) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-400">{label}</label>
+      <label className="text-xs font-medium text-[#f3ede2]/80">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(field, e.target.value)}
-        className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
+        className="rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2.5 py-1.5 text-sm text-[#f3ede2] outline-none transition-colors focus:border-[#b8402e] focus:ring-1 focus:ring-[#b8402e]/50"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -274,15 +275,15 @@ interface ToggleFieldProps {
 function ToggleField({ label, field, value, optionA, optionB, onChange }: ToggleFieldProps) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-400">{label}</label>
-      <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+      <label className="text-xs font-medium text-[#f3ede2]/80">{label}</label>
+      <div className="flex rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 p-0.5">
         <button
           type="button"
           onClick={() => onChange(field, optionA.value)}
           className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
             value === optionA.value
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-400 hover:text-gray-200'
+              ? 'bg-[#b8402e] text-[#f3ede2]'
+              : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
           }`}
         >
           {optionA.label}
@@ -292,8 +293,8 @@ function ToggleField({ label, field, value, optionA, optionB, onChange }: Toggle
           onClick={() => onChange(field, optionB.value)}
           className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
             value === optionB.value
-              ? 'bg-indigo-600 text-white'
-              : 'text-gray-400 hover:text-gray-200'
+              ? 'bg-[#b8402e] text-[#f3ede2]'
+              : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
           }`}
         >
           {optionB.label}
@@ -972,22 +973,22 @@ const HEALTH_LABELS: Record<'green' | 'yellow' | 'red', string> = {
 };
 
 const HEALTH_BADGE_CLASSES: Record<'green' | 'yellow' | 'red', string> = {
-  green: 'bg-green-500/15 text-green-400 border-green-500/40',
-  yellow: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
-  red: 'bg-red-500/15 text-red-400 border-red-500/40',
+  green: 'bg-[#6b8f71]/15 text-[#6b8f71] border-[#6b8f71]/40',
+  yellow: 'bg-[#c49a3c]/15 text-[#c49a3c] border-[#c49a3c]/40',
+  red: 'bg-[#8b2e1e]/15 text-[#8b2e1e] border-[#8b2e1e]/40',
 };
 
 /** Matches the gauge thresholds used in QueueGauge: green <70, amber 70–90, red >90. */
 function utilizationBarColor(pct: number): string {
-  if (pct >= 90) return 'bg-red-500';
-  if (pct >= 70) return 'bg-amber-500';
-  return 'bg-green-500';
+  if (pct >= 90) return 'bg-[#8b2e1e]';
+  if (pct >= 70) return 'bg-[#c49a3c]';
+  return 'bg-[#6b8f71]';
 }
 
 function utilizationTextColor(pct: number): string {
-  if (pct >= 90) return 'text-red-400';
-  if (pct >= 70) return 'text-amber-400';
-  return 'text-green-400';
+  if (pct >= 90) return 'text-[#8b2e1e]';
+  if (pct >= 70) return 'text-[#c49a3c]';
+  return 'text-[#6b8f71]';
 }
 
 /**
@@ -1000,18 +1001,10 @@ function hasNoCompletions(snapshot: NodeMetricsSnapshot): boolean {
   return snapshot.throughput === 0 && p50 === 0 && p90 === 0 && p99 === 0;
 }
 
-function formatSimTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  const millis = Math.floor(ms % 1000);
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-}
-
 function ActivitySection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{title}</h3>
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/70">{title}</h3>
       {children}
     </div>
   );
@@ -1030,11 +1023,11 @@ function StatRow({
 }) {
   return (
     <div className="flex items-baseline justify-between text-xs">
-      <span className="text-gray-400">{label}</span>
-      <span className="text-gray-200">
+      <span className="text-[#f3ede2]/80">{label}</span>
+      <span className="text-[#f3ede2]">
         {value}
-        {unit && <span className="ml-1 text-gray-500">{unit}</span>}
-        {suffix && <span className="ml-1 text-gray-500">{suffix}</span>}
+        {unit && <span className="ml-1 text-[#f3ede2]/70">{unit}</span>}
+        {suffix && <span className="ml-1 text-[#f3ede2]/70">{suffix}</span>}
       </span>
     </div>
   );
@@ -1042,7 +1035,7 @@ function StatRow({
 
 /** Muted caption used to explain why a metric has no number to show. */
 function ActivityNote({ children }: { children: ReactNode }) {
-  return <p className="text-[10px] text-gray-500">{children}</p>;
+  return <p className="text-[10px] text-[#f3ede2]/70">{children}</p>;
 }
 
 const MAX_RECENT_EVENTS = 8;
@@ -1066,7 +1059,7 @@ function ActivityPanel({
   if (!snapshot) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <p className="text-xs leading-relaxed text-gray-500">
+        <p className="text-xs leading-relaxed text-[#f3ede2]/70">
           No activity yet — start a simulation to see this node&apos;s live behavior.
         </p>
       </div>
@@ -1140,13 +1133,13 @@ function ActivityPanel({
         )}
         <div className="mt-1 flex flex-col gap-1">
           <div className="flex items-baseline justify-between text-xs">
-            <span className="text-gray-400">Utilization</span>
+            <span className="text-[#f3ede2]/80">Utilization</span>
             {utilization.kind === 'value' && (
               <span className={utilizationTextColor(utilPct)}>{utilPct.toFixed(0)}%</span>
             )}
           </div>
           {utilization.kind === 'value' && (
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#5b5347]/60">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${utilizationBarColor(utilPct)}`}
                 style={{ width: `${Math.min(100, Math.max(0, utilPct))}%` }}
@@ -1170,10 +1163,10 @@ function ActivityPanel({
             <StatRow label="λ (arrivals)" value={littlesLaw.lambda.toFixed(2)} unit="/s" />
             <StatRow label="W (avg time in system)" value={littlesLaw.W.toFixed(1)} unit="ms" />
             <div className="flex items-baseline justify-between text-xs">
-              <span className="text-gray-400">Steady state</span>
-              <span className={littlesLaw.isStable ? 'text-green-400' : 'text-amber-400'}>
+              <span className="text-[#f3ede2]/80">Steady state</span>
+              <span className={littlesLaw.isStable ? 'text-[#6b8f71]' : 'text-[#c49a3c]'}>
                 {littlesLaw.isStable ? 'Stable' : 'Unstable'}
-                <span className="ml-1 text-gray-500">
+                <span className="ml-1 text-[#f3ede2]/70">
                   ({(littlesLaw.deviation * 100).toFixed(1)}%)
                 </span>
               </span>
@@ -1188,21 +1181,87 @@ function ActivityPanel({
       {/* Recent Events */}
       <ActivitySection title="Recent Events">
         {recentEvents.length === 0 ? (
-          <p className="text-[10px] text-gray-500">No events recorded for this node.</p>
+          <p className="text-[10px] text-[#f3ede2]/70">No events recorded for this node.</p>
         ) : (
           <ul className="flex flex-col gap-0.5">
             {recentEvents.map((entry) => (
               <li key={entry.id} className="flex gap-1.5 text-[10px] leading-snug">
-                <span className="shrink-0 font-mono text-gray-500">
+                <span className="shrink-0 font-mono text-[#f3ede2]/70">
                   {formatSimTime(entry.timestamp)}
                 </span>
-                <span className="text-gray-300">{entry.message}</span>
+                <span className="text-[#f3ede2]/80">{entry.message}</span>
               </li>
             ))}
           </ul>
         )}
       </ActivitySection>
     </div>
+  );
+}
+
+// ─── Actual Connections Section ──────────────────────────────────
+
+/**
+ * The selected node's real upstream/downstream edges from the topology store —
+ * the per-instance counterpart to the palette's type-compatibility lists.
+ */
+function ConnectionsSection({ nodeId }: { nodeId: string }) {
+  const edges = useTopologyStore((s) => s.edges);
+  const nodes = useTopologyStore((s) => s.nodes);
+
+  const labelFor = (id: string): string => {
+    const n = nodes.find((node) => node.id === id);
+    return n ? (n.data as { label?: string }).label || id.slice(0, 8) : id.slice(0, 8);
+  };
+
+  const upstream = edges
+    .filter((e) => e.target === nodeId)
+    .map((e) => ({ peer: labelFor(e.source), protocol: e.type ?? 'Sync' }));
+  const downstream = edges
+    .filter((e) => e.source === nodeId)
+    .map((e) => ({ peer: labelFor(e.target), protocol: e.type ?? 'Sync' }));
+
+  return (
+    <section
+      aria-label="Actual connections"
+      className="mb-4 rounded-lg border border-[#5b5347]/30/70 bg-[#5b5347]/80/40 p-3"
+    >
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#f3ede2]/80">
+        Connections in this topology
+      </h3>
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <p className="mb-1 font-medium text-[#f3ede2]/70">← Receives from</p>
+          {upstream.length === 0 ? (
+            <p className="text-[11px] italic text-[#5b5347]/70">No incoming connections</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {upstream.map((c, i) => (
+                <li key={i} className="text-[#f3ede2]/80">
+                  {c.peer}{' '}
+                  <span className="text-[10px] text-[#f3ede2]/70">({c.protocol.toLowerCase()})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <p className="mb-1 font-medium text-[#f3ede2]/70">→ Sends to</p>
+          {downstream.length === 0 ? (
+            <p className="text-[11px] italic text-[#5b5347]/70">No outgoing connections</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {downstream.map((c, i) => (
+                <li key={i} className="text-[#f3ede2]/80">
+                  {c.peer}{' '}
+                  <span className="text-[10px] text-[#f3ede2]/70">({c.protocol.toLowerCase()})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1220,7 +1279,22 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [tab, setTab] = useState<'config' | 'activity'>('config');
+  // While a simulation is running, live behavior is what users came for — open
+  // on the Activity tab. Otherwise default to Config.
+  const [tab, setTab] = useState<'config' | 'activity'>(
+    simState === SimState.Running ? 'activity' : 'config',
+  );
+  const wasRunningRef = useRef(simState === SimState.Running);
+
+  // Switch to Activity once per Idle→Running transition (never yanks the user
+  // back if they deliberately chose a tab mid-run).
+  useEffect(() => {
+    const isRunning = simState === SimState.Running;
+    if (isRunning && !wasRunningRef.current) {
+      setTab('activity');
+    }
+    wasRunningRef.current = isRunning;
+  }, [simState]);
 
   // Task 232: Escape closes config panel
   useEffect(() => {
@@ -1282,23 +1356,23 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
   return (
     <aside
-      className="flex w-[280px] flex-col border-l border-gray-800 bg-gray-900/50 transition-all duration-300"
+      className="absolute right-0 top-0 bottom-0 z-20 flex w-[280px] flex-col border-l border-[#5b5347]/20 bg-[#5b5347]/95 shadow-xl transition-all duration-300"
       aria-label="Node configuration panel"
       tabIndex={3}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-3">
-        <span className="text-gray-400">
+      <div className="flex items-center gap-2 border-b border-[#5b5347]/20 px-4 py-3">
+        <span className="text-[#f3ede2]/80">
           <NodeTypeIcon nodeType={nodeData.nodeType} />
         </span>
         <div className="flex flex-1 flex-col">
-          <span className="text-sm font-medium text-gray-200">{nodeData.label}</span>
-          <span className="text-xs text-gray-500">{NODE_TYPE_LABELS[nodeData.nodeType]}</span>
+          <span className="text-sm font-medium text-[#f3ede2]">{nodeData.label}</span>
+          <span className="text-xs text-[#f3ede2]/70">{NODE_TYPE_LABELS[nodeData.nodeType]}</span>
         </div>
         <button
           onClick={onClose}
           aria-label="Close configuration panel"
-          className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
+          className="rounded p-1 text-[#f3ede2]/80 transition-colors hover:bg-[#5b5347]/80 hover:text-[#f3ede2]"
         >
           <svg
             viewBox="0 0 24 24"
@@ -1313,14 +1387,14 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
       </div>
 
       {/* Tab Strip */}
-      <div className="border-b border-gray-800 px-4 py-2">
-        <div className="flex rounded-md border border-gray-700 bg-gray-800 p-0.5">
+      <div className="border-b border-[#5b5347]/20 px-4 py-2">
+        <div className="flex rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 p-0.5">
           <button
             type="button"
             onClick={() => setTab('config')}
             aria-pressed={tab === 'config'}
             className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              tab === 'config' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+              tab === 'config' ? 'bg-[#b8402e] text-[#f3ede2]' : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
             }`}
           >
             Config
@@ -1329,10 +1403,16 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
             type="button"
             onClick={() => setTab('activity')}
             aria-pressed={tab === 'activity'}
-            className={`flex-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              tab === 'activity' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              tab === 'activity' ? 'bg-[#b8402e] text-[#f3ede2]' : 'text-[#f3ede2]/80 hover:text-[#f3ede2]'
             }`}
           >
+            {simState === SimState.Running && (
+              <span
+                className="inline-block size-1.5 animate-pulse rounded-full bg-[#6b8f71]"
+                aria-hidden="true"
+              />
+            )}
             Activity
           </button>
         </div>
@@ -1344,6 +1424,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
       {/* Form Content */}
       <div className={tab === 'config' ? 'flex-1 overflow-y-auto px-4 py-3' : 'hidden'}>
+        <ConnectionsSection nodeId={selectedNodeId} />
         {nodeData.nodeType === NodeType.TrafficGenerator && (
           <TrafficGeneratorForm
             config={nodeData.config as unknown as Record<string, unknown>}
@@ -1451,15 +1532,15 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
         )}
 
         {/* R32 — routing policy field, shown for any node with 2+ outgoing edges */}
-        <div className="mt-3 border-t border-gray-800 pt-3">
+        <div className="mt-3 border-t border-[#5b5347]/20 pt-3">
           <RoutingPolicyField nodeId={selectedNodeId} routingPolicy={nodeData.routingPolicy} />
         </div>
       </div>
 
       {/* Footer hint — only relevant while editing config */}
       {tab === 'config' && (
-        <div className="border-t border-gray-800 px-4 py-2">
-          <p className="text-xs text-gray-500">
+        <div className="border-t border-[#5b5347]/20 px-4 py-2">
+          <p className="text-xs text-[#f3ede2]/70">
             Changes apply immediately.
             {simState === SimState.Paused && ' Config synced to paused simulation.'}
           </p>

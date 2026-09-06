@@ -62,7 +62,7 @@ describe('node placement paths', () => {
   it('places a node from the canvas drop handler at the same values', () => {
     const { container } = render(<CanvasEditor />);
 
-    const pane = container.querySelector('.react-flow');
+    const pane = container.querySelector('[data-testid="canvas-engine"]');
     expect(pane).not.toBeNull();
 
     fireEvent.drop(pane!, { dataTransfer: dataTransferCarrying(NodeType.AppServer) });
@@ -89,7 +89,7 @@ describe('node placement paths', () => {
     useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
 
     const { container } = render(<CanvasEditor />);
-    fireEvent.drop(container.querySelector('.react-flow')!, {
+    fireEvent.drop(container.querySelector('[data-testid="canvas-engine"]')!, {
       dataTransfer: dataTransferCarrying(NodeType.Database),
     });
     const fromDrop = placedNode();
@@ -97,5 +97,67 @@ describe('node placement paths', () => {
     expect(fromDrop.config).toEqual(fromPalette.config);
     expect(fromDrop.label).toBe(fromPalette.label);
     expect(fromDrop.routingPolicy).toBe(fromPalette.routingPolicy);
+  });
+});
+
+// ─── Dangling edge must not break hook order ─────────────────────
+
+describe('edge rendering hook-order stability', () => {
+  // Regression: when an edge's source or target node is missing (a dangling
+  // edge), the prior code returned `null` instead of rendering the edge renderer
+  // (SyncEdge/AsyncEdge), which call React hooks. As a node was added/removed the
+  // number of hook-calling children shifted across renders, throwing
+  // "Rendered more hooks than during the previous render." Every edge must now
+  // always render a stable element so hook order never changes.
+  it('does not throw when an edge target node is removed then re-added', () => {
+    const gen = createDefaultNodeData(NodeType.TrafficGenerator, { x: 0, y: 0 });
+    const app = createDefaultNodeData(NodeType.AppServer, { x: 200, y: 0 });
+    const edge = {
+      id: 'e1',
+      source: gen.id,
+      target: app.id,
+      type: 'SYNC' as const,
+      data: { id: 'e1', source: gen.id, target: app.id, protocol: 'SYNC' as const, weight: 1 },
+    };
+
+    const canvasNodes = (nodes: SimulationNode[]) =>
+      nodes.map((n) => ({
+        id: n.id,
+        type: n.nodeType as unknown as string,
+        position: n.position,
+        data: n,
+      }));
+
+    useTopologyStore.setState({
+      nodes: canvasNodes([gen, app]),
+      edges: [edge],
+      past: [],
+      future: [],
+    });
+
+    const { container } = render(<CanvasEditor />);
+    expect(container.querySelector('[data-testid="canvas-engine"]')).not.toBeNull();
+
+    // Remove the target node -> the edge becomes dangling.
+    useTopologyStore.setState({
+      nodes: canvasNodes([gen]),
+      edges: [edge],
+      past: [],
+      future: [],
+    });
+
+    // Re-add the target node -> the edge renderer mounts again. Before the fix
+    // this toggle shifted the hook order and crashed.
+    expect(() =>
+      useTopologyStore.setState({
+        nodes: canvasNodes([gen, app]),
+        edges: [edge],
+        past: [],
+        future: [],
+      }),
+    ).not.toThrow();
+
+    cleanup();
+    useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
   });
 });

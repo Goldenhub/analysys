@@ -8,10 +8,13 @@ import type {
   NodeRuntimeState,
 } from '../types';
 import { SimEventType, RequestStatus } from '../types';
+import { dispatchSideEffects } from '../subRequests';
 
 export class AppServerProcessor implements NodeProcessor {
   private config: AppServerConfig;
   private activeWorkers = 0;
+  /** Requests currently occupying a worker — lets DISABLE_NODE terminate them. */
+  private activeRequestIds = new Set<string>();
 
   constructor(config: AppServerConfig) {
     this.config = { ...config };
@@ -37,9 +40,8 @@ export class AppServerProcessor implements NodeProcessor {
         payload: {},
       });
     } else {
-      // Queue full — drop
-      request.status = RequestStatus.Dropped;
-      request.completedAt = event.timestamp;
+      // Queue full — drop with full terminal accounting
+      context.markTerminal(request, RequestStatus.Dropped, event.nodeId, event.timestamp);
       state.totalDropped++;
       context.recordDeparture(event.nodeId, request.id, event.timestamp);
     }
@@ -52,6 +54,7 @@ export class AppServerProcessor implements NodeProcessor {
     context: ProcessorContext,
   ): void {
     this.activeWorkers++;
+    this.activeRequestIds.add(request.id);
     state.activeConnections = this.activeWorkers;
 
     const rng = context.getRNG();
@@ -79,6 +82,10 @@ export class AppServerProcessor implements NodeProcessor {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
+    // Stale completion (the node was disabled mid-processing and the request
+    // was terminated by chaos injection) — the worker slot was already freed.
+    if (!this.activeRequestIds.delete(request.id)) return;
+
     this.activeWorkers--;
     state.activeConnections = this.activeWorkers;
     state.totalProcessed++;
@@ -86,6 +93,23 @@ export class AppServerProcessor implements NodeProcessor {
 
     // Route downstream
     const edges = context.resolveTargets(event.nodeId, request);
+
+    // Fire independent side-effect calls to every downstream service except the
+    // primary edge (e.g. database / object store), without disturbing the main
+    // request's own downstream hop.
+    const allOutgoing = context.getOutgoingEdges(event.nodeId);
+    if (allOutgoing.length > 1) {
+      dispatchSideEffects({
+        dispatchNodeId: event.nodeId,
+        edges: allOutgoing.slice(1),
+        timestamp: event.timestamp,
+        maxHops: request.maxHops,
+        context,
+        requestMap: context.getRequestMap(),
+        getNextRequestId: context.getNextRequestId,
+      });
+    }
+
     if (edges.length > 0) {
       const target = edges[0]!.target;
       context.scheduleEvent({
@@ -125,17 +149,19 @@ export class AppServerProcessor implements NodeProcessor {
   }
 
   onNodeDisabled(context: ProcessorContext): string[] {
-    // Return all request IDs held in bounded resources (active workers + queue)
-    const held: string[] = [];
-    // The engine manages queuedRequests on NodeRuntimeState; we just report our internal state
-    // Active workers don't track individual request IDs here, but the engine's queue does.
-    void context;
+    // Return all request IDs held in bounded resources (active workers + queue).
+    // The engine terminates each returned id as Timeout; queued requests held on
+    // NodeRuntimeState are handled by the engine directly.
+    const held = [...this.activeRequestIds];
+    this.activeRequestIds.clear();
     this.activeWorkers = 0;
+    void context;
     return held;
   }
 
   onNodeRestored(_context: ProcessorContext): void {
     this.activeWorkers = 0;
+    this.activeRequestIds.clear();
   }
 
   getUtilization(): UtilizationReading {

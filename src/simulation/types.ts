@@ -15,7 +15,6 @@ export enum SimEventType {
   RequestLoopDetected = 'REQUEST_LOOP_DETECTED',
   ResponseRoute = 'RESPONSE_ROUTE',
   ResponseComplete = 'RESPONSE_COMPLETE',
-  ChaosStart = 'CHAOS_START',
   ChaosEnd = 'CHAOS_END',
   MetricsSnapshot = 'METRICS_SNAPSHOT',
   ConsumerPoll = 'CONSUMER_POLL',
@@ -43,10 +42,10 @@ export enum SimEventType {
   TransferComplete = 'TRANSFER_COMPLETE',
   /** R28.2 — a Scheduler trigger has fired. */
   SchedulerTrigger = 'SCHEDULER_TRIGGER',
-  /** R39.8 — DISABLE_NODE chaos has taken a node out of service. */
-  NodeDisabled = 'NODE_DISABLED',
   /** R39.11 — a disabled node has been returned to service. */
   NodeRestored = 'NODE_RESTORED',
+  /** Load_Balancer periodic health probe over its downstream targets. */
+  LbHealthCheck = 'LB_HEALTH_CHECK',
 }
 
 export interface SimEvent {
@@ -247,6 +246,11 @@ export interface NodeProcessor {
   onChaosApplied(chaosType: string, params: Record<string, unknown>): void;
   onChaosReverted(): void;
   getUtilization(): UtilizationReading;
+  /**
+   * Optional health signal consulted by Load_Balancer health checks.
+   * Absent ⇒ healthy. Used to eject and restore downstream targets.
+   */
+  isHealthy?(now: number): boolean;
   /** Optional: reset per-window internal counters after a metrics snapshot. */
   resetWindowCounters?(): void;
   /** R26.5 — retention expiry is evaluated on the window schedule, before counters reset. */
@@ -282,6 +286,18 @@ export interface ProcessorContext {
   currentTime(): number;
   recordArrival(nodeId: string, requestId: string, timestamp: number): void;
   recordDeparture(nodeId: string, requestId: string, timestamp: number): void;
+  /**
+   * Assign a terminal status with full engine accounting (terminal counts,
+   * completion metrics, in-flight bookkeeping, branch settlement). Processors
+   * must use this instead of writing `request.status` directly so dropped or
+   * timed-out requests are not silently lost from the terminal partition.
+   */
+  markTerminal(
+    request: SimRequest,
+    status: TerminalStatus,
+    nodeId: string,
+    timestamp: number,
+  ): void;
   /** R26.11, Task 339 — returns a dead-lettered Job to InFlight after a Redrive. */
   unmarkRequestDone(requestId: string): void;
   /** Engine-level request map — used by processors that need sub-request dispatch. */

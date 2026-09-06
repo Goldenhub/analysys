@@ -1,5 +1,3 @@
-import type { Node as RFNode } from '@xyflow/react';
-
 // ─── Enumerations ────────────────────────────────────────────────
 
 /**
@@ -348,7 +346,9 @@ export type SimulationNode =
   | ObjectStoreNode
   | SchedulerNode;
 
-// ─── React Flow Integration ─────────────────────────────────────
+// ─── Integration alias ───────────────────────────────────────────
+// `CanvasNode` replaces React Flow's `RFNode`. This alias keeps existing consumeers
+// compiling while the migration completes; it will be removed once phases land.
+import type { CanvasNode } from '@/canvas/types';
 
-/** React Flow node wrapper for SimulationNode data. */
-export type AnalysysNode = RFNode<Record<string, unknown> & SimulationNode>;
+export type AnalysysNode = CanvasNode;

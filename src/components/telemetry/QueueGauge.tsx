@@ -17,22 +17,20 @@ interface NodePeaks {
   queue: number;
   conn: number;
   buffer: number;
-  connMax: number;
-  queueMax: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function getGaugeColor(pct: number): string {
-  if (pct >= 90) return 'bg-red-500';
-  if (pct >= 70) return 'bg-amber-500';
-  return 'bg-green-500';
+  if (pct >= 90) return 'bg-[#ef9a8b]';
+  if (pct >= 70) return 'bg-[#dfb357]';
+  return 'bg-[#8fbf97]';
 }
 
 function getGaugeTextColor(pct: number): string {
-  if (pct >= 90) return 'text-red-400';
-  if (pct >= 70) return 'text-amber-400';
-  return 'text-green-400';
+  if (pct >= 90) return 'text-[#ef9a8b]';
+  if (pct >= 70) return 'text-[#dfb357]';
+  return 'text-[#8fbf97]';
 }
 
 // ─── GaugeBar Component ──────────────────────────────────────────
@@ -46,12 +44,12 @@ function GaugeBar({ label, current, max }: GaugeBarProps) {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
-        <span className="truncate text-[10px] text-gray-400">{label}</span>
+        <span className="truncate text-[10px] text-[#f3ede2]/80">{label}</span>
         <span className={`text-[10px] font-mono ${textColor}`}>
           {current} / {max}
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-[#5b5347]/60">
         <div
           className={`h-full rounded-full transition-all duration-500 ${colorClass} ${
             isPulsing ? 'animate-pulse' : ''
@@ -75,8 +73,8 @@ function UtilizationBar({ reading }: { reading: UtilizationReading | undefined }
   if (reading.kind === 'not-applicable') {
     return (
       <div className="flex items-center justify-between">
-        <span className="truncate text-[10px] text-gray-400">Utilization</span>
-        <span className="text-[10px] text-gray-500">{reading.reason}</span>
+        <span className="truncate text-[10px] text-[#f3ede2]/80">Utilization</span>
+        <span className="text-[10px] text-[#f3ede2]/70">{reading.reason}</span>
       </div>
     );
   }
@@ -86,10 +84,10 @@ function UtilizationBar({ reading }: { reading: UtilizationReading | undefined }
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
-        <span className="truncate text-[10px] text-gray-400">Utilization</span>
+        <span className="truncate text-[10px] text-[#f3ede2]/80">Utilization</span>
         <span className={`text-[10px] font-mono ${getGaugeTextColor(pct)}`}>{pct.toFixed(0)}%</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-[#5b5347]/60">
         <div
           className={`h-full rounded-full transition-all duration-500 ${getGaugeColor(pct)} ${
             pct > 90 ? 'animate-pulse' : ''
@@ -114,7 +112,7 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
     // Simulation was reset — clear accumulated peaks so a new run starts fresh
     peakValues.clear();
     return (
-      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+      <div className="flex h-full items-center justify-center text-xs text-[#f3ede2]/70">
         Awaiting queue data…
       </div>
     );
@@ -126,15 +124,11 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
       queue: 0,
       conn: 0,
       buffer: 0,
-      connMax: 50,
-      queueMax: 100,
     };
     peakValues.set(node.nodeId, {
       queue: Math.max(prev.queue, node.queueDepth),
       conn: Math.max(prev.conn, node.activeConnections),
       buffer: Math.max(prev.buffer, node.bufferOccupancy),
-      connMax: Math.max(prev.connMax, node.activeConnections, 50),
-      queueMax: Math.max(prev.queueMax, node.queueDepth, 100),
     });
   }
 
@@ -156,7 +150,7 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
 
   if (relevantNodeIds.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+      <div className="flex h-full items-center justify-center text-xs text-[#f3ede2]/70">
         No active queues or pools
       </div>
     );
@@ -172,16 +166,27 @@ export function QueueGauge({ metrics }: QueueGaugeProps) {
         const currentConn = currentSnapshot?.activeConnections ?? 0;
         const currentBuffer = currentSnapshot?.bufferOccupancy ?? 0;
 
+        const connBound = currentSnapshot?.concurrencyBound;
+        const queueBound = currentSnapshot?.monitoredDepthBound;
+
         return (
           <div key={nodeId} className="space-y-1">
-            <span className="text-[10px] font-medium text-gray-300" title={nodeId}>
+            <span className="text-[10px] font-medium text-[#f3ede2]/80" title={nodeId}>
               {labelFor(nodeId)}
             </span>
             {peaks.queue > 0 && (
-              <GaugeBar label="Queue" current={currentQueue} max={peaks.queueMax} />
+              <GaugeBar
+                label="Queue"
+                current={currentQueue}
+                max={queueBound ?? Math.max(peaks.queue, 1)}
+              />
             )}
             {peaks.conn > 0 && (
-              <GaugeBar label="Connections" current={currentConn} max={peaks.connMax} />
+              <GaugeBar
+                label="Connections"
+                current={currentConn}
+                max={connBound ?? Math.max(peaks.conn, 1)}
+              />
             )}
             {peaks.buffer > 0 && (
               <GaugeBar

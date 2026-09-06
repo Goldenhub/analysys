@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   migrateV1ToV2,
   applyV2Defaults,
+  parseSimulationText,
+  measureUtf8Bytes,
+  CURRENT_SCHEMA_VERSION,
   type SerializedTopology,
   type SerializedTopologyV2,
-} from './schemaMigration';
-import { measureUtf8Bytes, CURRENT_SCHEMA_VERSION } from './persistenceStore';
+  type SerializedTopologyV3,
+} from './persistenceStore';
 import { NodeType, RoutingPolicy, Distribution, LBAlgorithm } from '@/types/nodes';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -96,8 +99,8 @@ function v2Record(): SerializedTopologyV2 {
 // ─── Tests ───────────────────────────────────────────────────────
 
 describe('CURRENT_SCHEMA_VERSION', () => {
-  it('is 2', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(2);
+  it('is 4', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
   });
 });
 
@@ -295,5 +298,65 @@ describe('measureUtf8Bytes', () => {
 
   it('returns 0 for empty string', () => {
     expect(measureUtf8Bytes('')).toBe(0);
+  });
+});
+
+// ─── v4 + unified parse path ───────────────────────────────────────
+
+describe('parseSimulationText (v4 migration chain)', () => {
+  it('migrates a v1 file all the way to v4 with defaulted run settings', () => {
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v1Record()));
+    expect(topology.schemaVersion).toBe(4);
+    expect(topology.settings).toEqual({ durationMs: 120_000, speedMultiplier: 1 });
+    expect(warnings.some((w) => w.field === 'settings')).toBe(true);
+  });
+
+  it('migrates a v3 file to v4 with defaulted run settings', () => {
+    const v3: SerializedTopologyV3 = {
+      schemaVersion: 3,
+      nodes: [],
+      edges: [],
+    };
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v3));
+    expect(topology.schemaVersion).toBe(4);
+    expect(topology.settings).toEqual({ durationMs: 120_000, speedMultiplier: 1 });
+    expect(warnings.some((w) => w.field === 'settings')).toBe(true);
+  });
+
+  it('preserves a v4 bundle with a captured seed', () => {
+    const v4 = {
+      schemaVersion: 4,
+      nodes: [],
+      edges: [],
+      settings: { durationMs: 90_000, speedMultiplier: 3, seed: 4242 },
+    };
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v4));
+    expect(topology.schemaVersion).toBe(4);
+    expect(topology.settings).toEqual({ durationMs: 90_000, speedMultiplier: 3, seed: 4242 });
+    expect(warnings.length).toBe(0);
+  });
+
+  it('defaults a partial v4 settings block field-by-field with warnings', () => {
+    const v4 = {
+      schemaVersion: 4,
+      nodes: [],
+      edges: [],
+      settings: { durationMs: 30_000 } as Partial<Record<string, unknown>>,
+    };
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v4));
+    expect(topology.settings).toEqual({ durationMs: 30_000, speedMultiplier: 1 });
+    expect(warnings.some((w) => w.field === 'speedMultiplier')).toBe(true);
+    expect(warnings.some((w) => w.field === 'durationMs')).toBe(false);
+  });
+
+  it('drops a non-integer seed instead of defaulting', () => {
+    const v4 = {
+      schemaVersion: 4,
+      nodes: [],
+      edges: [],
+      settings: { durationMs: 30_000, speedMultiplier: 1, seed: 12.5 },
+    };
+    const { topology } = parseSimulationText(JSON.stringify(v4));
+    expect(topology.settings!.seed).toBeUndefined();
   });
 });

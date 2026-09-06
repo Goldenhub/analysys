@@ -17,6 +17,7 @@ import { RetryBackoff, NodeType } from '@/types/nodes';
 import type { UtilizationReading } from '@/types/metrics';
 import type { NodeProcessor, SimEvent, SimRequest, ProcessorContext } from '../types';
 import { SimEventType, RequestStatus } from '../types';
+import { dispatchSideEffects } from '../subRequests';
 
 /** BackpressureAwareConsumer interface — implemented by consumers that accept from upstream MQ. */
 export interface BackpressureAwareConsumer {
@@ -235,28 +236,35 @@ export class WorkerPoolProcessor implements NodeProcessor, BackpressureAwareCons
         });
 
         if (nonDlqEdges.length > 0) {
-          const resolved = context.resolveTargets(event.nodeId, request);
-          const nonDlqResolved = resolved.filter((e) => {
-            const targetConfig = context.getNodeConfig(e.target);
-            return targetConfig?.nodeType !== NodeType.DeadLetterQueue;
+          // Route the primary job along the first non-DLQ edge (all worker-pool
+          // presets use FIRST). Never let a DLQ edge satisfy the primary route:
+          // resolveTargets under FIRST returns edges[0], which can be the DLQ.
+          request.status = RequestStatus.Success;
+          request.completedAt = event.timestamp;
+          context.scheduleEvent({
+            type: SimEventType.RequestRoute,
+            timestamp: event.timestamp,
+            nodeId: nonDlqEdges[0]!.target,
+            requestId,
+            payload: { fromNodeId: event.nodeId },
           });
-          if (nonDlqResolved.length > 0) {
-            request.status = RequestStatus.Success;
-            request.completedAt = event.timestamp;
-            context.scheduleEvent({
-              type: SimEventType.RequestRoute,
+
+          // Independent side-effects to any remaining non-DLQ edges (R32-style
+          // fan-out without branching) so downstream stores see traffic too.
+          const sideEdges = nonDlqEdges.slice(1);
+          if (sideEdges.length > 0) {
+            dispatchSideEffects({
+              dispatchNodeId: event.nodeId,
+              edges: sideEdges,
               timestamp: event.timestamp,
-              nodeId: nonDlqResolved[0]!.target,
-              requestId,
-              payload: { fromNodeId: event.nodeId },
+              maxHops: request.maxHops,
+              context,
+              requestMap: context.getRequestMap(),
+              getNextRequestId: context.getNextRequestId,
             });
-          } else {
-            // Terminal success
-            request.status = RequestStatus.Success;
-            request.completedAt = event.timestamp;
           }
         } else {
-          // Terminal success — no downstream
+          // Terminal success
           request.status = RequestStatus.Success;
           request.completedAt = event.timestamp;
         }

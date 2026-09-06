@@ -61,11 +61,11 @@ export function RoutingPolicyField({ nodeId, routingPolicy }: RoutingPolicyField
     <div className="flex flex-col gap-2">
       {/* Policy selector */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-gray-400">Routing Policy</label>
+        <label className="text-xs font-medium text-[#f3ede2]/60">Routing Policy</label>
         <select
           value={routingPolicy}
           onChange={(e) => updateNodeRoutingPolicy(nodeId, e.target.value as RoutingPolicy)}
-          className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
+          className="rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2.5 py-1.5 text-sm text-[#f3ede2] outline-none transition-colors focus:border-[#b8402e] focus:ring-1 focus:ring-[#b8402e]/50"
           aria-label="Routing policy"
         >
           {POLICY_OPTIONS.map((opt) => (
@@ -78,11 +78,11 @@ export function RoutingPolicyField({ nodeId, routingPolicy }: RoutingPolicyField
 
       {/* Per-edge weight inputs — shown only when Weighted is selected */}
       {routingPolicy === RoutingPolicy.Weighted && (
-        <div className="flex flex-col gap-1.5 rounded-md border border-gray-700 bg-gray-900/50 p-2">
-          <span className="text-xs font-medium text-gray-400">Edge Weights</span>
+        <div className="flex flex-col gap-1.5 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/50 p-2">
+          <span className="text-xs font-medium text-[#f3ede2]/60">Edge Weights</span>
           {outgoingEdges.map((edge, idx) => (
             <div key={edge.id} className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-xs text-gray-300" title={edge.target}>
+              <span className="min-w-0 flex-1 truncate text-xs text-[#f3ede2]/80" title={edge.target}>
                 &rarr; {getTargetLabel(edge.target)}
               </span>
               <input
@@ -96,10 +96,10 @@ export function RoutingPolicyField({ nodeId, routingPolicy }: RoutingPolicyField
                     updateEdgeWeight(edge.id, val);
                   }
                 }}
-                className="w-16 rounded border border-gray-700 bg-gray-800 px-1.5 py-1 text-right text-xs text-gray-200 outline-none focus:border-indigo-500"
+                className="w-16 rounded border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 py-1 text-right text-xs text-[#f3ede2] outline-none focus:border-[#b8402e]"
                 aria-label={`Weight for edge to ${getTargetLabel(edge.target)}`}
               />
-              <span className="w-12 text-right text-xs text-gray-500">
+              <span className="w-12 text-right text-xs text-[#f3ede2]/50">
                 ({normalisedWeights[idx]!.toFixed(2)})
               </span>
             </div>

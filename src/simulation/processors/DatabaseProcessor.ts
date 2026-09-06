@@ -12,25 +12,22 @@ export class DatabaseProcessor implements NodeProcessor {
     this.config = { ...config };
   }
 
+  /** Health signal for Load_Balancer probes: a chaos-dropped DB is down. */
+  isHealthy(): boolean {
+    return !this.isDown;
+  }
+
   onRequestArrived(event: SimEvent, request: SimRequest, context: ProcessorContext): void {
     const state = context.getNodeState(event.nodeId);
     if (!state) return;
 
     context.recordArrival(event.nodeId, request.id, event.timestamp);
 
-    // If DB is down (chaos), timeout immediately
+    // If DB is down (chaos), timeout immediately — with full terminal accounting
     if (this.isDown) {
-      request.status = RequestStatus.Timeout;
-      request.completedAt = event.timestamp;
+      context.markTerminal(request, RequestStatus.Timeout, event.nodeId, event.timestamp);
       state.totalTimedOut++;
       context.recordDeparture(event.nodeId, request.id, event.timestamp);
-      context.scheduleEvent({
-        type: SimEventType.RequestTimeout,
-        timestamp: event.timestamp,
-        nodeId: event.nodeId,
-        requestId: request.id,
-        payload: { reason: 'DB_DOWN' },
-      });
       return;
     }
 
@@ -48,9 +45,8 @@ export class DatabaseProcessor implements NodeProcessor {
           payload: { reason: 'POOL_EXHAUSTION_TIMEOUT' },
         });
       } else {
-        // Hard drop
-        request.status = RequestStatus.Dropped;
-        request.completedAt = event.timestamp;
+        // Hard drop — with full terminal accounting
+        context.markTerminal(request, RequestStatus.Dropped, event.nodeId, event.timestamp);
         state.totalDropped++;
         context.recordDeparture(event.nodeId, request.id, event.timestamp);
       }
