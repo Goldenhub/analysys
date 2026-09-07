@@ -78,10 +78,6 @@ function pushHistory(state: TopologyState): Pick<TopologyState, 'past' | 'future
   };
 }
 
-function isSimulationData(data: AnalysysNode['data']): data is SimulationNode {
-  return 'nodeType' in data;
-}
-
 /** True if the node payload is a simulation node (has nodeType), not a visual node. */
 function isSimulationData(data: AnalysysNode['data']): data is SimulationNode {
   return 'nodeType' in data;
