@@ -6,7 +6,7 @@ A browser-based tool for backend engineers and software architects to **model**,
 
 ## About This Project
 
-Analysys is a self-contained, fully client-side application — no servers, no accounts, no external APIs. It ships with a comprehensive test suite: 766 tests across 44 files, including property-based tests (fast-check) exercising 27 correctness properties.
+Analysys is a self-contained, fully client-side application — no servers, no accounts, no external APIs. It ships with a comprehensive test suite: 739 tests across 44 files, including property-based tests (fast-check) exercising 27 correctness properties.
 
 ---
 
@@ -16,7 +16,6 @@ Analysys is a self-contained, fully client-side application — no servers, no a
 |----------|------|
 | **15 Node Types** | Traffic Generator, Scheduler, API Gateway, Rate Limiter, Circuit Breaker, Auth Service, Authz Service, Load Balancer, App Server, Worker Pool, Cache, Database, Object Store, Message Queue, Dead Letter Queue |
 | **Routing Policies** | First, Round Robin, Weighted, Fan-Out (depth-capped at 4) |
-| **Subsystem Grouping** | Collapsible groups with boundary-edge merging |
 | **Discrete-Event Simulation** | Web Worker engine, min-heap event queue with FIFO same-timestamp ordering, seeded xoshiro128** PRNG for determinism |
 | **Load Balancer Health Checks** | Periodic virtual-time probes; targets ejected after `evictionThreshold` consecutive failures and restored by a passing probe |
 | **Reproducible Runs** | Seed control in the toolbar — repeat a run exactly or re-roll for a fresh sample |
@@ -31,7 +30,7 @@ Analysys is a self-contained, fully client-side application — no servers, no a
 | **Canvas Interactions** | Click a node to select it and open its details panel; drag repositions it without opening the panel; right-click opens a Details/Delete context menu; the «⌄» chip drills into a component layer |
 | **Clear Canvas** | One-click wipe of every node, edge, and the telemetry dashboard — undoable |
 | **Visual Annotations** | Sections and text notes on any layer; a selected **or focused** text note shows a dashed border with its color swatches and corner resize handle — restyle or resize it without losing the ability to type |
-| **Persistence** | Schema v2 with in-memory-only v1 migration, localStorage + JSON export/import |
+| **Persistence** | Schema v4 with in-memory migration from v1–v3, localStorage + JSON export/import, run settings round-tripped in the file |
 | **Accessibility** | WCAG 2.1 AA, keyboard-operable Analysis Panel, severity as text labels, Critical Finding announcements |
 
 ---
@@ -76,7 +75,7 @@ None. The application is fully client-side — no backend server, no API keys, n
 ## Testing Instructions
 
 ```bash
-# Run all tests (766 tests across 44 files)
+# Run all tests (739 tests across 44 files)
 npm test
 
 # Run with verbose output
@@ -128,17 +127,15 @@ It uses Node 22 and caches `node_modules`.
 | Library | Version | Purpose |
 |---------|---------|---------|
 | [React](https://react.dev) | 19.2 | UI framework |
-| [@xyflow/react](https://reactflow.dev) (React Flow) | 12.11 | Interactive node-graph canvas |
+| [react-dom](https://react.dev) | 19.2 | React renderer (DOM) |
 | [Zustand](https://zustand-demo.pmnd.rs) | 5.0 | Lightweight state management |
-| [Recharts](https://recharts.org) | 3.10 | Time-series telemetry charts |
-| [Tailwind CSS](https://tailwindcss.com) | 4.3 | Utility-first styling |
 | [Lucide React](https://lucide.dev) | 1.33 | Icon library |
 | [class-variance-authority](https://cva.style) | 0.7 | Variant-based component styling |
 | [clsx](https://github.com/lukeed/clsx) | 2.1 | Conditional className merging |
 | [tailwind-merge](https://github.com/dcastil/tailwind-merge) | 3.6 | Tailwind class deduplication |
 | [@fontsource-variable/geist](https://fontsource.org/fonts/geist) | 5.3 | Geist variable font |
 | [@base-ui/react](https://base-ui.com) | 1.7 | Unstyled accessible primitives |
-| [shadcn](https://ui.shadcn.com) | 4.18 | UI component scaffolding |
+| [shadcn](https://ui.shadcn.com) | 4.18 | UI component scaffolding (CLI) |
 | [tw-animate-css](https://github.com/nicholasgillespie/tw-animate-css) | 1.4 | Tailwind animation utilities |
 
 ### Development Dependencies
@@ -154,6 +151,7 @@ It uses Node 22 and caches `node_modules`.
 | [ESLint](https://eslint.org) | 10.8 | Linting |
 | [oxlint](https://oxc-project.github.io) | 1.75 | Fast Rust-based linter |
 | [Prettier](https://prettier.io) | 3.9 | Code formatting |
+| [Tailwind CSS](https://tailwindcss.com) + [@tailwindcss/postcss](https://tailwindcss.com) | 4.3 | Utility-first styling (build-time) |
 | [PostCSS](https://postcss.org) + [Autoprefixer](https://github.com/postcss/autoprefixer) | 8.5 / 10.5 | CSS processing |
 
 ### APIs and External Services
@@ -190,7 +188,7 @@ The four reference architecture presets and three failure-mode presets (`src/pre
 ```
 ┌─────────────────────────── MAIN THREAD ───────────────────────────┐
 │                                                                    │
-│  React 19 + React Flow Canvas + Zustand Stores                    │
+│  React 19 + Custom Canvas + Zustand Stores                    │
 │       │                                                            │
 │  ┌────┴────────────┐  ┌────────────────────┐  ┌───────────────┐  │
 │  │ Analysis Engine │  │ Telemetry Dashboard│  │ Analysis Panel│  │
@@ -211,24 +209,25 @@ The four reference architecture presets and three failure-mode presets (`src/pre
 
 ### Key Design Decisions
 
-- **Analysis runs on the main thread** (not the Worker) because it needs labels, groups, and the event log. Cooperative 33ms slicing keeps ≥30 fps.
+- **Analysis runs on the main thread** (not the Worker) because it needs the full topology — labels, edges, and the event log — not just the engine's metric slices. Cooperative 33ms slicing keeps ≥30 fps.
 - **Fan-out branches root their `path` at the dispatch node** so the parent's response traversal stays linear.
-- **Groups never reach the engine** — grouping invariance is true by construction.
-- **Schema v1 records are migrated in memory only** — the stored file stays at v1 until the next explicit save.
+- **Component layers resolve before the event loop** — a service node with children becomes a container; its own processor is bypassed and its internals handle traffic via explicit flat edges, so container semantics never enter the engine's decisions.
+- **Legacy files migrate in memory to the current schema version** — imported v1–v3 bundles are upgraded on load with warnings; the file on disk is only rewritten at the current version (v4) on the next explicit save.
 
 ---
 
-## File Schema (v2)
+## File Schema (v4)
 
 ```jsonc
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "nodes": [
     {
       "id": "uuid",
       "nodeType": "TRAFFIC_GENERATOR | API_GATEWAY | RATE_LIMITER | LOAD_BALANCER | CIRCUIT_BREAKER | AUTH_SERVICE | AUTHZ_SERVICE | APP_SERVER | WORKER_POOL | CACHE | DATABASE | OBJECT_STORE | MESSAGE_QUEUE | DEAD_LETTER_QUEUE | SCHEDULER",
       "label": "Display Name",
       "position": { "x": 0, "y": 0 },
+      "parentNodeId": "uuid | null",
       "routingPolicy": "FIRST | ROUND_ROBIN | WEIGHTED | FAN_OUT",
       "config": { /* type-specific parameters */ }
     }
@@ -242,16 +241,17 @@ The four reference architecture presets and three failure-mode presets (`src/pre
       "weight": 1.0
     }
   ],
-  "subsystemGroups": [
-    {
-      "id": "uuid",
-      "name": "Group Name",
-      "memberNodeIds": ["node-id-1", "node-id-2"],
-      "collapsed": false
-    }
-  ]
+  "settings": {
+    "durationMs": 60000,
+    "speedMultiplier": 10,
+    "seed": 42
+  }
 }
 ```
+
+- `parentNodeId` is `null` for root-canvas nodes; a non-null value nests the node inside a component layer (service nodes only).
+- The optional `settings` block reproduces the exact run (duration, speed multiplier, and optional PRNG seed). Legacy v1–v3 bundles migrate to v4 with defaulted settings.
+- The subsystem-group system was removed in v3 — current files carry no group data.
 
 ---
 
