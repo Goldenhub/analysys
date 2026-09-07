@@ -5,6 +5,7 @@
 
 import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
+import type { ArchitectureNodeMetadata } from '@/types/architecture';
 
 // ─── Visual-only node kinds ──────────────────────────────────────
 // Section and Text Note nodes are non-processing canvas elements. They are *not*
@@ -16,7 +17,7 @@ export const TEXT_NOTE_NODE_TYPE = 'TEXT_NOTE';
 
 export type VisualNodeType = typeof SECTION_NODE_TYPE | typeof TEXT_NOTE_NODE_TYPE;
 
-export interface BaseVisualNodeData {
+export interface BaseVisualNodeData extends ArchitectureNodeMetadata {
   id: string;
   position: { x: number; y: number };
 }
@@ -68,6 +69,15 @@ export interface CanvasEdge {
   selected?: boolean;
   data: EdgeData;
 }
+
+/** A materialized view of one canvas scope or the full recursive architecture. */
+export interface CanvasGraph {
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
+}
+
+/** `null` identifies the root architecture canvas; any string identifies a component deep-dive. */
+export type CanvasScopeId = string | null;
 
 // ─── Change objects (React-Flow-compatible shape) ───────────────
 

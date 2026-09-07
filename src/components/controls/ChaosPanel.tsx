@@ -410,6 +410,7 @@ export function ChaosPanel() {
         }`}
         aria-expanded={isOpen}
         aria-haspopup="true"
+        data-tour="chaos"
       >
         <span>⚡</span>
         <span>Chaos</span>

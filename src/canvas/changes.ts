@@ -50,6 +50,14 @@ export function applyNodeChanges(changes: CanvasNodeChange[], nodes: CanvasNode[
       }
       return updated;
     });
+  // Selection is exclusive: selecting a node clears the ring on every other node so
+  // the selection visibly moves to the most recently clicked node.
+  const selecting = new Set(
+    changes.filter((c) => c.type === 'select' && c.selected).map((c) => c.id),
+  );
+  if (selecting.size > 0) {
+    return next.map((n) => (selecting.has(n.id) ? n : { ...n, selected: false }));
+  }
   return next;
 }
 

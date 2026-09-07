@@ -69,11 +69,26 @@ const edgeRegistry = {
 
 export interface CanvasEditorProps {
   onNodeSelect?: (nodeId: string | null) => void;
+  activeParentNodeId?: string | null;
+  onEnterComponent?: (nodeId: string) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
+  onNodeContextMenu?: (nodeId: string, position: { x: number; y: number }) => void;
+  onBackgroundClick?: () => void;
 }
 
-export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
-  const nodes = useTopologyStore((s) => s.nodes);
-  const edges = useTopologyStore((s) => s.edges);
+export function CanvasEditor({
+  onNodeSelect,
+  activeParentNodeId = null,
+  onEnterComponent,
+  onNodeDoubleClick,
+  onNodeContextMenu,
+  onBackgroundClick,
+}: CanvasEditorProps) {
+  const allNodes = useTopologyStore((s) => s.nodes);
+  const allEdges = useTopologyStore((s) => s.edges);
+  const nodes = allNodes.filter((node) => (node.data.parentNodeId ?? null) === activeParentNodeId);
+  const visibleNodeIds = new Set(nodes.map((node) => node.id));
+  const edges = allEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const addNode = useTopologyStore((s) => s.addNode);
@@ -173,17 +188,20 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
       if (!nodeTypeStr) return;
 
       if (nodeTypeStr === SECTION_NODE_TYPE) {
-        addNode(createSectionNode(canvasPos));
+        const node = createSectionNode(canvasPos);
+        addNode({ ...node, data: { ...node.data, parentNodeId: activeParentNodeId } });
         return;
       }
       if (nodeTypeStr === TEXT_NOTE_NODE_TYPE) {
-        addNode(createTextNoteNode(canvasPos));
+        const node = createTextNoteNode(canvasPos);
+        addNode({ ...node, data: { ...node.data, parentNodeId: activeParentNodeId } });
         return;
       }
 
       if (!Object.values(NodeType).includes(nodeTypeStr as NodeType)) return;
 
       const nodeData = createDefaultNodeData(nodeTypeStr as NodeType, canvasPos);
+      nodeData.parentNodeId = activeParentNodeId;
       addNode({
         id: nodeData.id,
         type: nodeData.nodeType,
@@ -191,7 +209,7 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
         data: nodeData,
       });
     },
-    [addNode],
+    [addNode, activeParentNodeId],
   );
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -210,6 +228,7 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
         id,
         label: 'Section',
         position,
+        parentNodeId: activeParentNodeId,
         width: bounds.width,
         height: bounds.height,
       };
@@ -225,7 +244,7 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
       });
       useCanvasToolStore.getState().setDrawTool(null);
     },
-    [addNode],
+    [addNode, activeParentNodeId],
   );
 
   // ─── Keyboard shortcuts ────────────────────────────────────────
@@ -271,6 +290,7 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
   return (
     <div className="relative h-full w-full">
       <CanvasEngine
+        key={activeParentNodeId ?? 'root'}
         nodes={nodes}
         edges={edges}
         nodeRegistry={nodeRegistry}
@@ -279,6 +299,10 @@ export function CanvasEditor({ onNodeSelect }: CanvasEditorProps) {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeSelect={onNodeSelect}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onNodeContextMenu={onNodeContextMenu}
+        onEnterComponent={onEnterComponent}
+        onBackgroundClick={onBackgroundClick}
         onEditNode={updateNodeEdit}
         onDrawSection={onDrawSection}
         onDrop={onDrop}

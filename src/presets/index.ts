@@ -9,6 +9,7 @@ import cacheStampedeData from './cacheStampede.json';
 import authenticatedWebApiData from './authenticatedWebApi.json';
 import asyncJobPlatformData from './asyncJobPlatform.json';
 import scheduledBatchWithLiveTrafficData from './scheduledBatchWithLiveTraffic.json';
+import microservicesEcommerceData from './microservicesEcommerce.json';
 
 // ─── Preset Schema ───────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ export const referencePresets: ReferencePreset[] = [
   authenticatedWebApiData as unknown as ReferencePreset,
   asyncJobPlatformData as unknown as ReferencePreset,
   scheduledBatchWithLiveTrafficData as unknown as ReferencePreset,
+  microservicesEcommerceData as unknown as ReferencePreset,
 ];
 
 /** All presets for backward compatibility. */

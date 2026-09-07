@@ -254,7 +254,7 @@ export function SimulationToolbar() {
   // ─── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="flex items-center gap-3">
+    <div data-tour="sim" className="flex items-center gap-3">
       {/* Action Buttons */}
       <div className="flex items-center gap-1.5">
         {/* Start / Resume */}

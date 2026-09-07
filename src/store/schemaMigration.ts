@@ -134,6 +134,35 @@ function defaultEdgeWeight(edges: EdgeData[], warnings: MigrationWarning[]): Edg
   });
 }
 
+/**
+ * Defaults the architecture-metadata block introduced with the workspace tools:
+ * `parentNodeId` on every node. Bundles predating that field are accepted
+ * loosely everywhere (an absent link is the same as a root node), but
+ * normalizing here keeps persisted state uniform and surfaces one advisory
+ * warning per adjusted item.
+ */
+function defaultArchitectureMetadata(
+  nodes: CanvasNodeData[],
+  edges: EdgeData[],
+  warnings: MigrationWarning[],
+): { nodes: CanvasNodeData[]; edges: EdgeData[] } {
+  const patchedNodes = nodes.map((node) => {
+    const raw = node as unknown as Record<string, unknown>;
+    const applied: Record<string, unknown> = {};
+    if (raw.parentNodeId === undefined) applied.parentNodeId = null;
+    if (Object.keys(applied).length === 0) return node;
+    warnings.push({
+      label: node.id,
+      field: Object.keys(applied).join(', '),
+      importedValue: undefined,
+      appliedValue: applied,
+    });
+    return { ...node, ...applied } as CanvasNodeData;
+  });
+
+  return { nodes: patchedNodes, edges };
+}
+
 // ─── Migration (R34.4, R34.8) ────────────────────────────────────
 
 /**
@@ -263,7 +292,8 @@ export function migrateV3ToV4(v3: SerializedTopologyV3): {
 
 /**
  * Applies absent-field defaulting to a v4 record. Node/edge defaults are
- * identical to v3; the run-settings block is defaulted to
+ * identical to v3 plus the architecture-metadata block (parentNodeId); the
+ * run-settings block is defaulted to
  * { durationMs: 120_000, speedMultiplier: 1 } (no seed) when absent or partial.
  */
 export function applyV4Defaults(v4: SerializedTopologyV4): {
@@ -272,6 +302,12 @@ export function applyV4Defaults(v4: SerializedTopologyV4): {
 } {
   const base = applyV3Defaults({ schemaVersion: 3, nodes: v4.nodes, edges: v4.edges });
   const warnings: MigrationWarning[] = [...base.warnings];
+
+  const { nodes, edges } = defaultArchitectureMetadata(
+    base.topology.nodes,
+    base.topology.edges,
+    warnings,
+  );
 
   const raw = v4.settings as Partial<SimulationRunSettings> | undefined;
   const settings: SimulationRunSettings = { durationMs: 120_000, speedMultiplier: 1 };
@@ -305,8 +341,8 @@ export function applyV4Defaults(v4: SerializedTopologyV4): {
   return {
     topology: {
       schemaVersion: 4,
-      nodes: base.topology.nodes,
-      edges: base.topology.edges,
+      nodes,
+      edges,
       settings,
     },
     warnings,

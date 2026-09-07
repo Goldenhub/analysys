@@ -10,6 +10,8 @@ export const DEFAULT_ZOOM = 1;
 export interface CanvasContextValue {
   viewport: Viewport;
   viewportApi: ViewportApi;
+  /** Drill into a node's component layer; absent when the engine has no handler. */
+  enterComponent?: (nodeId: string) => void;
 }
 
 export const CanvasContext = createContext<CanvasContextValue | null>(null);

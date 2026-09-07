@@ -13,6 +13,7 @@ export function createSectionNode(
     id,
     label,
     position,
+    parentNodeId: null,
     width: 320,
     height: 200,
   };
@@ -38,6 +39,7 @@ export function createTextNoteNode(
     id,
     text,
     position,
+    parentNodeId: null,
     width: 180,
     height: 120,
     color: '#211e1a',

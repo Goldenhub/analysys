@@ -4,19 +4,9 @@ A browser-based tool for backend engineers and software architects to **model**,
 
 ---
 
-## How This Project Uses Kiro
+## About This Project
 
-This project was built entirely within [Kiro](https://kiro.dev), an AI-powered development environment. Kiro's spec-driven workflow guided every stage:
-
-1. **Requirements** — 43 requirements in strict EARS format, each with numbered acceptance criteria, covering the 15 node types, routing policies, fan-out, subsystem grouping, the analysis engine, capacity sweeps, SPOF detection, baseline comparison, and reference presets.
-
-2. **Design** — A 3,500-line technical design document grounded in the actual codebase. Covers the architecture, all type interfaces, the event-loop algorithm, routing and fan-out semantics, the cooperative-slicing analysis scheduler, schema migration, and 27 correctness properties.
-
-3. **Tasks** — 607 sequentially numbered implementation tasks across 28 phases, with a dependency DAG that kept the build green between phases. The spec tracked completion status as each task was dispatched to Kiro's sub-agents.
-
-4. **Iterative refinement** — Kiro's analysis tools caught ambiguities and inconsistencies in the requirements (e.g. the `PresetSelector` vs `SimulationToolbar` maxHopsPerRequest divergence), which were fixed before implementation.
-
-5. **Code generation and testing** — Every phase was dispatched to Kiro's spec-task-execution agent, which wrote the code, ran the build and tests, and reported back. The final suite has 686 tests including property-based tests (fast-check) exercising all 27 correctness properties.
+Analysys is a self-contained, fully client-side application — no servers, no accounts, no external APIs. It ships with a comprehensive test suite: 739 tests across 44 files, including property-based tests (fast-check) exercising 27 correctness properties.
 
 (The spec documents themselves live in the development environment and are not part of this repository.)
 
@@ -28,7 +18,6 @@ This project was built entirely within [Kiro](https://kiro.dev), an AI-powered d
 |----------|------|
 | **15 Node Types** | Traffic Generator, Scheduler, API Gateway, Rate Limiter, Circuit Breaker, Auth Service, Authz Service, Load Balancer, App Server, Worker Pool, Cache, Database, Object Store, Message Queue, Dead Letter Queue |
 | **Routing Policies** | First, Round Robin, Weighted, Fan-Out (depth-capped at 4) |
-| **Subsystem Grouping** | Collapsible groups with boundary-edge merging |
 | **Discrete-Event Simulation** | Web Worker engine, min-heap event queue with FIFO same-timestamp ordering, seeded xoshiro128** PRNG for determinism |
 | **Load Balancer Health Checks** | Periodic virtual-time probes; targets ejected after `evictionThreshold` consecutive failures and restored by a passing probe |
 | **Reproducible Runs** | Seed control in the toolbar — repeat a run exactly or re-roll for a fresh sample |
@@ -37,8 +26,13 @@ This project was built entirely within [Kiro](https://kiro.dev), an AI-powered d
 | **Capacity Sweep** | Sequential step execution measuring Sustainable Load and Knee Point against a Service Objective |
 | **Baseline Comparison** | Retain up to 5 runs, compare B − A with controlled/uncontrolled labelling |
 | **Chaos Engineering** | Cache flush, DB drop, traffic spike, DISABLE_NODE (any type), DLQ redrive |
-| **Reference Presets** | Authenticated Web API, Async Job Platform, Scheduled Batch With Live Traffic |
-| **Persistence** | Schema v2 with in-memory-only v1 migration, localStorage + JSON export/import |
+| **Reference Presets** | Authenticated Web API, Async Job Platform, Scheduled Batch With Live Traffic, Microservices E-Commerce (with nested admission & checkout component layers) |
+| **Component Layers** | Service nodes (gateways, app servers, worker pools, auth services) drill down via their «⌄» chip into a nested layer of internals. A node with children becomes a **container** — its internals handle its traffic; queues/caches/databases/object stores stay atomic |
+| **Onboarding Tour** | A 9-step guided tour on first load — spotlight highlight, step card, Next/Back/Skip/Done, arrow-key & Escape navigation — including the help icon, and replayable any time from the help panel |
+| **Canvas Interactions** | Click a node to select it and open its details panel; drag repositions it without opening the panel; right-click opens a Details/Delete context menu; the «⌄» chip drills into a component layer |
+| **Clear Canvas** | One-click wipe of every node, edge, and the telemetry dashboard — undoable |
+| **Visual Annotations** | Sections and text notes on any layer; a selected **or focused** text note shows a dashed border with its color swatches and corner resize handle — restyle or resize it without losing the ability to type |
+| **Persistence** | Schema v4 with in-memory migration from v1–v3, localStorage + JSON export/import, run settings round-tripped in the file |
 | **Accessibility** | WCAG 2.1 AA, keyboard-operable Analysis Panel, severity as text labels, Critical Finding announcements |
 
 ---
@@ -83,7 +77,7 @@ None. The application is fully client-side — no backend server, no API keys, n
 ## Testing Instructions
 
 ```bash
-# Run all tests (686 tests across 32 files)
+# Run all tests (739 tests across 44 files)
 npm test
 
 # Run with verbose output
@@ -135,17 +129,15 @@ It uses Node 22 and caches `node_modules`.
 | Library | Version | Purpose |
 |---------|---------|---------|
 | [React](https://react.dev) | 19.2 | UI framework |
-| [@xyflow/react](https://reactflow.dev) (React Flow) | 12.11 | Interactive node-graph canvas |
+| [react-dom](https://react.dev) | 19.2 | React renderer (DOM) |
 | [Zustand](https://zustand-demo.pmnd.rs) | 5.0 | Lightweight state management |
-| [Recharts](https://recharts.org) | 3.10 | Time-series telemetry charts |
-| [Tailwind CSS](https://tailwindcss.com) | 4.3 | Utility-first styling |
 | [Lucide React](https://lucide.dev) | 1.33 | Icon library |
 | [class-variance-authority](https://cva.style) | 0.7 | Variant-based component styling |
 | [clsx](https://github.com/lukeed/clsx) | 2.1 | Conditional className merging |
 | [tailwind-merge](https://github.com/dcastil/tailwind-merge) | 3.6 | Tailwind class deduplication |
 | [@fontsource-variable/geist](https://fontsource.org/fonts/geist) | 5.3 | Geist variable font |
 | [@base-ui/react](https://base-ui.com) | 1.7 | Unstyled accessible primitives |
-| [shadcn](https://ui.shadcn.com) | 4.18 | UI component scaffolding |
+| [shadcn](https://ui.shadcn.com) | 4.18 | UI component scaffolding (CLI) |
 | [tw-animate-css](https://github.com/nicholasgillespie/tw-animate-css) | 1.4 | Tailwind animation utilities |
 
 ### Development Dependencies
@@ -161,6 +153,7 @@ It uses Node 22 and caches `node_modules`.
 | [ESLint](https://eslint.org) | 10.8 | Linting |
 | [oxlint](https://oxc-project.github.io) | 1.75 | Fast Rust-based linter |
 | [Prettier](https://prettier.io) | 3.9 | Code formatting |
+| [Tailwind CSS](https://tailwindcss.com) + [@tailwindcss/postcss](https://tailwindcss.com) | 4.3 | Utility-first styling (build-time) |
 | [PostCSS](https://postcss.org) + [Autoprefixer](https://github.com/postcss/autoprefixer) | 8.5 / 10.5 | CSS processing |
 
 ### APIs and External Services
@@ -169,7 +162,7 @@ None. The application is entirely client-side. Simulation runs in a Web Worker. 
 
 ### Datasets
 
-The three reference architecture presets (`src/presets/*.json`) are hand-authored topology definitions, not derived from external datasets.
+The four reference architecture presets and three failure-mode presets (`src/presets/*.json`) are hand-authored topology definitions, not derived from external datasets.
 
 ### Assets
 
@@ -197,7 +190,7 @@ The three reference architecture presets (`src/presets/*.json`) are hand-authore
 ```
 ┌─────────────────────────── MAIN THREAD ───────────────────────────┐
 │                                                                    │
-│  React 19 + React Flow Canvas + Zustand Stores                    │
+│  React 19 + Custom Canvas + Zustand Stores                    │
 │       │                                                            │
 │  ┌────┴────────────┐  ┌────────────────────┐  ┌───────────────┐  │
 │  │ Analysis Engine │  │ Telemetry Dashboard│  │ Analysis Panel│  │
@@ -218,24 +211,25 @@ The three reference architecture presets (`src/presets/*.json`) are hand-authore
 
 ### Key Design Decisions
 
-- **Analysis runs on the main thread** (not the Worker) because it needs labels, groups, and the event log. Cooperative 33ms slicing keeps ≥30 fps.
+- **Analysis runs on the main thread** (not the Worker) because it needs the full topology — labels, edges, and the event log — not just the engine's metric slices. Cooperative 33ms slicing keeps ≥30 fps.
 - **Fan-out branches root their `path` at the dispatch node** so the parent's response traversal stays linear.
-- **Groups never reach the engine** — grouping invariance is true by construction.
-- **Schema v1 records are migrated in memory only** — the stored file stays at v1 until the next explicit save.
+- **Component layers resolve before the event loop** — a service node with children becomes a container; its own processor is bypassed and its internals handle traffic via explicit flat edges, so container semantics never enter the engine's decisions.
+- **Legacy files migrate in memory to the current schema version** — imported v1–v3 bundles are upgraded on load with warnings; the file on disk is only rewritten at the current version (v4) on the next explicit save.
 
 ---
 
-## File Schema (v2)
+## File Schema (v4)
 
 ```jsonc
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "nodes": [
     {
       "id": "uuid",
       "nodeType": "TRAFFIC_GENERATOR | API_GATEWAY | RATE_LIMITER | LOAD_BALANCER | CIRCUIT_BREAKER | AUTH_SERVICE | AUTHZ_SERVICE | APP_SERVER | WORKER_POOL | CACHE | DATABASE | OBJECT_STORE | MESSAGE_QUEUE | DEAD_LETTER_QUEUE | SCHEDULER",
       "label": "Display Name",
       "position": { "x": 0, "y": 0 },
+      "parentNodeId": "uuid | null",
       "routingPolicy": "FIRST | ROUND_ROBIN | WEIGHTED | FAN_OUT",
       "config": { /* type-specific parameters */ }
     }
@@ -249,16 +243,17 @@ The three reference architecture presets (`src/presets/*.json`) are hand-authore
       "weight": 1.0
     }
   ],
-  "subsystemGroups": [
-    {
-      "id": "uuid",
-      "name": "Group Name",
-      "memberNodeIds": ["node-id-1", "node-id-2"],
-      "collapsed": false
-    }
-  ]
+  "settings": {
+    "durationMs": 60000,
+    "speedMultiplier": 10,
+    "seed": 42
+  }
 }
 ```
+
+- `parentNodeId` is `null` for root-canvas nodes; a non-null value nests the node inside a component layer (service nodes only).
+- The optional `settings` block reproduces the exact run (duration, speed multiplier, and optional PRNG seed). Legacy v1–v3 bundles migrate to v4 with defaulted settings.
+- The subsystem-group system was removed in v3 — current files carry no group data.
 
 ---
 

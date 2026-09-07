@@ -359,4 +359,87 @@ describe('parseSimulationText (v4 migration chain)', () => {
     const { topology } = parseSimulationText(JSON.stringify(v4));
     expect(topology.settings!.seed).toBeUndefined();
   });
+
+  it('defaults architecture metadata on nodes that predate it', () => {
+    const v4 = {
+      schemaVersion: 4,
+      nodes: [
+        {
+          id: 'n1',
+          nodeType: NodeType.TrafficGenerator,
+          label: 'Traffic',
+          position: { x: 10, y: 20 },
+          routingPolicy: RoutingPolicy.First,
+          config: {
+            rps: 100,
+            distribution: Distribution.Poisson,
+            spikeMultiplier: 1,
+            spikeDurationSec: 10,
+          },
+        },
+        {
+          id: 'n2',
+          nodeType: NodeType.AppServer,
+          label: 'App',
+          position: { x: 100, y: 50 },
+          routingPolicy: RoutingPolicy.First,
+          config: {
+            workerThreadPoolSize: 8,
+            requestQueueDepth: 100,
+            processingTimeMeanMs: 40,
+            processingTimeStdDevMs: 10,
+          },
+        },
+      ],
+      edges: [{ id: 'e1', source: 'n1', target: 'n2', protocol: 'SYNC', weight: 1 }],
+    };
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v4));
+    expect(topology.nodes[0].parentNodeId).toBeNull();
+    expect(topology.nodes[1].parentNodeId).toBeNull();
+    expect(warnings.some((w) => w.field === 'parentNodeId')).toBe(true);
+  });
+
+  it('preserves architecture metadata unchanged when already present', () => {
+    const v4 = {
+      schemaVersion: 4,
+      nodes: [
+        {
+          id: 'n1',
+          nodeType: NodeType.TrafficGenerator,
+          label: 'Traffic',
+          position: { x: 10, y: 20 },
+          routingPolicy: RoutingPolicy.First,
+          parentNodeId: null,
+          config: {
+            rps: 100,
+            distribution: Distribution.Poisson,
+            spikeMultiplier: 1,
+            spikeDurationSec: 10,
+          },
+        },
+        {
+          id: 'n2',
+          nodeType: NodeType.AppServer,
+          label: 'App',
+          position: { x: 100, y: 50 },
+          routingPolicy: RoutingPolicy.First,
+          parentNodeId: 'n1',
+          config: {
+            workerThreadPoolSize: 8,
+            requestQueueDepth: 100,
+            processingTimeMeanMs: 40,
+            processingTimeStdDevMs: 10,
+          },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'n1', target: 'n2', protocol: 'SYNC', weight: 1 },
+      ],
+      settings: { durationMs: 90_000, speedMultiplier: 3, seed: 4242 },
+    };
+    const { topology, warnings } = parseSimulationText(JSON.stringify(v4));
+    expect(topology.nodes[0].parentNodeId).toBeNull();
+    expect(topology.nodes[1].parentNodeId).toBe('n1');
+    expect(warnings).toHaveLength(0);
+  });
 });

@@ -51,9 +51,11 @@ export interface HelpModalProps {
   onClose: () => void;
   /** Ref to the button that opened the modal — focus returns here on close. */
   openerRef?: React.RefObject<HTMLButtonElement | null>;
+  /** Optional handler to re-run the first-visit onboarding tour. */
+  onReplayTour?: () => void;
 }
 
-export function HelpModal({ isOpen, onClose, openerRef }: HelpModalProps) {
+export function HelpModal({ isOpen, onClose, openerRef, onReplayTour }: HelpModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Focus the dialog on open; restore focus to the opener on close.
@@ -127,11 +129,23 @@ export function HelpModal({ isOpen, onClose, openerRef }: HelpModalProps) {
 
         {/* Body */}
         <div className="overflow-y-auto px-5 py-4">
-          <p className="mb-4 text-[13px] leading-relaxed text-[#f3ede2]/75">
+          <p className="mb-3 text-[13px] leading-relaxed text-[#f3ede2]/75">
             Analysys models how a distributed architecture behaves under real load — from request
             throughput and latency to failures and recovery — entirely in your browser. Nothing
             leaves your machine unless you save or export it.
           </p>
+          {onReplayTour && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onReplayTour();
+              }}
+              className="mb-4 rounded border border-[#b8402e]/50 px-2 py-1 text-xs text-[#b8402e] transition-colors hover:bg-[#b8402e]/10"
+            >
+              Restart the onboarding tour
+            </button>
+          )}
 
           <Section title="1 · Build your architecture">
             <p>
@@ -144,14 +158,28 @@ export function HelpModal({ isOpen, onClose, openerRef }: HelpModalProps) {
               connections are rejected, and the canvas legend explains the routing rules.
             </p>
             <p>
-              Click a node to open its <span className="text-[#8fbf97]">configuration panel</span>{' '}
-              and tune worker pool size, queue depth, processing time (mean ± std-dev), routing
-              policy, and timeouts.
+              Right-click a node for its <span className="text-[#8fbf97]">Details</span> menu, which
+              opens the{' '}
+              <span className="text-[#8fbf97]">configuration panel</span> where you tune worker pool
+              size, queue depth, processing time (mean ± std-dev), routing policy, and timeouts.
             </p>
             <p>
               Section and Note boxes group things visually — they have no effect on the simulation.
               Load a preset or your own saved topology from the toolbar to start from a reference
               architecture.
+            </p>
+            <p>
+              Service nodes — API gateways, app servers, worker pools, and auth
+              services — can own a nested layer of their own: tap their{' '}
+              <span className="text-[#dfb357]">⌄ chip</span> to drill into it and build the
+              internals. Giving a node children makes it a{' '}
+              <span className="text-[#dfb357]">container</span>: its own processing settings are
+              bypassed and the children handle its requests. The breadcrumb at the top of the
+              canvas climbs back out — or all the way to the system overview.
+            </p>
+            <p>
+              Queues, caches, databases, object stores, and the traffic generator don't decompose —
+              they stay atomic single units.
             </p>
           </Section>
 

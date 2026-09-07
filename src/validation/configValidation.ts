@@ -23,6 +23,7 @@ import {
   type SchedulerConfig,
 } from '@/types/nodes';
 import type { MigrationWarning } from '@/types/migration';
+import { canBeParent } from '@/utils/parenting';
 
 // ─── Validation Result ───────────────────────────────────────────
 
@@ -362,6 +363,50 @@ export function validateNodeConfig(node: SimulationNode): ConfigValidationResult
     case NodeType.Scheduler:
       return validateSchedulerConfig(node.config);
   }
+}
+
+// ─── Topology-Level Parenting Validation ─────────────────────────
+//
+// A node is either atomic or composite, never both. Only component-like nodes
+// (gateways, app servers, worker pools, auth services) may own a component
+// layer; anything else exposed as a parent, or referencing a missing/non-parent
+// node as its parent, is rejected so the engine's pass-through role switch
+// stays well-defined.
+
+export interface ParentingIssue {
+  nodeId: string;
+  label: string;
+  message: string;
+}
+
+export function validateParenting(nodes: SimulationNode[]): ParentingIssue[] {
+  const issues: ParentingIssue[] = [];
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+
+  // Any node referenced as a parent must exist and be parentable.
+  for (const node of nodes) {
+    const parentId = node.parentNodeId;
+    if (!parentId) continue;
+
+    const parent = nodeById.get(parentId);
+    if (!parent) {
+      issues.push({
+        nodeId: node.id,
+        label: node.label,
+        message: `references missing parent "${parentId}".`,
+      });
+      continue;
+    }
+    if (!canBeParent(parent.nodeType)) {
+      issues.push({
+        nodeId: node.id,
+        label: node.label,
+        message: `is nested under "${parent.label}", but ${parent.nodeType} nodes cannot own a component layer.`,
+      });
+    }
+  }
+
+  return issues;
 }
 
 // ─── Normalize Config (Clamp Out-of-Range Values) ────────────────

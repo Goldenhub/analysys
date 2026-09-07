@@ -66,6 +66,11 @@ export class SimulationEngine {
   // Deliberately untouched by pause() and resume().
   private roundRobinCursors: Map<string, number> = new Map();
 
+  // Composite containers: node IDs that own at least one child on a component
+  // layer. Requests arriving at one of these are routed straight through to its
+  // internals (the children do the work) — its own processor is bypassed.
+  private compositeNodeIds: Set<string> = new Set();
+
   // Callback for sending messages back to main thread
   private onMetricsBatch: ((payload: MetricsBatchPayload) => void) | null = null;
   private onNodeStatus: ((nodeId: string, status: 'green' | 'yellow' | 'red') => void) | null =
@@ -163,6 +168,20 @@ export class SimulationEngine {
     this.buildAdjacency(config.topology.edges);
     this.initializeNodeStates(config.topology.nodes);
     this.scheduleInitialEvents(config.topology.nodes);
+    this.inferCompositeNodeIds();
+  }
+
+  /**
+   * A node is a composite container iff another node names it as its parent.
+   * This is the engine-side role switch: with children present, the node stops
+   * being a processing unit and becomes a boundary whose internals do the work.
+   */
+  private inferCompositeNodeIds(): void {
+    this.compositeNodeIds.clear();
+    for (const node of this.config.topology.nodes) {
+      const parentId = node.parentNodeId;
+      if (parentId) this.compositeNodeIds.add(parentId);
+    }
   }
 
   // ─── Public API ──────────────────────────────────────────────
@@ -725,6 +744,14 @@ export class SimulationEngine {
       }
     }
 
+    // Composite container — the node owns a component layer, so its internals
+    // do the work. Route straight through (no processing latency or queuing);
+    // the parent itself is a pure boundary.
+    if (this.compositeNodeIds.has(event.nodeId)) {
+      this.forwardThroughComposite(event, request);
+      return;
+    }
+
     // Delegate to node processor
     const state = this.nodeStates.get(event.nodeId);
     if (state) {
@@ -765,6 +792,50 @@ export class SimulationEngine {
         }
       }
     }
+  }
+
+  /**
+   * Boundary routing for a composite container: forward the request to the
+   * node's outgoing edges per its routing policy, with none of the node's own
+   * processing latency or queuing — the internals handle the work. With no
+   * outgoing edges the container terminates the request successfully, mirroring
+   * a terminal processor.
+   */
+  private forwardThroughComposite(event: SimEvent, request: SimRequest): void {
+    this.metricsCollector.recordArrival(event.nodeId, request.id, event.timestamp);
+    this.metricsCollector.recordAnalysisArrival(event.nodeId);
+
+    const edges = this.resolveTargets(event.nodeId, request);
+
+    if (edges.length === 0) {
+      // Terminal container — nothing routes out of its internals.
+      request.status = RequestStatus.Success;
+      request.completedAt = event.timestamp;
+      this.recordTerminalStatus(event.nodeId, RequestStatus.Success, request);
+      this.startResponseTraversal(event, request);
+    } else if (edges.length === 1) {
+      this.scheduleEvent({
+        type: SimEventType.RequestRoute,
+        timestamp: event.timestamp,
+        nodeId: edges[0]!.target,
+        requestId: request.id,
+        payload: { fromNodeId: event.nodeId },
+      });
+    } else {
+      // Fan_Out policy at the boundary — one branch per outgoing edge.
+      dispatchBranches({
+        parent: request,
+        dispatchNodeId: event.nodeId,
+        edges,
+        policy: SubRequestPolicy.FanOut,
+        timestamp: event.timestamp,
+        context: this.getProcessorContext(),
+        requestMap: this.requests,
+        getNextRequestId: () => `req-${this.requestCounter++}`,
+      });
+    }
+
+    this.metricsCollector.recordDeparture(event.nodeId, request.id, event.timestamp);
   }
 
   private handleRequestProcess(event: SimEvent): void {

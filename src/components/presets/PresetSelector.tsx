@@ -144,6 +144,7 @@ export function PresetSelector() {
         className="rounded bg-[#b8402e] px-3 py-1.5 text-xs font-medium text-[#f3ede2] hover:bg-[#b8402e] transition-colors"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        data-tour="presets"
       >
         Presets
       </button>

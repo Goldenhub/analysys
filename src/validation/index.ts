@@ -26,8 +26,10 @@ export {
   validateSchedulerConfig,
   validateNodeConfig,
   normalizeConfig,
+  validateParenting,
   type ConfigValidationResult,
   type NormalizedConfigResult,
+  type ParentingIssue,
 } from './configValidation';
 
 // Re-exported here so an import-path caller can surface a clamp warning without also

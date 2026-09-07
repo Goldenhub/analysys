@@ -13,6 +13,7 @@ import type { SimulationNode } from '@/types/nodes';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import type { SimulationEngineConfig } from '@/types/messages';
+import type { SimulationSummary } from '@/types/messages';
 import type { MetricsBatchPayload, UtilizationReading } from '@/types/metrics';
 
 /**
@@ -1388,5 +1389,129 @@ describe('SimulationEngine', () => {
       expect(report.simTimeMs).toBeGreaterThanOrEqual(0);
     }
     void totalRequests;
+  });
+});
+
+describe('composite containers (component layers)', () => {
+  const gen = (id: string, rps: number): SimulationNode => ({
+    id,
+    nodeType: NodeType.TrafficGenerator,
+    label: id,
+    position: { x: 0, y: 0 },
+    routingPolicy: RoutingPolicy.First,
+    config: { rps, distribution: Distribution.Uniform, spikeMultiplier: 5, spikeDurationSec: 15 },
+  });
+
+  const appServer = (
+    id: string,
+    processingTimeMeanMs: number,
+    parentNodeId?: string,
+  ): SimulationNode => ({
+    id,
+    nodeType: NodeType.AppServer,
+    label: id,
+    position: { x: 0, y: 0 },
+    routingPolicy: RoutingPolicy.First,
+    parentNodeId,
+    config: {
+      workerThreadPoolSize: 20,
+      requestQueueDepth: 200,
+      processingTimeMeanMs,
+      processingTimeStdDevMs: 1,
+    },
+  });
+
+  const db = (id: string): SimulationNode => ({
+    id,
+    nodeType: NodeType.Database,
+    label: id,
+    position: { x: 0, y: 0 },
+    routingPolicy: RoutingPolicy.First,
+    config: {
+      connectionPoolSize: 20,
+      queryLatencyMeanMs: 3,
+      queryLatencyStdDevMs: 1,
+      lockTimeoutMs: 5000,
+      dbType: DatabaseType.Relational,
+    },
+  });
+
+  const edge = (id: string, source: string, target: string): EdgeData => ({
+    id,
+    source,
+    target,
+    protocol: EdgeProtocol.Sync,
+    weight: 1.0,
+  });
+
+  const runWith = (
+    topology: { nodes: SimulationNode[]; edges: EdgeData[] },
+    maxSimulatedTimeMs: number,
+  ): Promise<{ batches: MetricsBatchPayload[]; summary: SimulationSummary | null }> => {
+    const engine = new SimulationEngine({
+      topology,
+      seed: 7,
+      speedMultiplier: 50,
+      maxSimulatedTimeMs,
+      metricsIntervalMs: 2000,
+      maxHopsPerRequest: 20,
+      disablePacing: true,
+    });
+    const batches: MetricsBatchPayload[] = [];
+    let summary: SimulationSummary | null = null;
+    engine.setCallbacks({
+      onMetricsBatch: (batch) => batches.push(batch),
+      onComplete: (s) => {
+        summary = s;
+      },
+    });
+    return engine.run().then(() => ({ batches, summary }));
+  };
+
+  it('routes requests straight through a container, bypassing its own processor', async () => {
+    // The container's absurd processing delay is bypassed because it owns a
+    // child — the child does the work and traffic still reaches the terminal.
+    const { batches } = await runWith(
+      {
+        nodes: [
+          gen('gen-1', 100),
+          appServer('web-1', 10_000),
+          appServer('app-1', 2, 'web-1'),
+          db('db-1'),
+        ],
+        edges: [
+          edge('e1', 'gen-1', 'web-1'),
+          edge('e2', 'web-1', 'app-1'),
+          edge('e3', 'app-1', 'db-1'),
+        ],
+      },
+      4000,
+    );
+
+    const hasActivity = (nodeId: string): boolean =>
+      batches.some((batch) => {
+        const metric = batch.nodes.find((n) => n.nodeId === nodeId);
+        if (!metric) return false;
+        const hasTerminal = Object.values(metric.cumulativeTerminalCounts).some((c) => (c as number) > 0);
+        return hasTerminal || metric.arrivalCount > 0 || metric.throughput > 0 || metric.queueDepth > 0;
+      });
+
+    expect(hasActivity('web-1')).toBe(true); // container sits on the path but adds no delay
+    expect(hasActivity('app-1')).toBe(true); // the child handles the work
+    expect(hasActivity('db-1')).toBe(true); // and the request still reaches its terminal
+  });
+
+  it('completes a request whose container internals have no exit', async () => {
+    const { summary } = await runWith(
+      {
+        nodes: [gen('gen-1', 50), appServer('web-1', 10_000), appServer('inner-1', 2, 'web-1')],
+        edges: [edge('e1', 'gen-1', 'web-1'), edge('e2', 'web-1', 'inner-1')],
+      },
+      3000,
+    );
+
+    expect(summary).not.toBeNull();
+    // inner-1 terminates successfully (no exit), so the whole path is a success.
+    expect(summary!.successRate).toBe(1);
   });
 });

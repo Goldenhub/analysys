@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // ─── EditableLabel ───────────────────────────────────────────────
 // A span that renders a label and, on double-click, swaps to an inline input.
 // Emits `onCommit` with the new text; empty/re-committed-unchanged values are ignored.
+// Processing-node frames disable rename-on-double-click (`allowRenameOnDoubleClick={false}`)
+// so a double-click bubbles up to open the node's details panel instead.
 
 interface EditableLabelProps {
   value: string;
@@ -10,6 +12,8 @@ interface EditableLabelProps {
   className?: string;
   /** Callback invoked when editing begins (e.g. to suppress drag behavior). */
   onEditingChange?: (editing: boolean) => void;
+  /** When false, double-click does not start rename editing (defaults to true). */
+  allowRenameOnDoubleClick?: boolean;
 }
 
 export function EditableLabel({
@@ -17,6 +21,7 @@ export function EditableLabel({
   onCommit,
   className,
   onEditingChange,
+  allowRenameOnDoubleClick = true,
 }: EditableLabelProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -74,7 +79,7 @@ export function EditableLabel({
     <span
       className={`truncate ${className ?? ''}`}
       onPointerDown={(e) => e.stopPropagation()}
-      onDoubleClick={begin}
+      onDoubleClick={allowRenameOnDoubleClick ? begin : undefined}
       title={value}
     >
       {value}

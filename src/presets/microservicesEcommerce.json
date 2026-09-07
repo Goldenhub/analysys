@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 2,
+  "name": "Microservices E-Commerce",
+  "description": "A microservices e-commerce checkout platform: API gateway with an admission layer (rate-limited auth/authz), a checkout core decomposed into order/inventory/payment services, async order events through a worker pool, and Redis/PostgreSQL storage. Expected bottleneck: the Database under sustained checkout load.",
+  "createdAt": "2024-09-06T00:00:00.000Z",
+  "seed": 20240906,
+  "simulatedDurationMs": 60000,
+  "speedMultiplier": 10,
+  "totalOfferedRps": 900,
+  "expectedBottleneckNodeId": "db-1",
+  "expectedDominantTerminalStatus": "DROPPED",
+  "subsystemGroups": [],
+  "topology": {
+    "nodes": [
+      {
+        "id": "tg-1",
+        "nodeType": "TRAFFIC_GENERATOR",
+        "label": "Storefront Users",
+        "position": {
+          "x": 0,
+          "y": 200
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "rps": 900,
+          "distribution": "POISSON",
+          "spikeMultiplier": 1,
+          "spikeDurationSec": 0
+        }
+      },
+      {
+        "id": "api-gw-1",
+        "nodeType": "API_GATEWAY",
+        "label": "API Gateway",
+        "position": {
+          "x": 200,
+          "y": 200
+        },
+        "routingPolicy": "WEIGHTED",
+        "config": {
+          "authLatencyMeanMs": 2,
+          "authLatencyStdDevMs": 1,
+          "rejectionRate": 0.01
+        }
+      },
+      {
+        "id": "auth-1",
+        "nodeType": "AUTH_SERVICE",
+        "label": "Auth Service",
+        "position": {
+          "x": 40,
+          "y": 0
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "api-gw-1",
+        "config": {
+          "verificationMode": "INTROSPECTION",
+          "verificationLatencyMeanMs": 5,
+          "verificationLatencyStdDevMs": 2,
+          "concurrencyLimit": 500,
+          "queueDepth": 200,
+          "tokenCacheHitRatio": 0.8,
+          "credentialFailureRate": 0.03
+        }
+      },
+      {
+        "id": "authz-1",
+        "nodeType": "AUTHZ_SERVICE",
+        "label": "Authz Service",
+        "position": {
+          "x": 40,
+          "y": 140
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "api-gw-1",
+        "config": {
+          "policyLatencyMeanMs": 3,
+          "policyLatencyStdDevMs": 1,
+          "policyCacheHitRatio": 0.7,
+          "lookupsPerRequest": 2,
+          "denyRate": 0.05,
+          "concurrencyLimit": 500,
+          "queueDepth": 200
+        }
+      },
+      {
+        "id": "cache-token-1",
+        "nodeType": "CACHE",
+        "label": "Token Cache",
+        "position": {
+          "x": 200,
+          "y": 70
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "api-gw-1",
+        "config": {
+          "hitRatio": 0.9,
+          "evictionPolicy": "TTL",
+          "accessLatencyMs": 1
+        }
+      },
+      {
+        "id": "checkout-1",
+        "nodeType": "APP_SERVER",
+        "label": "Checkout Service",
+        "position": {
+          "x": 400,
+          "y": 200
+        },
+        "routingPolicy": "WEIGHTED",
+        "config": {
+          "workerThreadPoolSize": 24,
+          "requestQueueDepth": 200,
+          "processingTimeMeanMs": 8,
+          "processingTimeStdDevMs": 3
+        }
+      },
+      {
+        "id": "order-1",
+        "nodeType": "APP_SERVER",
+        "label": "Order Service",
+        "position": {
+          "x": 40,
+          "y": 0
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "checkout-1",
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 10,
+          "processingTimeStdDevMs": 4
+        }
+      },
+      {
+        "id": "inventory-1",
+        "nodeType": "APP_SERVER",
+        "label": "Inventory Service",
+        "position": {
+          "x": 200,
+          "y": 0
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "checkout-1",
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 8,
+          "processingTimeStdDevMs": 3
+        }
+      },
+      {
+        "id": "payment-1",
+        "nodeType": "APP_SERVER",
+        "label": "Payment Service",
+        "position": {
+          "x": 360,
+          "y": 0
+        },
+        "routingPolicy": "FIRST",
+        "parentNodeId": "checkout-1",
+        "config": {
+          "workerThreadPoolSize": 16,
+          "requestQueueDepth": 100,
+          "processingTimeMeanMs": 12,
+          "processingTimeStdDevMs": 5
+        }
+      },
+      {
+        "id": "cache-1",
+        "nodeType": "CACHE",
+        "label": "Order Cache",
+        "position": {
+          "x": 600,
+          "y": 200
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "hitRatio": 0.5,
+          "evictionPolicy": "LRU",
+          "accessLatencyMs": 2
+        }
+      },
+      {
+        "id": "db-1",
+        "nodeType": "DATABASE",
+        "label": "Orders Database",
+        "position": {
+          "x": 800,
+          "y": 200
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "connectionPoolSize": 2,
+          "queryLatencyMeanMs": 5,
+          "queryLatencyStdDevMs": 2,
+          "lockTimeoutMs": 5000,
+          "dbType": "RELATIONAL"
+        }
+      },
+      {
+        "id": "mq-1",
+        "nodeType": "MESSAGE_QUEUE",
+        "label": "Order Events Queue",
+        "position": {
+          "x": 600,
+          "y": 360
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "consumerBatchSize": 10,
+          "bufferCapacity": 5000,
+          "backpressureThresholdPct": 80,
+          "backpressureStrategy": "BLOCK_PRODUCER"
+        }
+      },
+      {
+        "id": "worker-1",
+        "nodeType": "WORKER_POOL",
+        "label": "Fulfilment Workers",
+        "position": {
+          "x": 800,
+          "y": 360
+        },
+        "routingPolicy": "WEIGHTED",
+        "config": {
+          "concurrency": 16,
+          "jobProcessingMeanMs": 40,
+          "jobProcessingStdDevMs": 15,
+          "prefetchBufferDepth": 32,
+          "jobFailureRate": 0.05,
+          "maxRetries": 2,
+          "retryBackoff": "EXPONENTIAL",
+          "retryBaseDelayMs": 500,
+          "jobTimeoutMs": 30000
+        }
+      },
+      {
+        "id": "dlq-1",
+        "nodeType": "DEAD_LETTER_QUEUE",
+        "label": "Order DLQ",
+        "position": {
+          "x": 1000,
+          "y": 360
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "capacity": 10000,
+          "retentionPeriodMs": 86400000,
+          "redriveMode": "MANUAL",
+          "redriveIntervalMs": 60000,
+          "redriveBatchSize": 100,
+          "maxRedriveAttempts": 2
+        }
+      },
+      {
+        "id": "obj-1",
+        "nodeType": "OBJECT_STORE",
+        "label": "Receipt Bucket",
+        "position": {
+          "x": 1000,
+          "y": 520
+        },
+        "routingPolicy": "FIRST",
+        "config": {
+          "objectSizeMeanKB": 512,
+          "objectSizeStdDevKB": 128,
+          "throughputCapacityMBps": 200,
+          "baseLatencyMeanMs": 8,
+          "baseLatencyStdDevMs": 3,
+          "maxConcurrentTransfers": 50,
+          "transferQueueDepth": 100,
+          "readFraction": 0.3,
+          "writeLatencyMultiplier": 1.2
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-tg1-apigw1",
+        "source": "tg-1",
+        "target": "api-gw-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-apigw1-checkout1",
+        "source": "api-gw-1",
+        "target": "checkout-1",
+        "protocol": "SYNC",
+        "weight": 0.85
+      },
+      {
+        "id": "e-apigw1-auth1",
+        "source": "api-gw-1",
+        "target": "auth-1",
+        "protocol": "SYNC",
+        "weight": 0.08
+      },
+      {
+        "id": "e-apigw1-authz1",
+        "source": "api-gw-1",
+        "target": "authz-1",
+        "protocol": "SYNC",
+        "weight": 0.07
+      },
+      {
+        "id": "e-auth1-tokencache",
+        "source": "auth-1",
+        "target": "cache-token-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-authz1-tokencache",
+        "source": "authz-1",
+        "target": "cache-token-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-checkout1-cache1",
+        "source": "checkout-1",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 0.3
+      },
+      {
+        "id": "e-checkout1-db1",
+        "source": "checkout-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 0.35
+      },
+      {
+        "id": "e-checkout1-mq1",
+        "source": "checkout-1",
+        "target": "mq-1",
+        "protocol": "ASYNC",
+        "weight": 0.15
+      },
+      {
+        "id": "e-checkout1-order1",
+        "source": "checkout-1",
+        "target": "order-1",
+        "protocol": "SYNC",
+        "weight": 0.2
+      },
+      {
+        "id": "e-order1-inventory1",
+        "source": "order-1",
+        "target": "inventory-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-inventory1-payment1",
+        "source": "inventory-1",
+        "target": "payment-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-payment1-cache1",
+        "source": "payment-1",
+        "target": "cache-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-cache1-db1",
+        "source": "cache-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-mq1-worker1",
+        "source": "mq-1",
+        "target": "worker-1",
+        "protocol": "ASYNC",
+        "weight": 1
+      },
+      {
+        "id": "e-worker1-db1",
+        "source": "worker-1",
+        "target": "db-1",
+        "protocol": "SYNC",
+        "weight": 0.7
+      },
+      {
+        "id": "e-worker1-obj1",
+        "source": "worker-1",
+        "target": "obj-1",
+        "protocol": "SYNC",
+        "weight": 0.2
+      },
+      {
+        "id": "e-worker1-dlq1",
+        "source": "worker-1",
+        "target": "dlq-1",
+        "protocol": "ASYNC",
+        "weight": 0.1
+      }
+    ]
+  },
+  "chaosTimeline": []
+}
