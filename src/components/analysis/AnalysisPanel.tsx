@@ -250,7 +250,7 @@ export function AnalysisPanel({ openerRef, onClose }: AnalysisPanelProps) {
       ref={panelRef}
       role="complementary"
       aria-label="Analysis panel"
-      className="flex flex-col h-full border-l border-[#5b5347]/20 bg-[#f3ede2] w-96 overflow-hidden"
+      className="absolute right-0 top-0 bottom-0 z-20 flex flex-col overflow-hidden border-l border-[#5b5347]/20 bg-[#f3ede2] w-96 max-w-[90vw] max-md:fixed max-md:inset-0 max-md:z-50 max-md:w-full"
     >
       {/* Panel header */}
       <div className="flex items-center justify-between border-b border-[#5b5347]/20 px-3 py-2">

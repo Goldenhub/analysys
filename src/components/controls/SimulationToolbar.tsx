@@ -253,10 +253,14 @@ export function SimulationToolbar() {
 
   // ─── Render ──────────────────────────────────────────────────
 
+  const selectClass =
+    'h-7 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e] disabled:opacity-50 disabled:cursor-not-allowed';
+  const fieldLabelClass = 'text-[10px] font-medium text-[#5b5347]/80';
+
   return (
-    <div data-tour="sim" className="flex items-center gap-3">
-      {/* Action Buttons */}
-      <div className="flex items-center gap-1.5">
+    <div data-tour="sim" className="flex flex-wrap items-center gap-x-4 gap-y-2 max-md:contents">
+      {/* ── Run: transport buttons ─────────────────────────────── */}
+      <div className="flex items-center gap-1.5 max-md:order-2">
         {/* Start / Resume */}
         {showStartButton && (
           <Button
@@ -326,82 +330,96 @@ export function SimulationToolbar() {
         )}
       </div>
 
-      {/* Speed Selector */}
-      <select
-        value={speedMultiplier}
-        onChange={handleSpeedChange}
-        className="h-7 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e]"
-      >
-        {SPEED_OPTIONS.map((speed) => (
-          <option key={speed} value={speed}>
-            {speed}×
-          </option>
-        ))}
-      </select>
+      <span aria-hidden="true" className="hidden w-px self-stretch bg-[#5b5347]/15 sm:block" />
 
-      {/* Duration Selector */}
-      <div className="flex items-center gap-1">
-        <label htmlFor="sim-duration" className="text-[10px] text-[#f3ede2]/50">
-          Duration
-        </label>
-        <select
-          id="sim-duration"
-          value={durationMs}
-          onChange={(e) => setDuration(Number(e.target.value))}
-          disabled={simState === SimState.Running || simState === SimState.Paused}
-          className="h-7 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 text-xs text-[#f3ede2] outline-none focus:border-[#b8402e] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {DURATION_OPTIONS.map((opt) => (
-            <option key={opt.ms} value={opt.ms}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <span className="text-[10px] text-[#f3ede2]/50">sim</span>
+      {/* ── Settings: speed, duration, seed ────────────────────── */}
+      <div className="md:flex md:flex-wrap md:items-center md:gap-3 max-md:contents">
+        {/* Speed */}
+        <div className="flex items-center gap-1.5 max-md:order-3">
+          <label htmlFor="sim-speed" className={fieldLabelClass} title="Simulated requests per second (1× = real time)">
+            Speed
+          </label>
+          <select
+            id="sim-speed"
+            value={speedMultiplier}
+            onChange={handleSpeedChange}
+            className={selectClass}
+          >
+            {SPEED_OPTIONS.map((speed) => (
+              <option key={speed} value={speed}>
+                {speed}×
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Duration + Seed */}
+        <div className="flex items-center gap-3 max-md:order-4 max-md:basis-full">
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="sim-duration" className={fieldLabelClass}>
+              Duration
+            </label>
+            <select
+              id="sim-duration"
+              value={durationMs}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              disabled={simState === SimState.Running || simState === SimState.Paused}
+              className={selectClass}
+            >
+              {DURATION_OPTIONS.map((opt) => (
+                <option key={opt.ms} value={opt.ms}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Seed Control */}
+          <div className="flex items-center gap-1.5">
+            <label
+              htmlFor="sim-seed"
+              className={fieldLabelClass}
+              title="Random seed for the simulation's randomness (arrival times, latencies). The same seed always produces the identical run — enter it again to reproduce results exactly."
+            >
+              Seed
+            </label>
+            <input
+              id="sim-seed"
+              type="number"
+              value={seed}
+              onChange={(e) => setSeed(Math.floor(Number(e.target.value) || 0))}
+              disabled={simState === SimState.Running || simState === SimState.Paused}
+              title="Random seed — same seed = identical run; dice button rolls a fresh one."
+              className={`w-24 font-mono ${selectClass}`}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSeed(Math.floor(Math.random() * 0xffffffff))}
+              disabled={simState === SimState.Running || simState === SimState.Paused}
+              title="Randomize seed — new sample of arrival times and latencies"
+              aria-label="Randomize seed"
+              className="h-7 w-7 p-0 text-[#5b5347]/70 hover:text-[#5b5347] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <DicesIcon />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Seed Control */}
-      <div className="flex items-center gap-1">
-        <label
-          htmlFor="sim-seed"
-className="text-[10px] text-[#5b5347]/80"
-          title="Random seed for the simulation's randomness (arrival times, latencies). The same seed always produces the identical run — enter it again to reproduce results exactly."
+      <span aria-hidden="true" className="hidden w-px self-stretch bg-[#5b5347]/15 sm:block" />
+
+      {/* ── Status: sim time + state badge ─────────────────────── */}
+      <div className="flex items-center gap-2 max-md:order-5">
+        <span className="font-mono text-xs text-[#5b5347]">
+          {formatSimTime(metrics?.simulatedTimeMs ?? 0)}
+        </span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getStateBadgeColor(simState)}`}
         >
-          Seed
-        </label>
-        <input
-          id="sim-seed"
-          type="number"
-          value={seed}
-          onChange={(e) => setSeed(Math.floor(Number(e.target.value) || 0))}
-          disabled={simState === SimState.Running || simState === SimState.Paused}
-          title="Random seed — same seed = identical run; dice button rolls a fresh one."
-          className="h-7 w-24 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-2 font-mono text-xs text-[#f3ede2] outline-none focus:border-[#b8402e] disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSeed(Math.floor(Math.random() * 0xffffffff))}
-          disabled={simState === SimState.Running || simState === SimState.Paused}
-          title="Randomize seed — new sample of arrival times and latencies"
-          aria-label="Randomize seed"
-          className="h-7 w-7 p-0 text-[#5b5347]/70 hover:text-[#5b5347] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <DicesIcon />
-        </Button>
+          {getStateLabel(simState)}
+        </span>
       </div>
-
-      {/* Simulation Time */}
-      <span className="font-mono text-xs text-[#5b5347]">
-        {formatSimTime(metrics?.simulatedTimeMs ?? 0)}
-      </span>
-
-      {/* State Badge */}
-      <span
-        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getStateBadgeColor(simState)}`}
-      >
-        {getStateLabel(simState)}
-      </span>
     </div>
   );
 }

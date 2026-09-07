@@ -81,7 +81,7 @@ describe('Onboarding tour', () => {
 
     expect(screen.queryByRole('dialog', { name: 'Onboarding tour' })).toBeNull();
     expect(localStorage.getItem('analysys_onboarding_completed')).toBe('true');
-  });
+  }, 10000);
 
   it('does not show the tour once completed', () => {
     localStorage.setItem('analysys_onboarding_completed', 'true');

@@ -1364,7 +1364,7 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
 
   return (
     <aside
-      className="absolute right-0 top-0 bottom-0 z-20 flex w-[280px] flex-col border-l border-[#5b5347]/20 bg-[#5b5347]/95 shadow-xl transition-all duration-300"
+      className="absolute right-0 top-0 bottom-0 z-20 flex w-[280px] flex-col border-l border-[#5b5347]/20 bg-[#5b5347]/95 shadow-xl transition-all duration-300 max-md:inset-0 max-md:z-50 max-md:w-full max-md:bg-[#5b5347]"
       aria-label="Node configuration panel"
       tabIndex={3}
     >

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CanvasEditor } from '@/components/canvas/CanvasEditor';
 import { NodeContextMenu } from '@/components/canvas/NodeContextMenu';
 import { NodePalette } from '@/components/canvas/NodePalette';
@@ -30,13 +30,36 @@ import {
   type OnboardingStep,
 } from '@/components/onboarding/OnboardingTour';
 import { Analytics } from '@vercel/analytics/react';
+import { Menu } from 'lucide-react';
+
+/** Reactive height of the floating header, so side panels start below it. */
+function useHeaderHeight(ref: React.RefObject<HTMLDivElement | null>): number {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof ResizeObserver === 'undefined') return () => {};
+      const el = ref.current;
+      if (!el) return () => {};
+      const observer = new ResizeObserver(onStoreChange);
+      observer.observe(el);
+      return () => observer.disconnect();
+    },
+    () => ref.current?.offsetHeight ?? 0,
+    () => 0,
+  );
+}
 
 export default function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeParentNodeId, setActiveParentNodeId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  // Off-canvas components palette for small screens; the desktop column is always visible.
+  const [paletteOpen, setPaletteOpen] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth >= 768,
+  );
   const [showTour, setShowTour] = useState(() => !hasCompletedOnboarding());
   const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const headerHeight = useHeaderHeight(headerRef);
   const restored = useRef(false);
 
   // Boot: restore the autosaved working canvas exactly once per session.
@@ -73,7 +96,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#f3ede2] text-[#211e1a]">
+    <div className="flex h-dvh w-screen overflow-hidden overscroll-none bg-[#f3ede2] text-[#211e1a]">
       <LiveAnnouncer />
       <ToastViewport />
       <HelpModal
@@ -86,16 +109,34 @@ export default function App() {
         <OnboardingTour steps={ONBOARDING_STEPS} onFinish={finishTour} onSkip={finishTour} />
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#5b5347]/15 bg-[#fffaf2] px-5 py-2">
+        <header
+          ref={headerRef}
+          className="absolute inset-x-0 top-0 z-40 flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#5b5347]/15 bg-transparent px-3 py-2 shadow-sm backdrop-blur-sm sm:gap-x-4 sm:px-5"
+        >
+          <button
+            type="button"
+            onClick={() => setPaletteOpen((v) => !v)}
+            aria-label={paletteOpen ? 'Close components palette' : 'Open components palette'}
+            aria-expanded={paletteOpen}
+            title="Toggle the components palette"
+            className="grid size-8 shrink-0 place-items-center rounded-md border border-[#5b5347]/20 text-[#b8402e] transition hover:border-[#b8402e]/50 hover:bg-[#b8402e]/10"
+          >
+            <Menu className="size-4" />
+          </button>
           <div data-tour="brand" className="min-w-0">
             <p className="text-sm font-semibold">Analysys</p>
-            <p className="text-xs text-[#5b5347]">Architecture simulation</p>
+            <p className="max-sm:hidden text-xs text-[#5b5347]">Architecture simulation</p>
           </div>
-          <PresetSelector />
-          <div className="hidden h-6 w-px bg-[#5b5347]/20 sm:block" />
-          <SimulationToolbar />
-          <div className="hidden h-6 w-px bg-[#5b5347]/20 sm:block" />
-          <PersistenceToolbar />
+          <div
+            className="max-md:order-3 max-md:flex max-md:w-full max-md:flex-wrap max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:rounded-lg max-md:border max-md:border-[#5b5347]/15 max-md:bg-[#f3ede2]/70 max-md:px-2 max-md:py-1.5 md:contents"
+            aria-label="Toolbar"
+          >
+            <PresetSelector />
+            <div className="hidden h-6 w-px bg-[#5b5347]/20 sm:block" />
+            <SimulationToolbar />
+            <div className="hidden h-6 w-px bg-[#5b5347]/20 sm:block" />
+            <PersistenceToolbar />
+          </div>
           <div className="ml-auto flex flex-wrap items-center gap-3">
             <ActiveChaosStrip />
             <ChaosPanel />
@@ -117,6 +158,9 @@ export default function App() {
           setActiveParentNodeId={setActiveParentNodeId}
           selectedNodeId={selectedNodeId}
           setSelectedNodeId={setSelectedNodeId}
+          paletteOpen={paletteOpen}
+          onClosePalette={() => setPaletteOpen(false)}
+          headerHeight={headerHeight}
         />
       </div>
       <Analytics />
@@ -129,33 +173,76 @@ function CanvasWorkspace({
   setActiveParentNodeId,
   selectedNodeId,
   setSelectedNodeId,
+  paletteOpen,
+  onClosePalette,
+  headerHeight,
 }: {
   activeParentNodeId: string | null;
   setActiveParentNodeId: (id: string | null) => void;
   selectedNodeId: string | null;
   setSelectedNodeId: (id: string | null) => void;
+  paletteOpen: boolean;
+  onClosePalette: () => void;
+  headerHeight: number;
 }) {
   const nodes = useTopologyStore((s) => s.nodes);
   const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(
     null,
   );
-  const current = nodes.find((node) => node.id === activeParentNodeId);
-  const parentId = current?.data.parentNodeId ?? null;
-  const label = current && 'label' in current.data ? current.data.label : 'System overview';
   const layerChildren = activeParentNodeId
     ? nodes.filter((node) => (node.data.parentNodeId ?? null) === activeParentNodeId).length
     : nodes.length;
+  const activeLayerNode = nodes.find((node) => node.id === activeParentNodeId);
+  const layerParentId = activeLayerNode?.data.parentNodeId ?? null;
+  const layerLabel =
+    activeLayerNode && 'label' in activeLayerNode.data
+      ? activeLayerNode.data.label
+      : 'System overview';
   return (
-    <main className="relative flex min-h-0 flex-1 overflow-hidden">
+    <main className="absolute inset-0 overflow-hidden">
+      <div
+        className={`absolute left-4 z-20 mt-1.5 flex items-center gap-2 rounded-lg border border-[#5b5347]/15 bg-[#fffaf2]/95 px-3 py-2 text-xs shadow-sm ${paletteOpen ? 'md:left-64' : 'md:left-4'}`}
+        style={{ top: headerHeight }}
+      >
+        <button onClick={() => setActiveParentNodeId(null)} className="font-medium underline">
+          System
+        </button>
+        {activeParentNodeId && (
+          <>
+            <span>/</span>
+            {layerParentId && (
+              <button
+                onClick={() => setActiveParentNodeId(layerParentId)}
+                className="font-medium underline"
+              >
+                Up
+              </button>
+            )}
+            <span className="font-semibold">{layerLabel}</span>
+          </>
+        )}
+      </div>
       <aside
         data-tour="palette"
-        className="z-10 w-60 overflow-y-auto border-r border-[#5b5347]/15 bg-[#fffaf2] p-4"
+        style={{ top: headerHeight }}
+        className={[
+          'z-30 absolute bottom-0 left-0 w-60 max-w-[85vw] overflow-y-auto border-r border-[#5b5347]/15 bg-[#fffaf2] p-4 shadow-2xl transition-transform duration-300',
+          paletteOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
       >
+        <button
+          type="button"
+          onClick={onClosePalette}
+          aria-label="Close components palette"
+          className="absolute right-3 top-3 grid size-7 shrink-0 place-items-center rounded-md border border-[#5b5347]/20 text-[#5b5347]/70 transition hover:border-[#b8402e]/50 hover:text-[#b8402e]"
+        >
+          ✕
+        </button>
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#b8402e]">
           Build system
         </p>
         <h2 className="mt-1 text-sm font-semibold">Components</h2>
-        <NodePalette />
+        <NodePalette parentNodeId={activeParentNodeId} />
         <button
           type="button"
           onClick={() => {
@@ -175,26 +262,7 @@ function CanvasWorkspace({
           Clear canvas
         </button>
       </aside>
-      <section className="relative min-w-0 flex-1">
-        <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-[#5b5347]/15 bg-[#fffaf2]/95 px-3 py-2 text-xs shadow-sm">
-          <button onClick={() => setActiveParentNodeId(null)} className="font-medium underline">
-            System
-          </button>
-          {activeParentNodeId && (
-            <>
-              <span>/</span>
-              {parentId && (
-                <button
-                  onClick={() => setActiveParentNodeId(parentId)}
-                  className="font-medium underline"
-                >
-                  Up
-                </button>
-              )}
-              <span className="font-semibold">{label}</span>
-            </>
-          )}
-        </div>
+      <section className="absolute inset-0">
         <CanvasEditor
           activeParentNodeId={activeParentNodeId}
           onEnterComponent={(id) => {
@@ -250,7 +318,7 @@ function CanvasWorkspace({
           />
         )}
         {activeParentNodeId && layerChildren === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 top-20 z-10 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 justify-center">
             <div className="rounded-lg border border-dashed border-[#b8402e]/40 bg-[#fffaf2]/95 px-4 py-3 text-sm text-[#5b5347] shadow-sm">
               This component layer is empty — drag components from the palette to build it.
             </div>
@@ -258,21 +326,32 @@ function CanvasWorkspace({
         )}
       </section>
       {selectedNodeId && (
-        <NodeConfigPanel selectedNodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
+        <div className="absolute bottom-0 right-0 z-[9999]" style={{ top: headerHeight }}>
+          <NodeConfigPanel
+            selectedNodeId={selectedNodeId}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        </div>
       )}
-      <AnalysisPanelWrapper />
-      <div className="absolute bottom-0 left-60 right-0 z-10">
-        <TelemetryDashboard />
+      <AnalysisPanelWrapper topOffset={headerHeight} />
+      <div className="absolute inset-x-3 bottom-3 z-10 md:left-52">
+        <div className="overflow-hidden rounded-lg shadow-2xl ring-1 ring-[#211e1a]/20">
+          <TelemetryDashboard />
+        </div>
       </div>
     </main>
   );
 }
 
-function AnalysisPanelWrapper() {
+function AnalysisPanelWrapper({ topOffset }: { topOffset: number }) {
   const open = useAnalysisPanelStore((s) => s.isOpen);
   const close = useAnalysisPanelStore((s) => s.close);
   const ref = useRef<HTMLElement | null>(null);
-  return open ? <AnalysisPanel openerRef={ref} onClose={close} /> : null;
+  return open ? (
+    <div className="absolute bottom-0 right-0 z-20" style={{ top: topOffset }}>
+      <AnalysisPanel openerRef={ref} onClose={close} />
+    </div>
+  ) : null;
 }
 
 // ─── Onboarding tour steps ────────────────────────────────────────

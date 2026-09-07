@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NodeType } from '@/types/nodes';
 import { useTopologyStore } from '@/store/topologyStore';
@@ -9,6 +9,8 @@ import { EdgeProtocol } from '@/types/edges';
 import { SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas';
 import { createTextNoteNode } from '@/canvas';
 import { useCanvasToolStore } from '@/store/canvasToolStore';
+import { getViewportState } from '@/canvas/viewportBus';
+import { placePaletteNode } from '@/canvas/palettePlacement';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─── Palette Item Definition ─────────────────────────────────────
@@ -459,9 +461,37 @@ const PALETTE_CATEGORIES: PaletteCategory[] = [
 
 interface PaletteItemComponentProps {
   item: PaletteItem;
+  parentNodeId: string | null;
 }
 
-function PaletteItemComponent({ item }: PaletteItemComponentProps) {
+interface PaletteTouchDrag {
+  nodeType: PaletteNodeType;
+  icon: React.ReactNode;
+  label: string;
+  x: number;
+  y: number;
+  overCanvas: boolean;
+}
+
+// ─── Shared heuristics kept at module scope so tests stay deterministic ──
+
+/** Swipe this far toward the palette's right edge to lift a node immediately. */
+const TOUCH_DRAG_ACTIVATE_DISTANCE_PX = 14;
+/** Vertical movement beyond this (while the drag is not yet lifted) is a palette scroll. */
+const TOUCH_DRAG_SCROLL_SLOP_PX = 10;
+/** Holding still this long also lifts the node (grab-in-place). */
+const TOUCH_DRAG_LONG_PRESS_MS = 300;
+/** The canvas engine container exposes this marker for drop-target detection. */
+const CANVAS_ENGINE_SELECTOR = '[data-testid="canvas-engine"]';
+
+/** True on touch screens, where the native HTML5 drag must not be engaged. */
+function isCoarsePointerDevice() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: coarse)').matches
+    : false;
+}
+
+function PaletteItemComponent({ item, parentNodeId }: PaletteItemComponentProps) {
   const addNode = useTopologyStore((s) => s.addNode);
   const drawTool = useCanvasToolStore((s) => s.drawTool);
   const setDrawTool = useCanvasToolStore((s) => s.setDrawTool);
@@ -480,6 +510,166 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
     : CONNECTION_RULES[item.nodeType as NodeType];
   const allowedOutputs = rules.allowedTargets;
   const allowedInputs = visual ? [] : getAllowedInputs(item.nodeType as NodeType);
+
+  // ─── Touch drag + tap-to-place ─────────────────────────────────
+  // HTML5 drag-and-drop does not fire from touch, so node items get a
+  // pointer-event counterpart: swiping right (toward the canvas) or holding
+  // still lifts the item into a floating ghost that can be dropped onto the
+  // canvas. Vertical motion belongs to the palette scroll. A quick tap places
+  // the node at the canvas center (mirroring the Enter keyboard path).
+  const [touchDrag, setTouchDrag] = useState<PaletteTouchDrag | null>(null);
+  const dragTimerRef = useRef<number | null>(null);
+  const dragModeRef = useRef<'idle' | 'pending' | 'active'>('idle');
+  const dragRef = useRef<{
+    pointerId: number;
+    item: PaletteItem;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const didDragRef = useRef(false);
+  const lastPointerTypeRef = useRef('');
+
+  function isCanvasAt(x: number, y: number) {
+    try {
+      const el = document.elementFromPoint(x, y);
+      return !!el?.closest?.(CANVAS_ENGINE_SELECTOR);
+    } catch {
+      return false;
+    }
+  }
+
+  function dropAt(clientX: number, clientY: number, nodeType: PaletteNodeType) {
+    const svg = document.querySelector<SVGElement>(`${CANVAS_ENGINE_SELECTOR} svg`);
+    const rect = svg?.getBoundingClientRect();
+    if (!rect) return;
+    const { viewport } = getViewportState();
+    const canvasPos = {
+      x: (clientX - rect.left - viewport.x) / viewport.zoom,
+      y: (clientY - rect.top - viewport.y) / viewport.zoom,
+    };
+    placePaletteNode(nodeType as string, canvasPos, parentNodeId);
+  }
+
+  function tearDownWindowListeners() {
+    window.removeEventListener('pointermove', onWindowPointerMove);
+    window.removeEventListener('pointerup', onWindowPointerUp);
+    window.removeEventListener('pointercancel', onWindowPointerCancel);
+  }
+
+  function cancelGesture() {
+    dragModeRef.current = 'idle';
+    dragRef.current = null;
+    if (dragTimerRef.current) {
+      window.clearTimeout(dragTimerRef.current);
+      dragTimerRef.current = null;
+    }
+    tearDownWindowListeners();
+    setTouchDrag(null);
+    document.body.style.touchAction = '';
+  }
+
+  /** Lift the item off the palette (ghost follows from here on). */
+  function activateDrag(e: PointerEvent | null) {
+    if (dragModeRef.current !== 'pending') return;
+    const drag = dragRef.current;
+    if (!drag) return;
+    dragModeRef.current = 'active';
+    if (dragTimerRef.current) {
+      window.clearTimeout(dragTimerRef.current);
+      dragTimerRef.current = null;
+    }
+    didDragRef.current = true;
+    const x = e?.clientX ?? drag.startX;
+    const y = e?.clientY ?? drag.startY;
+    setTouchDrag({
+      nodeType: drag.item.nodeType,
+      icon: drag.item.icon,
+      label: drag.item.label,
+      x,
+      y,
+      overCanvas: isCanvasAt(x, y),
+    });
+    // Freeze the browser's native scrolling/zooming for the rest of the gesture.
+    document.body.style.touchAction = 'none';
+  }
+
+  function onWindowPointerMove(e: PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (dragModeRef.current === 'idle') return;
+
+    if (dragModeRef.current === 'pending') {
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      // Vertical motion before the pickup is the palette scrolling — stay out of
+      // its way (no preventDefault, so the scroll proceeds).
+      if (Math.abs(dy) > TOUCH_DRAG_SCROLL_SLOP_PX && Math.abs(dy) > Math.abs(dx)) {
+        cancelGesture();
+        return;
+      }
+      // Rightward pursuit of the canvas lifts the node immediately.
+      if (Math.abs(dx) > TOUCH_DRAG_ACTIVATE_DISTANCE_PX) {
+        activateDrag(e);
+        return;
+      }
+      return;
+    }
+
+    setTouchDrag((prev) =>
+      prev ? { ...prev, x: e.clientX, y: e.clientY, overCanvas: isCanvasAt(e.clientX, e.clientY) } : prev,
+    );
+  }
+
+  function onWindowPointerUp(e: PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+
+    if (dragModeRef.current === 'active') {
+      if (isCanvasAt(e.clientX, e.clientY)) {
+        dropAt(e.clientX, e.clientY, drag.item.nodeType);
+      }
+    }
+
+    cancelGesture();
+  }
+
+  function onWindowPointerCancel(e: PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    // The browser reclaimed the gesture (scroll/zoom/long-press). Never treat a
+    // cancel as a drop — just put the palette back the way it was.
+    cancelGesture();
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    lastPointerTypeRef.current = e.pointerType;
+    // Mouse keeps the native HTML5 drag; touch needs the custom path.
+    if (e.pointerType !== 'touch') return;
+
+    dragRef.current = { pointerId: e.pointerId, item, startX: e.clientX, startY: e.clientY };
+    dragModeRef.current = 'pending';
+    window.addEventListener('pointermove', onWindowPointerMove);
+    window.addEventListener('pointerup', onWindowPointerUp);
+    window.addEventListener('pointercancel', onWindowPointerCancel);
+    dragTimerRef.current = window.setTimeout(() => activateDrag(null), TOUCH_DRAG_LONG_PRESS_MS);
+  }
+
+  // Tear down any in-flight drag if the item unmounts mid-gesture.
+  useEffect(
+    () => () => {
+      if (dragTimerRef.current) window.clearTimeout(dragTimerRef.current);
+      dragRef.current = null;
+      dragModeRef.current = 'idle';
+      window.removeEventListener('pointermove', onWindowPointerMove);
+      window.removeEventListener('pointerup', onWindowPointerUp);
+      window.removeEventListener('pointercancel', onWindowPointerCancel);
+      document.body.style.touchAction = '';
+    },
+    // The window handlers are intentionally re-created per render (they close
+    // over this item's props); the effect only binds the unmount cleanup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const onDragStart = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -537,10 +727,20 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
   return (
     <div className="group relative flex items-center gap-1">
       <div
-        draggable={!isSection}
+        draggable={!isSection && !isCoarsePointerDevice()}
         onDragStart={onDragStart}
+        onPointerDown={onPointerDown}
         onClick={() => {
-          if (isSection) setDrawTool(sectionArmed ? null : 'section');
+          if (isSection) {
+            setDrawTool(sectionArmed ? null : 'section');
+            return;
+          }
+          // Touch tap-to-place: a quick tap adds the node at center. A completed
+          // drag suppresses this so the drop isn't followed by a duplicate.
+          if (lastPointerTypeRef.current === 'touch' && !didDragRef.current) {
+            placeAtCenter();
+          }
+          didDragRef.current = false;
         }}
         onKeyDown={onKeyDown}
         tabIndex={0}
@@ -553,7 +753,9 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
               : 'Section drawing tool. Click to activate, then drag on the canvas to draw a section.'
             : `Add ${item.label} node. Drag to canvas or press Enter to place.`
         }
-        className={`flex flex-1 items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#b8402e] focus:ring-offset-1 focus:ring-offset-[#fffaf2] ${
+        className={`flex flex-1 items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors select-none focus:outline-none focus:ring-2 focus:ring-[#b8402e] focus:ring-offset-1 focus:ring-offset-[#fffaf2] ${
+          touchDrag?.nodeType === item.nodeType ? 'opacity-40' : ''
+        } ${
           isSection
             ? sectionArmed
               ? 'cursor-crosshair border-[#b8402e] bg-[#b8402e]/20 text-[#8b2e1e]'
@@ -564,6 +766,25 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
         <span className="flex-shrink-0 opacity-80">{item.icon}</span>
         <span className="truncate">{item.label}</span>
       </div>
+      {/* Ghost lifted during a touch drag — positioned fixed so the pointer can
+          leave the palette entirely; portal to body because the drawer's
+          translate transform would otherwise serve as the positioning context. */}
+      {touchDrag &&
+        createPortal(
+          <div
+            className={`pointer-events-none fixed z-[60] flex items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xl ${
+              touchDrag.overCanvas
+                ? 'border-[#b8402e] bg-[#8b2e1e] text-[#fffaf2]'
+                : 'border-[#5b5347]/60 bg-[#5b5347] text-[#f3ede2]'
+            }`}
+            style={{ left: touchDrag.x + 12, top: touchDrag.y + 10 }}
+            role="status"
+          >
+            <span className="flex-shrink-0 opacity-80">{touchDrag.icon}</span>
+            <span className="truncate">{touchDrag.label}</span>
+          </div>,
+          document.body,
+        )}
       {/* Info button */}
       <button
         ref={infoBtnRef}
@@ -647,7 +868,7 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
 
 // ─── Node Palette Component ──────────────────────────────────────
 
-export function NodePalette() {
+export function NodePalette({ parentNodeId }: { parentNodeId: string | null }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleCategory = useCallback((name: string) => {
@@ -672,7 +893,7 @@ export function NodePalette() {
             {isOpen && (
               <div className="mt-1.5 flex flex-col gap-1.5">
                 {category.items.map((item) => (
-                  <PaletteItemComponent key={item.nodeType} item={item} />
+                  <PaletteItemComponent key={item.nodeType} item={item} parentNodeId={parentNodeId} />
                 ))}
               </div>
             )}

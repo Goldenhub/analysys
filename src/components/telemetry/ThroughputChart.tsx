@@ -114,7 +114,7 @@ export function ThroughputChart({ metrics }: ThroughputChartProps) {
       series={SERIES}
       referenceLines={chaosReferenceLines}
       unit="req/s"
-      height={200}
+      fillHeight
     />
   );
 }

@@ -44,7 +44,7 @@ afterEach(() => {
 
 describe('node placement paths', () => {
   it('places a node from the palette keyboard path at createDefaultNodeData values', () => {
-    render(<NodePalette />);
+    render(<NodePalette parentNodeId={null} />);
 
     fireEvent.keyDown(screen.getByRole('button', { name: /Add App Server node/ }), {
       key: 'Enter',
@@ -79,7 +79,7 @@ describe('node placement paths', () => {
   it('agrees on the configuration whichever path placed the node', () => {
     // Before both paths shared createDefaultNodeData, the drop handler and the palette's
     // keyboard path each carried their own literal and drifted apart.
-    render(<NodePalette />);
+    render(<NodePalette parentNodeId={null} />);
     fireEvent.keyDown(screen.getByRole('button', { name: /Add Database node/ }), {
       key: 'Enter',
     });

@@ -37,6 +37,8 @@ export interface SvgTimeSeriesChartProps {
   /** Enable the brush zoom bar at the bottom. */
   brush?: boolean;
   height?: number;
+  /** Fill the parent container's height instead of using a fixed `height` (resizes live). */
+  fillHeight?: boolean;
 }
 
 // ─── Palette & layout constants ──────────────────────────────────
@@ -106,9 +108,11 @@ export function SvgTimeSeriesChart({
   unit = '',
   brush = false,
   height = 200,
+  fillHeight = false,
 }: SvgTimeSeriesChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const [brushRange, setBrushRange] = useState<[number, number] | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
@@ -125,8 +129,21 @@ export function SvgTimeSeriesChart({
     return () => ro.disconnect();
   }, []);
 
+  // Height-resolving mode: track the container's own height so the chart stretches
+  // and shrinks with its grid cell instead of being pinned to a fixed pixel height.
+  useEffect(() => {
+    if (!containerRef.current || !fillHeight) return;
+    const el = containerRef.current;
+    const update = () => setMeasuredHeight(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fillHeight]);
+
+  const chartHeight = fillHeight ? (measuredHeight ?? height) : height;
   const plotW = Math.max(0, width - CHART_PAD.left - CHART_PAD.right);
-  const plotH = Math.max(0, height - CHART_PAD.top - CHART_PAD.bottom);
+  const plotH = Math.max(0, chartHeight - CHART_PAD.top - CHART_PAD.bottom);
   const brushH = brush ? 18 : 0;
 
   // Visible data (respect brush range)
@@ -256,8 +273,8 @@ export function SvgTimeSeriesChart({
     return (
       <div
         ref={containerRef}
-        style={{ height }}
-        className="flex w-full items-center justify-center text-xs text-[#f3ede2]/70"
+        style={fillHeight ? undefined : { height: chartHeight }}
+        className={fillHeight ? 'flex h-full w-full items-center justify-center text-xs text-[#f3ede2]/70' : 'flex w-full items-center justify-center text-xs text-[#f3ede2]/70'}
       >
         …
       </div>
@@ -267,11 +284,11 @@ export function SvgTimeSeriesChart({
   const hovered = hoverIndex != null ? visibleData[hoverIndex] : null;
 
   return (
-    <div ref={containerRef} style={{ height }} className="w-full">
+    <div ref={containerRef} style={fillHeight ? { height: '100%' } : { height: chartHeight }} className="w-full">
       <svg
         ref={xRef}
         width={width}
-        height={height}
+        height={chartHeight}
         className="select-none"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -308,7 +325,7 @@ export function SvgTimeSeriesChart({
           <text
             key={d.time}
             x={xScale(d.time)}
-            y={height - 6}
+            y={chartHeight - 6}
             textAnchor="middle"
             fontSize="9"
             fill={AXIS_TEXT}
@@ -339,7 +356,7 @@ export function SvgTimeSeriesChart({
                 x1={x}
                 x2={x}
                 y1={CHART_PAD.top}
-                y2={height - brushH - 4}
+                y2={chartHeight - brushH - 4}
                 stroke={ref.color}
                 strokeDasharray="4 2"
                 strokeWidth={1.5}
@@ -394,7 +411,7 @@ export function SvgTimeSeriesChart({
           <g onMouseDown={handleBrushDown} onMouseMove={handleBrushMove} onMouseUp={handleBrushUp}>
             <rect
               x={CHART_PAD.left}
-              y={height - brushH}
+              y={chartHeight - brushH}
               width={plotW}
               height={brushH}
               fill="#f3ede2"
@@ -411,8 +428,8 @@ export function SvgTimeSeriesChart({
                       key={`${s.key}-${i}`}
                       x1={x}
                       x2={x + (pts[i + 1] !== undefined ? pts[i + 1]! - x : 2)}
-                      y1={height - brushH + 3}
-                      y2={height - brushH + 3}
+                      y1={chartHeight - brushH + 3}
+                      y2={chartHeight - brushH + 3}
                       stroke={s.color}
                       strokeWidth={2}
                     />
@@ -423,7 +440,7 @@ export function SvgTimeSeriesChart({
             {brushActive && brushRange && (
               <rect
                 x={xScale(brushRange[0])}
-                y={height - brushH}
+                y={chartHeight - brushH}
                 width={Math.abs(xScale(brushRange[1]) - xScale(brushRange[0]))}
                 height={brushH}
                 fill="#dfb357"
@@ -440,7 +457,7 @@ export function SvgTimeSeriesChart({
               x1={xScale(hovered.time)}
               x2={xScale(hovered.time)}
               y1={CHART_PAD.top}
-              y2={height - brushH - 4}
+              y2={chartHeight - brushH - 4}
               stroke="#f3ede2"
               strokeOpacity={0.45}
               strokeDasharray="2 2"

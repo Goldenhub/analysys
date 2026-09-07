@@ -110,7 +110,7 @@ export function LatencyChart({ metrics }: LatencyChartProps) {
       referenceLines={chaosReferenceLines}
       unit="ms"
       brush
-      height={200}
+      fillHeight
     />
   );
 }

@@ -1,17 +1,15 @@
 import { useCallback, useEffect } from 'react';
 
-import { CanvasEngine, ZoomControls } from '@/canvas';
+import { CanvasEngine, ZoomControls, SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas';
 import type { NodeRenderer } from '@/canvas';
-import { SECTION_NODE_TYPE, TEXT_NOTE_NODE_TYPE } from '@/canvas';
-import { createSectionNode, createTextNoteNode } from '@/canvas';
 import type { SectionNodeData } from '@/canvas/types';
 import { SectionNode, TextNoteNode } from '@/canvas';
+import { placePaletteNode } from '@/canvas/palettePlacement';
 
 import { useTopologyStore } from '@/store/topologyStore';
 import { useCanvasToolStore } from '@/store/canvasToolStore';
 import type { SimulationNode } from '@/types/nodes';
 import { NodeType } from '@/types/nodes';
-import { createDefaultNodeData } from '@/types/nodeDefaults';
 import type { EdgeData } from '@/types/edges';
 import { EdgeProtocol } from '@/types/edges';
 import { validateEdgeConnection, getValidProtocols } from '@/validation';
@@ -187,29 +185,9 @@ export function CanvasEditor({
       const nodeTypeStr = event.dataTransfer.getData('application/analysys-node-type');
       if (!nodeTypeStr) return;
 
-      if (nodeTypeStr === SECTION_NODE_TYPE) {
-        const node = createSectionNode(canvasPos);
-        addNode({ ...node, data: { ...node.data, parentNodeId: activeParentNodeId } });
-        return;
-      }
-      if (nodeTypeStr === TEXT_NOTE_NODE_TYPE) {
-        const node = createTextNoteNode(canvasPos);
-        addNode({ ...node, data: { ...node.data, parentNodeId: activeParentNodeId } });
-        return;
-      }
-
-      if (!Object.values(NodeType).includes(nodeTypeStr as NodeType)) return;
-
-      const nodeData = createDefaultNodeData(nodeTypeStr as NodeType, canvasPos);
-      nodeData.parentNodeId = activeParentNodeId;
-      addNode({
-        id: nodeData.id,
-        type: nodeData.nodeType,
-        position: canvasPos,
-        data: nodeData,
-      });
+      placePaletteNode(nodeTypeStr, canvasPos, activeParentNodeId);
     },
-    [addNode, activeParentNodeId],
+    [activeParentNodeId],
   );
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {

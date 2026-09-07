@@ -17,7 +17,7 @@ import { formatSimClock as formatSimTime } from '@/utils/simTime';
 const DEFAULT_HEIGHT = 320;
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 600;
-const COLLAPSED_HEIGHT = 36;
+const COLLAPSED_HEIGHT = 44;
 
 // ─── Component ───────────────────────────────────────────────────
 
@@ -167,7 +167,7 @@ export function TelemetryDashboard() {
 
       {/* Content */}
       {!collapsed && (
-        <div className="flex h-[calc(100%-2.5rem)] flex-col gap-1.5 p-2">
+        <div className="flex h-[calc(100%-2.5rem)] flex-col gap-1.5 p-2 pb-3">
           {workerError && (
             <div
               className="flex shrink-0 items-center justify-between rounded-md border border-[#ef9a8b]/40 bg-[#ef9a8b]/15 px-3 py-1.5 text-[11px] text-[#ef9a8b]"
@@ -194,11 +194,11 @@ export function TelemetryDashboard() {
                 <MetricsSummary metrics={metrics} />
               </div>
 
-              {/* Charts View — always mounted, hidden when not active.
-                  The inner content row has a DEFINITE height (h-[400px]) on purpose:
-                  the chart bodies use percentage heights, which collapse to 0 inside
-                  an auto-height grid. Definite height + overflow-y-auto = usable
-                  cells at any panel size, scrolling when the panel is shorter. */}
+              {/* Charts View — always mounted, hidden when not active. Content fills
+                  the resizable panel: warning rows and the per-node strip stay on top,
+                  then the 2×2 chart grid + event log flex to the remaining height.
+                  The chart row keeps a floor so cells stay usable when the panel is
+                  short, scrolling inside the dashboard when it cannot fit. */}
               <div
                 className={`h-full flex-col gap-1.5 ${
                   viewMode === 'charts' ? 'flex overflow-y-auto' : 'hidden'
@@ -265,10 +265,11 @@ export function TelemetryDashboard() {
                   </span>
                 </div>
 
-                {/* 2×2 Chart Grid + event log — definite 400px row so 1fr rows
-                    and percentage-height chart bodies resolve correctly. */}
-                <div className="flex h-[400px] shrink-0 gap-2">
-                  <div className="grid h-full flex-1 grid-cols-2 grid-rows-2 gap-2">
+                {/* 2×2 Chart Grid + event log — the grid stretches to the panel's
+                    remaining height (charts resize live), and the event log sits
+                    beside it on wide screens, stacked below on narrow ones. */}
+                <div className="flex min-h-[300px] flex-1 flex-col gap-2 md:flex-row">
+                  <div className="grid h-full min-w-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
                     {/* Latency Chart */}
                     <div
                       className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-1"
@@ -303,11 +304,11 @@ export function TelemetryDashboard() {
 
                     {/* Queue/Pool Gauges */}
                     <div
-                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-1"
+                      className="rounded border border-[#b8402e]/60 bg-[#211e1a] p-1"
                       aria-label={`Queue and connection pools gauge: ${metrics.nodes.length} nodes reporting`}
                     >
                       <span
-                        className="mb-0.5 block text-[10px] font-medium text-[#f3ede2]/80 cursor-help"
+                        className="mb-0.5 block text-[10px] font-medium text-[#dfb357] cursor-help"
                         title="Resource utilization per node. Green <70%, amber 70-90%, red >90%. Pulse = at capacity."
                       >
                         Queue / Connection Pools
@@ -319,35 +320,37 @@ export function TelemetryDashboard() {
 
                     {/* System-wide Summary */}
                     <div
-                      className="rounded border border-[#5b5347]/20 bg-[#5b5347] p-2"
+                      className="rounded border border-[#b8402e]/60 bg-[#211e1a] p-2"
                       aria-label={`System overview: throughput ${metrics.systemWide.totalThroughput.toFixed(1)} req/s, error rate ${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%, active requests ${metrics.systemWide.activeRequests}`}
                     >
-                      <span className="mb-1 block text-[10px] font-medium text-[#f3ede2]/80">
+                      <span className="mb-1 block text-[10px] font-medium text-[#dfb357]">
                         System Overview
                       </span>
-                      <div className="grid grid-cols-2 gap-2 overflow-auto">
-                        <MetricCard
-                          label="Total Throughput"
-                          value={`${metrics.systemWide.totalThroughput.toFixed(1)} req/s`}
-                        />
-                        <MetricCard
-                          label="Error Rate"
-                          value={`${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
-                        />
-                        <MetricCard
-                          label="Active Requests"
-                          value={String(metrics.systemWide.activeRequests)}
-                        />
-                        <MetricCard
-                          label="Elapsed (sim)"
-                          value={formatSimTime(metrics.simulatedTimeMs)}
-                        />
+                      <div className="h-[calc(100%-16px)] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-2">
+                          <MetricCard
+                            label="Total Throughput"
+                            value={`${metrics.systemWide.totalThroughput.toFixed(1)} req/s`}
+                          />
+                          <MetricCard
+                            label="Error Rate"
+                            value={`${(metrics.systemWide.totalErrorRate * 100).toFixed(1)}%`}
+                          />
+                          <MetricCard
+                            label="Active Requests"
+                            value={String(metrics.systemWide.activeRequests)}
+                          />
+                          <MetricCard
+                            label="Elapsed (sim)"
+                            value={formatSimTime(metrics.simulatedTimeMs)}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Event Log Sidebar */}
-                  <div className="w-72 shrink-0 rounded border border-[#5b5347]/20 bg-[#5b5347]">
+                  {/* Event Log — right sidebar on wide screens, stacked below on mobile */}
+                  <div className="h-44 w-full shrink-0 rounded border border-[#5b5347]/20 bg-[#5b5347] md:h-auto md:w-72">
                     <EventLog entries={eventLog} />
                   </div>
                 </div>
@@ -374,7 +377,7 @@ const METRIC_TOOLTIPS: Record<string, string> = {
 function MetricCard({ label, value }: { label: string; value: string }) {
   const tooltip = METRIC_TOOLTIPS[label];
   return (
-    <div className="rounded bg-[#5b5347]/80 px-2 py-1">
+    <div className="rounded bg-[#5b5347] px-2 py-1">
       <span className="flex items-center gap-1 text-[9px] text-[#f3ede2]/70">
         {label}
         {tooltip && (
