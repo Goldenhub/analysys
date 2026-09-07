@@ -8,7 +8,12 @@ import { useSimulationStore } from '@/store/simulationStore';
 import { usePersistenceStore } from '@/store/persistenceStore';
 import { isVisualNode } from '@/canvas';
 import { canBeParent } from '@/utils/parenting';
-import { SimulationToolbar, ChaosPanel, ActiveChaosStrip, PersistenceToolbar } from '@/components/controls';
+import {
+  SimulationToolbar,
+  ChaosPanel,
+  ActiveChaosStrip,
+  PersistenceToolbar,
+} from '@/components/controls';
 import { PresetSelector } from '@/components/presets';
 import { HelpIcon, HelpModal } from '@/components/help/HelpModal';
 import { TelemetryDashboard } from '@/components/telemetry';
@@ -24,6 +29,7 @@ import {
   resetOnboarding,
   type OnboardingStep,
 } from '@/components/onboarding/OnboardingTour';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -99,9 +105,9 @@ export default function App() {
               onClick={() => setHelpOpen(true)}
               aria-label="How to use Analysys"
               title="How to use Analysys"
-className="grid size-8 place-items-center rounded-md border border-[#5b5347]/20 text-[#b8402e] transition hover:border-[#b8402e]/50 hover:bg-[#b8402e]/10"
-            data-tour="help"
-          >
+              className="grid size-8 place-items-center rounded-md border border-[#5b5347]/20 text-[#b8402e] transition hover:border-[#b8402e]/50 hover:bg-[#b8402e]/10"
+              data-tour="help"
+            >
               <HelpIcon />
             </button>
           </div>
@@ -113,6 +119,7 @@ className="grid size-8 place-items-center rounded-md border border-[#5b5347]/20 
           setSelectedNodeId={setSelectedNodeId}
         />
       </div>
+      <Analytics />
     </div>
   );
 }
@@ -129,7 +136,9 @@ function CanvasWorkspace({
   setSelectedNodeId: (id: string | null) => void;
 }) {
   const nodes = useTopologyStore((s) => s.nodes);
-  const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(
+    null,
+  );
   const current = nodes.find((node) => node.id === activeParentNodeId);
   const parentId = current?.data.parentNodeId ?? null;
   const label = current && 'label' in current.data ? current.data.label : 'System overview';
@@ -138,8 +147,13 @@ function CanvasWorkspace({
     : nodes.length;
   return (
     <main className="relative flex min-h-0 flex-1 overflow-hidden">
-      <aside data-tour="palette" className="z-10 w-60 overflow-y-auto border-r border-[#5b5347]/15 bg-[#fffaf2] p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#b8402e]">Build system</p>
+      <aside
+        data-tour="palette"
+        className="z-10 w-60 overflow-y-auto border-r border-[#5b5347]/15 bg-[#fffaf2] p-4"
+      >
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#b8402e]">
+          Build system
+        </p>
         <h2 className="mt-1 text-sm font-semibold">Components</h2>
         <NodePalette />
         <button
@@ -163,12 +177,19 @@ function CanvasWorkspace({
       </aside>
       <section className="relative min-w-0 flex-1">
         <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-[#5b5347]/15 bg-[#fffaf2]/95 px-3 py-2 text-xs shadow-sm">
-          <button onClick={() => setActiveParentNodeId(null)} className="font-medium underline">System</button>
+          <button onClick={() => setActiveParentNodeId(null)} className="font-medium underline">
+            System
+          </button>
           {activeParentNodeId && (
             <>
               <span>/</span>
               {parentId && (
-                <button onClick={() => setActiveParentNodeId(parentId)} className="font-medium underline">Up</button>
+                <button
+                  onClick={() => setActiveParentNodeId(parentId)}
+                  className="font-medium underline"
+                >
+                  Up
+                </button>
               )}
               <span className="font-semibold">{label}</span>
             </>
@@ -189,7 +210,9 @@ function CanvasWorkspace({
             setSelectedNodeId(null);
             setActiveParentNodeId(id);
           }}
-          onNodeContextMenu={(nodeId, position) => setContextMenu({ nodeId, x: position.x, y: position.y })}
+          onNodeContextMenu={(nodeId, position) =>
+            setContextMenu({ nodeId, x: position.x, y: position.y })
+          }
           onNodeSelect={(nodeId) => {
             setContextMenu(null);
             if (!nodeId) {
@@ -197,7 +220,9 @@ function CanvasWorkspace({
               return;
             }
             // Transfer the selection ring to the clicked node.
-            useTopologyStore.getState().onNodesChange([{ type: 'select', id: nodeId, selected: true }]);
+            useTopologyStore
+              .getState()
+              .onNodesChange([{ type: 'select', id: nodeId, selected: true }]);
             const node = nodes.find((candidate) => candidate.id === nodeId);
             setSelectedNodeId(node && !isVisualNode(node) ? nodeId : null);
           }}
@@ -232,7 +257,9 @@ function CanvasWorkspace({
           </div>
         )}
       </section>
-      {selectedNodeId && <NodeConfigPanel selectedNodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />}
+      {selectedNodeId && (
+        <NodeConfigPanel selectedNodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
+      )}
       <AnalysisPanelWrapper />
       <div className="absolute bottom-0 left-60 right-0 z-10">
         <TelemetryDashboard />
