@@ -26,7 +26,12 @@ export function createDefaultNodeData(
 ): SimulationNode {
   const id = crypto.randomUUID();
   // R32.1 — every newly placed node routes with First until the user changes it.
-  const base = { id, position, routingPolicy: RoutingPolicy.First };
+  const base = {
+    id,
+    position,
+    routingPolicy: RoutingPolicy.First,
+    parentNodeId: null,
+  };
 
   switch (nodeType) {
     case NodeType.TrafficGenerator:

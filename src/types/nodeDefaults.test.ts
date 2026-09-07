@@ -32,6 +32,13 @@ describe('createDefaultNodeData', () => {
     }
   });
 
+  it('places every new processing node on the root canvas', () => {
+    for (const nodeType of ALL_NODE_TYPES) {
+      const node = createDefaultNodeData(nodeType, { x: 0, y: 0 });
+      expect(node.parentNodeId).toBeNull();
+    }
+  });
+
   it('gives each node a distinct identifier', () => {
     const ids = ALL_NODE_TYPES.map((t) => createDefaultNodeData(t, { x: 0, y: 0 }).id);
     expect(new Set(ids).size).toBe(ids.length);

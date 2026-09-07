@@ -160,7 +160,7 @@ export function PersistenceToolbar() {
 
   return (
     <>
-      <div className="flex items-center gap-1.5">
+      <div data-tour="persist" className="flex items-center gap-1.5">
         {/* Export */}
         <button
           onClick={handleExport}

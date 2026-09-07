@@ -553,15 +553,15 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
               : 'Section drawing tool. Click to activate, then drag on the canvas to draw a section.'
             : `Add ${item.label} node. Drag to canvas or press Enter to place.`
         }
-        className={`flex flex-1 items-center gap-2 rounded-md border bg-[#5b5347]/80/60 px-3 py-2 text-sm text-[#f3ede2] transition-colors focus:outline-none focus:ring-2 focus:ring-[#b8402e] focus:ring-offset-1 focus:ring-offset-[#5b5347] ${
+        className={`flex flex-1 items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#b8402e] focus:ring-offset-1 focus:ring-offset-[#fffaf2] ${
           isSection
             ? sectionArmed
-              ? 'cursor-crosshair border-[#b8402e] bg-[#b8402e]/25'
-              : 'cursor-pointer border-[#5b5347]/30 hover:border-[#b8402e]/60 hover:bg-[#5b5347]/60'
-            : 'cursor-grab border-[#5b5347]/30 hover:border-[#5b5347]/40 hover:bg-[#5b5347]/60 active:cursor-grabbing'
+              ? 'cursor-crosshair border-[#b8402e] bg-[#b8402e]/20 text-[#8b2e1e]'
+              : 'cursor-pointer border-[#5b5347]/50 bg-[#5b5347] text-[#f3ede2] hover:border-[#b8402e]/60 hover:bg-[#5b5347]/80'
+            : 'cursor-grab border-[#5b5347]/50 bg-[#5b5347] text-[#f3ede2] hover:border-[#5b5347]/70 hover:bg-[#5b5347]/80 active:cursor-grabbing'
         }`}
       >
-        <span className="flex-shrink-0 text-[#f3ede2]/60">{item.icon}</span>
+        <span className="flex-shrink-0 opacity-80">{item.icon}</span>
         <span className="truncate">{item.label}</span>
       </div>
       {/* Info button */}
@@ -573,7 +573,7 @@ function PaletteItemComponent({ item }: PaletteItemComponentProps) {
           toggleTooltip();
         }}
         onBlur={() => setShowTooltip(false)}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-[#f3ede2]/70 hover:bg-[#5b5347]/60 hover:text-[#f3ede2]/80 focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
+        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] text-[#5b5347]/70 hover:bg-[#5b5347]/10 hover:text-[#5b5347] focus:outline-none focus:ring-1 focus:ring-[#b8402e]"
         aria-label="Show node connection details"
       >
         ?
@@ -663,7 +663,7 @@ export function NodePalette() {
             <button
               type="button"
               onClick={() => toggleCategory(category.name)}
-              className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wider text-[#f3ede2]/70 hover:text-[#f3ede2]/80"
+              className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wider text-[#5b5347]/80 hover:text-[#5b5347]"
               aria-expanded={isOpen}
             >
               {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}

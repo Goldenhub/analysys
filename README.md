@@ -4,21 +4,9 @@ A browser-based tool for backend engineers and software architects to **model**,
 
 ---
 
-## How This Project Uses Kiro
+## About This Project
 
-This project was built entirely within [Kiro](https://kiro.dev), an AI-powered development environment. Kiro's spec-driven workflow guided every stage:
-
-1. **Requirements** — 43 requirements in strict EARS format, each with numbered acceptance criteria, covering the 15 node types, routing policies, fan-out, subsystem grouping, the analysis engine, capacity sweeps, SPOF detection, baseline comparison, and reference presets.
-
-2. **Design** — A 3,500-line technical design document grounded in the actual codebase. Covers the architecture, all type interfaces, the event-loop algorithm, routing and fan-out semantics, the cooperative-slicing analysis scheduler, schema migration, and 27 correctness properties.
-
-3. **Tasks** — 607 sequentially numbered implementation tasks across 28 phases, with a dependency DAG that kept the build green between phases. The spec tracked completion status as each task was dispatched to Kiro's sub-agents.
-
-4. **Iterative refinement** — Kiro's analysis tools caught ambiguities and inconsistencies in the requirements (e.g. the `PresetSelector` vs `SimulationToolbar` maxHopsPerRequest divergence), which were fixed before implementation.
-
-5. **Code generation and testing** — Every phase was dispatched to Kiro's spec-task-execution agent, which wrote the code, ran the build and tests, and reported back. The final suite has 686 tests including property-based tests (fast-check) exercising all 27 correctness properties.
-
-(The spec documents themselves live in the development environment and are not part of this repository.)
+Analysys is a self-contained, fully client-side application — no servers, no accounts, no external APIs. It ships with a comprehensive test suite: 766 tests across 44 files, including property-based tests (fast-check) exercising 27 correctness properties.
 
 ---
 
@@ -37,7 +25,12 @@ This project was built entirely within [Kiro](https://kiro.dev), an AI-powered d
 | **Capacity Sweep** | Sequential step execution measuring Sustainable Load and Knee Point against a Service Objective |
 | **Baseline Comparison** | Retain up to 5 runs, compare B − A with controlled/uncontrolled labelling |
 | **Chaos Engineering** | Cache flush, DB drop, traffic spike, DISABLE_NODE (any type), DLQ redrive |
-| **Reference Presets** | Authenticated Web API, Async Job Platform, Scheduled Batch With Live Traffic |
+| **Reference Presets** | Authenticated Web API, Async Job Platform, Scheduled Batch With Live Traffic, Microservices E-Commerce (with nested admission & checkout component layers) |
+| **Component Layers** | Service nodes (gateways, app servers, worker pools, auth services) drill down via their «⌄» chip into a nested layer of internals. A node with children becomes a **container** — its internals handle its traffic; queues/caches/databases/object stores stay atomic |
+| **Onboarding Tour** | A 9-step guided tour on first load — spotlight highlight, step card, Next/Back/Skip/Done, arrow-key & Escape navigation — including the help icon, and replayable any time from the help panel |
+| **Canvas Interactions** | Click a node to select it and open its details panel; drag repositions it without opening the panel; right-click opens a Details/Delete context menu; the «⌄» chip drills into a component layer |
+| **Clear Canvas** | One-click wipe of every node, edge, and the telemetry dashboard — undoable |
+| **Visual Annotations** | Sections and text notes on any layer; a selected **or focused** text note shows a dashed border with its color swatches and corner resize handle — restyle or resize it without losing the ability to type |
 | **Persistence** | Schema v2 with in-memory-only v1 migration, localStorage + JSON export/import |
 | **Accessibility** | WCAG 2.1 AA, keyboard-operable Analysis Panel, severity as text labels, Critical Finding announcements |
 
@@ -83,7 +76,7 @@ None. The application is fully client-side — no backend server, no API keys, n
 ## Testing Instructions
 
 ```bash
-# Run all tests (686 tests across 32 files)
+# Run all tests (766 tests across 44 files)
 npm test
 
 # Run with verbose output
@@ -169,7 +162,7 @@ None. The application is entirely client-side. Simulation runs in a Web Worker. 
 
 ### Datasets
 
-The three reference architecture presets (`src/presets/*.json`) are hand-authored topology definitions, not derived from external datasets.
+The four reference architecture presets and three failure-mode presets (`src/presets/*.json`) are hand-authored topology definitions, not derived from external datasets.
 
 ### Assets
 

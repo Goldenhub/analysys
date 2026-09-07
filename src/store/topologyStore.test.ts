@@ -193,6 +193,22 @@ describe('topologyStore', () => {
     });
   });
 
+  describe('architecture metadata', () => {
+    it('updates nesting without changing simulation config', () => {
+      const node = createTestNode('worker');
+      useTopologyStore.setState({ nodes: [node], edges: [], past: [], future: [] });
+
+      useTopologyStore.getState().updateNodeParent('worker', 'auth-service');
+
+      const data = useTopologyStore.getState().nodes[0].data as {
+        parentNodeId?: string | null;
+        config: { workerThreadPoolSize: number };
+      };
+      expect(data.parentNodeId).toBe('auth-service');
+      expect(data.config.workerThreadPoolSize).toBe(10);
+    });
+  });
+
   describe('undo / redo', () => {
     it('undo restores previous state', () => {
       const node = createTestNode('node-1');

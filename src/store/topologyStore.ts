@@ -40,10 +40,14 @@ interface TopologyActions {
   updateEdgeProtocol: (edgeId: string, protocol: EdgeProtocol) => void;
   updateEdgeWeight: (edgeId: string, weight: number) => void;
   updateNodeRoutingPolicy: (nodeId: string, policy: RoutingPolicy) => void;
+  /** Assign a node to a nested component canvas; null places it on the root canvas. */
+  updateNodeParent: (nodeId: string, parentNodeId: string | null) => void;
 
   // Canvas compatibility handlers
   onNodesChange: (changes: CanvasNodeChange[]) => void;
   onEdgesChange: (changes: CanvasEdgeChange[]) => void;
+  /** Clear the selection ring on every node (used when the canvas background is clicked). */
+  clearSelection: () => void;
 
   // Undo/Redo
   undo: () => void;
@@ -52,6 +56,8 @@ interface TopologyActions {
   // Serialization
   getTopologySnapshot: () => { nodes: SimulationNode[]; edges: EdgeData[] };
   loadTopology: (nodes: AnalysysNode[], edges: AnalysysEdge[]) => void;
+  /** Remove every node and edge on the canvas (across all component layers). */
+  clearCanvas: () => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -66,12 +72,12 @@ function takeSnapshot(state: TopologyState): TopologySnapshot {
 }
 
 function pushHistory(state: TopologyState): Pick<TopologyState, 'past' | 'future'> {
-  const snapshot = takeSnapshot(state);
-  const past = [...state.past, snapshot].slice(-MAX_HISTORY_SIZE);
-  return { past, future: [] };
+  return {
+    past: [...state.past, takeSnapshot(state)].slice(-MAX_HISTORY_SIZE),
+    future: [],
+  };
 }
 
-/** True if the node payload is a simulation node (has nodeType), not a visual node. */
 function isSimulationData(data: AnalysysNode['data']): data is SimulationNode {
   return 'nodeType' in data;
 }
@@ -148,7 +154,16 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       // gets an equal share, so the Weighted policy never sees an undefined weight.
       edges: [
         ...state.edges,
-        { id: edge.id, source: edge.source, target: edge.target, type: edge.type, data: { ...edge.data, weight: edge.data.weight ?? 1.0 } },
+        {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          type: edge.type,
+          data: {
+            ...edge.data,
+            weight: edge.data.weight ?? 1.0,
+          },
+        },
       ],
     })),
 
@@ -183,6 +198,16 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       }),
     })),
 
+  updateNodeParent: (nodeId, parentNodeId) =>
+    set((state) => ({
+      ...pushHistory(state),
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, parentNodeId } as AnalysysNode['data'] }
+          : node,
+      ),
+    })),
+
   // ─── Canvas Handlers ─────────────────────────────────────────
 
   onNodesChange: (changes) =>
@@ -194,6 +219,15 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
     set((state) => ({
       edges: applyEdgeChanges(changes, state.edges),
     })),
+
+  clearSelection: () =>
+    set((state) => {
+      const anySelected = state.nodes.some((n) => n.selected);
+      if (!anySelected) return state;
+      return {
+        nodes: state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      };
+    }),
 
   // ─── Undo / Redo ─────────────────────────────────────────────
 
@@ -241,4 +275,10 @@ export const useTopologyStore = create<TopologyState & TopologyActions>()((set, 
       nodes,
       edges,
     })),
+
+  clearCanvas: () =>
+    set((state) => {
+      if (state.nodes.length === 0 && state.edges.length === 0) return state;
+      return { ...pushHistory(state), nodes: [], edges: [] };
+    }),
 }));

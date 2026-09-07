@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { NodeRendererProps } from '@/canvas/CanvasEngine';
 import { NodeHandles } from '@/canvas/NodeHandles';
 import { EditableLabel } from '@/canvas/EditableLabel';
+import { useCanvas } from '@/canvas/CanvasContext';
+import { useTopologyStore } from '@/store/topologyStore';
 import { ChaosStatusBadge } from './ChaosStatusBadge';
 import type { NodeType } from '@/types/nodes';
+import { canBeParent } from '@/utils/parenting';
 
 // ─── Theme palette (earthy, high-contrast) ───────────────────────
 // Nodes render as light cards on the cream canvas so dark ink text and the burnt-red
@@ -59,6 +62,12 @@ export function NodeFrame({
   children,
 }: NodeFrameProps) {
   const borderClass = status ? healthBorder[status] : 'border-[#5b5347]/70';
+  const enterComponent = useCanvas().enterComponent;
+  const nodes = useTopologyStore((s) => s.nodes);
+  const childCount = useMemo(
+    () => nodes.filter((n) => (n.data.parentNodeId ?? null) === id).length,
+    [nodes, id],
+  );
   return (
     <div
       className={`relative w-[140px] rounded-lg border-2 bg-[#f3ede2] px-2.5 py-2 shadow-md transition-all duration-300 ease-in-out ${borderClass} ${
@@ -67,6 +76,30 @@ export function NodeFrame({
       aria-label={ariaLabel ?? label}
     >
       <ChaosStatusBadge nodeId={id} nodeType={nodeType} />
+      {enterComponent && canBeParent(nodeType) && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            enterComponent(id);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          aria-label={`Open component ${label}`}
+          title={
+            childCount > 0
+              ? `Open ${label} — ${childCount} child node${childCount === 1 ? '' : 's'} inside`
+              : `Open ${label} — its layer is empty, drag components in to build it`
+          }
+          className={`absolute -top-2 left-1/2 z-10 flex h-4 min-w-4 -translate-x-1/2 items-center justify-center rounded-sm border px-1 text-[9px] font-bold tracking-wider transition-colors ${
+            childCount > 0
+              ? 'border-[#b8402e]/40 bg-[#b8402e] text-[#f3ede2] hover:bg-[#8b2e1e]'
+              : 'border-[#5b5347]/25 bg-[#f3ede2]/80 text-[#5b5347]/60 hover:border-[#b8402e]/50 hover:text-[#b8402e]'
+          }`}
+        >
+          {childCount > 0 ? `\u2193${childCount}` : '\u2193'}
+        </button>
+      )}
       <div className="flex items-center gap-2">
         <span className="shrink-0 text-[#b8402e]">{icon}</span>
         <EditableLabel

@@ -13,6 +13,7 @@ import {
   validateObjectStoreConfig,
   validateSchedulerConfig,
   normalizeConfig,
+  validateParenting,
 } from './configValidation';
 import {
   NodeType,
@@ -1076,5 +1077,64 @@ describe('normalizeConfig', () => {
         appliedValue: VerificationMode.Local,
       },
     ]);
+  });
+});
+
+// ─── Topology-Level Parenting Validation ─────────────────────────
+
+describe('validateParenting', () => {
+  const node = (
+    id: string,
+    nodeType: NodeType,
+    parentNodeId?: string | null,
+  ): SimulationNode => ({
+    id,
+    nodeType,
+    label: id,
+    position: { x: 0, y: 0 },
+    routingPolicy: RoutingPolicy.First,
+    parentNodeId,
+    config: {} as never,
+  });
+
+  it('accepts children nested under an eligible service parent', () => {
+    const issues = validateParenting([
+      node('web-1', NodeType.AppServer),
+      node('app-1', NodeType.AppServer, 'web-1'),
+      node('cache-1', NodeType.Cache, 'web-1'),
+    ]);
+    expect(issues).toEqual([]);
+  });
+
+  it('rejects a child under a non-parentable node type', () => {
+    const issues = validateParenting([
+      node('db-1', NodeType.Database),
+      node('app-1', NodeType.AppServer, 'db-1'),
+    ]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.nodeId).toBe('app-1');
+    expect(issues[0]!.message).toContain('cannot own a component layer');
+  });
+
+  it('rejects a child that references a missing parent', () => {
+    const issues = validateParenting([node('app-1', NodeType.AppServer, 'ghost-1')]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.message).toContain('missing parent');
+  });
+
+  it('rejects a traffic generator used as a parent', () => {
+    const issues = validateParenting([
+      node('gen-1', NodeType.TrafficGenerator),
+      node('app-1', NodeType.AppServer, 'gen-1'),
+    ]);
+    expect(issues[0]!.message).toContain('cannot own a component layer');
+  });
+
+  it('is silent for a flat topology', () => {
+    const issues = validateParenting([
+      node('gen-1', NodeType.TrafficGenerator),
+      node('db-1', NodeType.Database),
+    ]);
+    expect(issues).toEqual([]);
   });
 });

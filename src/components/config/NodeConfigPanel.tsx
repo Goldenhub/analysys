@@ -31,6 +31,8 @@ import { ObjectStoreForm } from './forms/ObjectStoreForm';
 import { SchedulerForm } from './forms/SchedulerForm';
 import { RoutingPolicyField } from './RoutingPolicyField';
 import { formatSimClockMs as formatSimTime } from '@/utils/simTime';
+import type { AnalysysEdge } from '@/types/edges';
+import { EditableLabel } from '@/canvas/EditableLabel';
 
 // ─── Validation Types ────────────────────────────────────────────
 
@@ -1214,12 +1216,22 @@ function ConnectionsSection({ nodeId }: { nodeId: string }) {
     return n ? (n.data as { label?: string }).label || id.slice(0, 8) : id.slice(0, 8);
   };
 
-  const upstream = edges
-    .filter((e) => e.target === nodeId)
-    .map((e) => ({ peer: labelFor(e.source), protocol: e.type ?? 'Sync' }));
-  const downstream = edges
-    .filter((e) => e.source === nodeId)
-    .map((e) => ({ peer: labelFor(e.target), protocol: e.type ?? 'Sync' }));
+  const upstream = edges.filter((e) => e.target === nodeId);
+  const downstream = edges.filter((e) => e.source === nodeId);
+
+  const renderConnection = (edge: AnalysysEdge, direction: 'from' | 'to') => {
+    const peer = direction === 'from' ? labelFor(edge.source) : labelFor(edge.target);
+    return (
+      <li key={edge.id} className="space-y-0.5">
+        <div className="flex flex-wrap items-center gap-1 text-[#f3ede2]/80">
+          <span className="truncate">{peer}</span>
+          <span className="text-[10px] text-[#f3ede2]/70">
+            ({(edge.type ?? 'Sync').toLowerCase()})
+          </span>
+        </div>
+      </li>
+    );
+  };
 
   return (
     <section
@@ -1235,14 +1247,7 @@ function ConnectionsSection({ nodeId }: { nodeId: string }) {
           {upstream.length === 0 ? (
             <p className="text-[11px] italic text-[#5b5347]/70">No incoming connections</p>
           ) : (
-            <ul className="space-y-0.5">
-              {upstream.map((c, i) => (
-                <li key={i} className="text-[#f3ede2]/80">
-                  {c.peer}{' '}
-                  <span className="text-[10px] text-[#f3ede2]/70">({c.protocol.toLowerCase()})</span>
-                </li>
-              ))}
-            </ul>
+            <ul className="space-y-1">{upstream.map((e) => renderConnection(e, 'from'))}</ul>
           )}
         </div>
         <div>
@@ -1250,14 +1255,7 @@ function ConnectionsSection({ nodeId }: { nodeId: string }) {
           {downstream.length === 0 ? (
             <p className="text-[11px] italic text-[#5b5347]/70">No outgoing connections</p>
           ) : (
-            <ul className="space-y-0.5">
-              {downstream.map((c, i) => (
-                <li key={i} className="text-[#f3ede2]/80">
-                  {c.peer}{' '}
-                  <span className="text-[10px] text-[#f3ede2]/70">({c.protocol.toLowerCase()})</span>
-                </li>
-              ))}
-            </ul>
+            <ul className="space-y-1">{downstream.map((e) => renderConnection(e, 'to'))}</ul>
           )}
         </div>
       </div>
@@ -1275,6 +1273,7 @@ interface NodeConfigPanelProps {
 export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProps) {
   const node = useTopologyStore((s) => s.nodes.find((n) => n.id === selectedNodeId));
   const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
+  const updateNodeEdit = useTopologyStore((s) => s.updateNodeEdit);
   const simState = useSimulationStore((s) => s.simState);
   const sendToWorker = useSimulationStore((s) => s.sendToWorker);
 
@@ -1311,6 +1310,15 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
     if (!node) return null;
     return node.data as unknown as SimulationNode;
   }, [node]);
+
+  // Composite container: this node owns a component layer, so its internals do
+  // the work and this node's processing settings are bypassed during a run.
+  const childCount = useTopologyStore(
+    (s) =>
+      selectedNodeId != null
+        ? s.nodes.filter((n) => (n.data.parentNodeId ?? null) === selectedNodeId).length
+        : 0,
+  );
 
   const handleFieldChange = useCallback(
     (field: string, value: number | string) => {
@@ -1366,7 +1374,11 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
           <NodeTypeIcon nodeType={nodeData.nodeType} />
         </span>
         <div className="flex flex-1 flex-col">
-          <span className="text-sm font-medium text-[#f3ede2]">{nodeData.label}</span>
+          <EditableLabel
+            value={nodeData.label}
+            className="text-sm font-medium text-[#f3ede2]"
+            onCommit={(next) => updateNodeEdit(selectedNodeId, { label: next })}
+          />
           <span className="text-xs text-[#f3ede2]/70">{NODE_TYPE_LABELS[nodeData.nodeType]}</span>
         </div>
         <button
@@ -1385,6 +1397,17 @@ export function NodeConfigPanel({ selectedNodeId, onClose }: NodeConfigPanelProp
           </svg>
         </button>
       </div>
+
+      {childCount > 0 && (
+        <div
+          role="status"
+          className="border-b border-[#dfb357]/30 bg-[#dfb357]/15 px-4 py-2 text-xs leading-relaxed text-[#f3ede2]/90"
+        >
+          This node is a <span className="font-semibold text-[#dfb357]">container</span> — its{' '}
+          {childCount} component{childCount === 1 ? '' : 's'} on the inner layer handle requests
+          during a run; this node's own processing settings are bypassed.
+        </div>
+      )}
 
       {/* Tab Strip */}
       <div className="border-b border-[#5b5347]/20 px-4 py-2">

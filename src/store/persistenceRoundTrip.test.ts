@@ -232,4 +232,105 @@ describe('persistence round-trip fidelity (live canvas → save/load)', () => {
     usePersistenceStore.getState().clearAutosave();
     expect(localStorage.getItem('analysys_autosave')).toBeNull();
   });
+
+  it('round-trips architecture metadata (nesting) through save/load', () => {
+    const gen = {
+      ...genNode('gen', { x: 10, y: 20 }),
+      data: {
+        ...genNode('gen', { x: 10, y: 20 }).data,
+        parentNodeId: null,
+      },
+    };
+    const app = {
+      ...appNode('app', { x: 300, y: 60 }),
+      data: {
+        ...appNode('app', { x: 300, y: 60 }).data,
+        parentNodeId: 'gen',
+      },
+    };
+
+    useTopologyStore.setState({
+      nodes: [gen, app] as CanvasNode[],
+      edges: [
+        {
+          id: 'e1',
+          source: 'gen',
+          target: 'app',
+          type: EdgeProtocol.Sync,
+          data: {
+            id: 'e1',
+            source: 'gen',
+            target: 'app',
+            protocol: EdgeProtocol.Sync,
+            weight: 1,
+          },
+        },
+      ],
+      past: [],
+      future: [],
+    });
+
+    usePersistenceStore.getState().saveTopology('t');
+    usePersistenceStore.getState().loadSavedTopology('t');
+
+    const { nodes, edges } = useTopologyStore.getState();
+    const genData = nodes.find((n) => n.id === 'gen')!.data as {
+      parentNodeId?: string | null;
+    };
+    expect(genData.parentNodeId).toBeNull();
+    expect((nodes.find((n) => n.id === 'app')!.data as { parentNodeId?: string | null }).parentNodeId).toBe('gen');
+    expect(edges[0].data).toMatchObject({ protocol: EdgeProtocol.Sync, weight: 1 });
+  });
+
+  it('autosaves and restores architecture metadata across a reload', () => {
+    const gen = {
+      ...genNode('gen', { x: 10, y: 20 }),
+      data: {
+        ...genNode('gen', { x: 10, y: 20 }).data,
+        parentNodeId: null,
+      },
+    };
+    const app = {
+      ...appNode('app', { x: 300, y: 60 }),
+      data: {
+        ...appNode('app', { x: 300, y: 60 }).data,
+        parentNodeId: 'gen',
+      },
+    };
+
+    useTopologyStore.setState({
+      nodes: [gen, app] as CanvasNode[],
+      edges: [
+        {
+          id: 'e1',
+          source: 'gen',
+          target: 'app',
+          type: EdgeProtocol.Sync,
+          data: {
+            id: 'e1',
+            source: 'gen',
+            target: 'app',
+            protocol: EdgeProtocol.Sync,
+            weight: 1,
+          },
+        },
+      ],
+      past: [],
+      future: [],
+    });
+
+    usePersistenceStore.getState().autosave();
+
+    // ── Simulate a reload: everything resets to a fresh boot ──
+    useTopologyStore.setState({ nodes: [], edges: [], past: [], future: [] });
+    expect(usePersistenceStore.getState().restoreAutosave()).toBe(true);
+
+    const { nodes, edges } = useTopologyStore.getState();
+    const genData = nodes.find((n) => n.id === 'gen')!.data as {
+      parentNodeId?: string | null;
+    };
+    expect(genData.parentNodeId).toBeNull();
+    expect((nodes.find((n) => n.id === 'app')!.data as { parentNodeId?: string | null }).parentNodeId).toBe('gen');
+    expect(edges[0].data).toMatchObject({ protocol: EdgeProtocol.Sync, weight: 1 });
+  });
 });

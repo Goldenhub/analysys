@@ -1,3 +1,5 @@
+import type { ArchitectureNodeMetadata } from './architecture';
+
 // ─── Enumerations ────────────────────────────────────────────────
 
 /**
@@ -102,7 +104,7 @@ export enum RoutingPolicy {
 // ─── Base Node ───────────────────────────────────────────────────
 
 /** Common fields shared by all simulation node types. */
-export interface BaseNodeData {
+export interface BaseNodeData extends ArchitectureNodeMetadata {
   id: string;
   nodeType: NodeType;
   label: string;

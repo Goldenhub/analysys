@@ -62,6 +62,11 @@ export interface CanvasEngineProps {
     targetHandle?: string;
   }) => void;
   onNodeSelect?: (nodeId: string | null) => void;
+  onNodeDoubleClick?: (nodeId: string) => void;
+  /** Right-click a node: report the node and the cursor position for a context menu. */
+  onNodeContextMenu?: (nodeId: string, position: { x: number; y: number }) => void;
+  /** Drill into a node's component layer (an explicit affordance alongside double-click). */
+  onEnterComponent?: (nodeId: string) => void;
   onBackgroundClick?: () => void;
   onEditNode?: (id: string, patch: Record<string, unknown>) => void;
   /** Commit a newly drawn visual node (e.g. a section) in canvas coordinates. */
@@ -88,6 +93,9 @@ interface DragState {
   drawEnd?: { x: number; y: number };
 }
 
+/** Screen-space movement below which a node press is treated as a click (not a drag). */
+const CLICK_DRAG_THRESHOLD_PX = 4;
+
 interface TempEdge {
   from: { x: number; y: number; handle: 'source' | 'target' };
   cursor: { x: number; y: number };
@@ -104,6 +112,9 @@ export function CanvasEngine({
   onEdgesChange,
   onConnect,
   onNodeSelect,
+  onNodeDoubleClick,
+  onNodeContextMenu,
+  onEnterComponent,
   onBackgroundClick,
   onEditNode,
   onDrawSection,
@@ -355,6 +366,16 @@ export function CanvasEngine({
       }
       setTempEdge(null);
     }
+    // A node press that never moved beyond the threshold is a click: report it so
+    // the shell can transfer selection and open the details panel. A real drag
+    // only repositions the node and must not open the panel.
+    if (drag?.mode === 'node' && drag.nodeId) {
+      const up = getEventPos(e);
+      const dist = Math.hypot(up.x - drag.startX, up.y - drag.startY);
+      if (dist < CLICK_DRAG_THRESHOLD_PX) {
+        onNodeSelect?.(drag.nodeId);
+      }
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -403,7 +424,6 @@ export function CanvasEngine({
     if (!node.selected) {
       onNodesChange([{ type: 'select', id: node.id, selected: true }]);
     }
-    onNodeSelect?.(node.id);
   };
 
   const handleConnectStart = (
@@ -557,9 +577,20 @@ export function CanvasEngine({
           key={node.id}
           transform={`translate(${node.position.x}, ${node.position.y})`}
           onPointerDown={(e) => {
+            // Right-click must not begin a drag; it opens the node context menu instead.
+            if (e.button !== 0) return;
             e.stopPropagation();
             const rect = svgRef.current!.getBoundingClientRect();
             handleNodeDragStart(node, { x: e.clientX - rect.left, y: e.clientY - rect.top }, e);
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onNodeDoubleClick?.(node.id);
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onNodeContextMenu?.(node.id, { x: e.clientX, y: e.clientY });
           }}
         >
           <foreignObject width={width} height={height} style={{ overflow: 'visible' }}>
@@ -607,7 +638,7 @@ export function CanvasEngine({
   };
 
   return (
-    <CanvasContext.Provider value={{ viewport, viewportApi }}>
+    <CanvasContext.Provider value={{ viewport, viewportApi, enterComponent: onEnterComponent }}>
       <div
         ref={containerRef}
         data-testid="canvas-engine"
