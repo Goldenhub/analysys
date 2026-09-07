@@ -82,6 +82,11 @@ function isSimulationData(data: AnalysysNode['data']): data is SimulationNode {
   return 'nodeType' in data;
 }
 
+/** True if the node payload is a simulation node (has nodeType), not a visual node. */
+function isSimulationData(data: AnalysysNode['data']): data is SimulationNode {
+  return 'nodeType' in data;
+}
+
 // ─── Store ───────────────────────────────────────────────────────
 
 export const useTopologyStore = create<TopologyState & TopologyActions>()((set, get) => ({
