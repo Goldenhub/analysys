@@ -21,6 +21,7 @@ import { LiveAnnouncer } from '@/components/a11y/LiveAnnouncer';
 import { ToastViewport } from '@/components/ui/toast';
 import { showToast } from '@/components/ui/toastStore';
 import { AnalysisPanel } from '@/components/analysis/AnalysisPanel';
+import { ToastViewport } from '@/components/ui/toast';
 import { useAnalysisPanelStore } from '@/store/analysisPanelStore';
 import {
   OnboardingTour,

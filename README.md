@@ -8,6 +8,8 @@ A browser-based tool for backend engineers and software architects to **model**,
 
 Analysys is a self-contained, fully client-side application — no servers, no accounts, no external APIs. It ships with a comprehensive test suite: 739 tests across 44 files, including property-based tests (fast-check) exercising 27 correctness properties.
 
+(The spec documents themselves live in the development environment and are not part of this repository.)
+
 ---
 
 ## Features
