@@ -347,8 +347,15 @@ function AnalysisPanelWrapper({ topOffset }: { topOffset: number }) {
   const open = useAnalysisPanelStore((s) => s.isOpen);
   const close = useAnalysisPanelStore((s) => s.close);
   const ref = useRef<HTMLElement | null>(null);
+  // Desktop: a sidebar under the header (z-20). Mobile: a full-screen overlay
+  // that must sit above every other layer — the header (z-40), palette (z-30)
+  // and the node config panel (z-[9999]). This wrapper is the stacking context
+  // the panel lives in, so the bump has to be here, not on the inner <aside>.
   return open ? (
-    <div className="absolute bottom-0 right-0 z-20" style={{ top: topOffset }}>
+    <div
+      className="absolute bottom-0 right-0 z-20 max-md:z-[10000]"
+      style={{ top: topOffset }}
+    >
       <AnalysisPanel openerRef={ref} onClose={close} />
     </div>
   ) : null;

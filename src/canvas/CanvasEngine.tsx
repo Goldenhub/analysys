@@ -331,18 +331,9 @@ export function CanvasEngine({
         x: drag.viewportStart!.x + dx,
         y: drag.viewportStart!.y + dy,
       }));
-    } else if (drag.mode === 'node' && drag.nodeId && drag.startPos) {
-      const dx = (pos.x - drag.startX) / viewport.zoom;
-      const dy = (pos.y - drag.startY) / viewport.zoom;
-      onNodesChange([
-        {
-          type: 'position',
-          id: drag.nodeId,
-          position: { x: drag.startPos.x + dx, y: drag.startPos.y + dy },
-          dragging: true,
-        },
-      ]);
     }
+    // Node drags are handled entirely by the overlay node's own pointer handlers
+    // (it captures the pointer on press), so no 'node' branch is needed here.
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -365,16 +356,6 @@ export function CanvasEngine({
         onConnect({ source: drag.from.nodeId, target: hit.nodeId });
       }
       setTempEdge(null);
-    }
-    // A node press that never moved beyond the threshold is a click: report it so
-    // the shell can transfer selection and open the details panel. A real drag
-    // only repositions the node and must not open the panel.
-    if (drag?.mode === 'node' && drag.nodeId) {
-      const up = getEventPos(e);
-      const dist = Math.hypot(up.x - drag.startX, up.y - drag.startY);
-      if (dist < CLICK_DRAG_THRESHOLD_PX) {
-        onNodeSelect?.(drag.nodeId);
-      }
     }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -408,34 +389,21 @@ export function CanvasEngine({
     return null;
   };
 
-  const handleNodeDragStart = (
-    node: CanvasNode,
-    screenPos: { x: number; y: number },
-    e: React.PointerEvent,
-  ) => {
-    svgRef.current?.setPointerCapture(e.pointerId);
-    setDrag({
-      mode: 'node',
-      startX: screenPos.x,
-      startY: screenPos.y,
-      nodeId: node.id,
-      startPos: { ...node.position },
-    });
-    if (!node.selected) {
-      onNodesChange([{ type: 'select', id: node.id, selected: true }]);
-    }
-  };
-
   const handleConnectStart = (
     nodeId: string,
     handle: 'source' | 'target',
     e: React.PointerEvent,
   ) => {
+    // Capture on the SVG, not the handle. The temp-edge tracking and connection
+    // completion live in the SVG's pointer handlers, and the handles now render
+    // in the HTML overlay (a sibling of the SVG, outside its event path), so
+    // capturing on the handle would starve the drag of move/up events.
     svgRef.current?.setPointerCapture(e.pointerId);
-    const rect = svgRef.current!.getBoundingClientRect();
-    const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Seed the drag from the true handle anchor in canvas space so the temp edge
+    // starts at the dot, and so `from` matches the canvas-space cursor that
+    // handlePointerMove writes into tempEdge.
+    let anchor = screenToCanvas(getEventPos(e));
     const node = nodes.find((n) => n.id === nodeId);
-    let anchor = screenToCanvas(screenPos);
     if (node) {
       const layout = getHandleLayout(node.type);
       const def = layout.handles.find((h) => h.id === handle);
@@ -450,38 +418,40 @@ export function CanvasEngine({
     }
     setDrag({
       mode: 'connect',
-      startX: screenPos.x,
-      startY: screenPos.y,
+      startX: anchor.x,
+      startY: anchor.y,
       from: { nodeId, handle, x: anchor.x, y: anchor.y },
     });
     setTempEdge({ from: { x: anchor.x, y: anchor.y, handle }, cursor: anchor });
   };
 
   const handleConnectEnd = () => {
-    // Pointer up lands on the SVG; ending is handled in handlePointerUp.
+    // Pointer-up lands on the SVG (it holds capture for the drag); completion is
+    // done in handlePointerUp. Kept to satisfy the NodeRenderer contract.
   };
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
-    if (e.ctrlKey) {
-      // Pinch gesture (browsers emit a wheel with ctrlKey for trackpad pinch) →
-      // zoom in/out about the cursor position.
-      const rect = svgRef.current!.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-      const factor = Math.exp(-e.deltaY * 0.0015);
-      const nextZoom = clamp(viewport.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+    const pos = getEventPos(e);
+    // Ctrl/Cmd — and a trackpad pinch, which the browser reports as ctrl+wheel —
+    // zoom about the cursor. A plain wheel / two-finger scroll pans the viewport.
+    if (e.ctrlKey || e.metaKey) {
       setViewport((p) => {
-        const zf = nextZoom / p.zoom;
-        return { ...p, zoom: nextZoom, x: sx - (sx - p.x) * zf, y: sy - (sy - p.y) * zf };
+        const newZoom = clamp(p.zoom * (e.deltaY > 0 ? 1 / 1.1 : 1.1), MIN_ZOOM, MAX_ZOOM);
+        const zf = newZoom / p.zoom;
+        return {
+          zoom: newZoom,
+          x: pos.x - (pos.x - p.x) * zf,
+          y: pos.y - (pos.y - p.y) * zf,
+        };
       });
-    } else {
-      // Directional scroll/two-finger pan → pan the viewport.
-      setViewport((p) => ({ ...p, x: p.x - e.deltaX, y: p.y - e.deltaY }));
+      return;
     }
+    setViewport((p) => ({ ...p, x: p.x - e.deltaX, y: p.y - e.deltaY }));
   };
 
   // ─── Edge rendering ────────────────────────────────────────────
+
   const renderEdges = () => {
     const anchors = new Map<string, Record<string, { x: number; y: number }>>();
     for (const node of nodes) {
@@ -539,24 +509,23 @@ export function CanvasEngine({
     return rendered;
   };
 
-  // ─── Node rendering ────────────────────────────────────────────
-  const renderNodes = () => {
-    // Render visual nodes (sections / text notes) first so they sit BELOW simulation
-    // nodes — a section drawn across nodes must not cover/intercept them.
+  // ─── Node rendering (SVG foreignObject — removed for overlay) ───
+
+  // ─── HTML Overlay Node Rendering ───────────────────────────────────
+  // Nodes are rendered as absolutely positioned HTML in an overlay layer
+  // above the SVG. This avoids Safari's foreignObject rendering bug where
+  // HTML inside a transformed <g> is invisible on Safari (macOS + iOS).
+  const renderNodesOverlay = () => {
     const ordered = [...nodes].sort(
       (a, b) => Number(isVisualNode(b)) - Number(isVisualNode(a)),
     );
     return ordered.map((node) => {
       const Renderer = nodeRegistry[node.type];
-      // Visual nodes (section/text note) carry their live size in `data`, which is
-      // what inline resize edits update — prefer it so resizing reboxes the node.
       const dta = node.data as { width?: number; height?: number };
       const width = (dta.width ?? node.width) || defaultNodeWidth;
       const height = (dta.height ?? node.height) || defaultNodeHeight;
       if (!Renderer) {
-        // Keep the element count stable; a `null` here could shift hook order if
-        // a node type ever toggles between registered/unregistered.
-        return <g key={node.id} />;
+        return <div key={node.id} />;
       }
       const props: NodeRendererProps = {
         id: node.id,
@@ -573,15 +542,62 @@ export function CanvasEngine({
         onEdit: (id, patch) => onEditNode?.(id, patch),
       };
       return (
-        <g
+        <div
           key={node.id}
-          transform={`translate(${node.position.x}, ${node.position.y})`}
+          // `touch-none` (touch-action: none) is required for the drag: without
+          // it iOS Safari claims the touch for a page pan/zoom and fires
+          // pointercancel, aborting the move.
+          className="absolute touch-none pointer-events-auto"
+          style={{
+            left: `${node.position.x}px`,
+            top: `${node.position.y}px`,
+            width: `${width}px`,
+            height: `${height}px`,
+          }}
           onPointerDown={(e) => {
-            // Right-click must not begin a drag; it opens the node context menu instead.
             if (e.button !== 0) return;
             e.stopPropagation();
-            const rect = svgRef.current!.getBoundingClientRect();
-            handleNodeDragStart(node, { x: e.clientX - rect.left, y: e.clientY - rect.top }, e);
+            e.currentTarget.setPointerCapture(e.pointerId);
+            // Raw client coords for the whole drag — down/move/up all read
+            // e.clientX/Y, so the delta stays in one coordinate space. The pixel
+            // delta is divided by zoom to convert to canvas units.
+            setDrag({
+              mode: 'node',
+              startX: e.clientX,
+              startY: e.clientY,
+              nodeId: node.id,
+              startPos: { ...node.position },
+            });
+            if (!node.selected) {
+              onNodesChange([{ type: 'select', id: node.id, selected: true }]);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (!drag || drag.mode !== 'node' || drag.nodeId !== node.id || !drag.startPos) return;
+            const dx = (e.clientX - drag.startX) / viewport.zoom;
+            const dy = (e.clientY - drag.startY) / viewport.zoom;
+            onNodesChange([
+              {
+                type: 'position',
+                id: drag.nodeId,
+                position: { x: drag.startPos.x + dx, y: drag.startPos.y + dy },
+                dragging: true,
+              },
+            ]);
+          }}
+          onPointerUp={(e) => {
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {
+              // noop
+            }
+            if (drag?.mode === 'node' && drag.nodeId === node.id) {
+              const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+              if (dist < CLICK_DRAG_THRESHOLD_PX) {
+                onNodeSelect?.(node.id);
+              }
+            }
+            setDrag(null);
           }}
           onDoubleClick={(e) => {
             e.stopPropagation();
@@ -593,12 +609,11 @@ export function CanvasEngine({
             onNodeContextMenu?.(node.id, { x: e.clientX, y: e.clientY });
           }}
         >
-          <foreignObject width={width} height={height} style={{ overflow: 'visible' }}>
-            <div style={{ width, height, pointerEvents: 'auto' }}>
-              <Renderer {...props} />
-            </div>
-          </foreignObject>
-        </g>
+          {/* No transform here: the overlay layer already applies
+              translate+scale(zoom), matching the SVG edge layer's <g>. A second
+              scale on the node would compound to zoom². */}
+          <Renderer {...props} />
+        </div>
       );
     });
   };
@@ -683,12 +698,22 @@ export function CanvasEngine({
             {renderEdges()}
             {renderTempEdge()}
             {renderDrawPreview()}
-            {/* svgRef is only read inside user-event handlers (pointer down/move), not during
-                render; the rule below is a false positive from the helper closure. */}
-            {/* eslint-disable-next-line react-hooks/refs */}
-            {renderNodes()}
           </g>
         </svg>
+        {/* HTML Overlay Layer — nodes rendered as absolute HTML to avoid Safari's
+            foreignObject-in-transformed-<g> bug. Same translate+scale as the SVG
+            edge <g>, so the two layers stay registered. No `overflow-hidden`:
+            WebKit mis-clips a scaled box and drops nodes/sections at larger
+            coordinates — the parent container already clips the viewport. */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            transformOrigin: '0 0',
+          }}
+        >
+          {renderNodesOverlay()}
+        </div>
         {children}
         {showMiniMap && <MiniMap nodes={nodes} viewport={viewport} size={size} />}
       </div>

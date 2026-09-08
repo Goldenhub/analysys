@@ -87,16 +87,29 @@ export function ChaosPanel() {
   const [disableDurationMs, setDisableDurationMs] = useState<number>(10_000);
   const [selectedDlqNodeId, setSelectedDlqNodeId] = useState<string>('');
 
-  // Close on outside click
+  // Close on outside click.
+  //
+  // Guarded against a real bug: opening a native <select> inside the panel (the
+  // "disable node" picker especially) makes the browser show an OS-drawn popup.
+  // On iOS/Safari, dismissing that popup can dispatch a stray pointer/mouse event
+  // whose target is <body> or the <select> itself — the old handler read that as
+  // an outside click and unmounted the panel *before* the <select>'s change
+  // event was processed, so the chosen node never stuck and the control looked
+  // dead. Skip the close while a control inside the panel holds focus (the picker
+  // is open) or when the event originates from a <select>/<option>.
   useEffect(() => {
     if (!isOpen) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    function handleClickOutside(event: Event) {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const target = event.target as Node | null;
+      if (target && panel.contains(target)) return;
+      if (panel.contains(document.activeElement)) return;
+      if (target instanceof Element && target.closest('select, option')) return;
+      setIsOpen(false);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, [isOpen]);
 
   // Close on Escape
@@ -115,6 +128,11 @@ export function ChaosPanel() {
 
   const dbNodes = useMemo(
     () => nodes.filter((n) => (n.data as { nodeType: string }).nodeType === NodeType.Database),
+    [nodes],
+  );
+
+  const cacheNodes = useMemo(
+    () => nodes.filter((n) => (n.data as { nodeType: string }).nodeType === NodeType.Cache),
     [nodes],
   );
 
@@ -147,8 +165,12 @@ export function ChaosPanel() {
     }
   }, [nodes, edges]);
 
+  // Chaos injection needs a live engine. It is allowed while Running or Paused
+  // (a paused injection is delivered to the worker immediately and takes hold on
+  // resume) and blocked while Idle or Complete. Every chaos control — including
+  // DISABLE_NODE, which previously required strictly Running — follows this rule.
   const chaosDisabled = simState === SimState.Idle || simState === SimState.Complete;
-  const disableNodeDisabled = simState !== SimState.Running; // Only while Running, not Paused
+  const disableNodeDisabled = chaosDisabled;
   const currentSimTime = metrics?.simulatedTimeMs ?? 0;
 
   // ─── Helpers ─────────────────────────────────────────────────
@@ -436,6 +458,13 @@ export function ChaosPanel() {
               </span>
             </div>
 
+            {/* Why the controls are inert — visible without hovering (matters on touch). */}
+            {chaosDisabled && (
+              <p className="rounded-md border border-[#c49a3c]/40 bg-[#c49a3c]/10 px-2.5 py-1.5 text-[11px] text-[#dfb357]/90">
+                Chaos applies to a running system — start or resume a simulation to inject failures.
+              </p>
+            )}
+
             {/* Chaos Buttons with Descriptions */}
             <div className="flex flex-wrap items-start gap-3">
               {/* Flush Cache */}
@@ -443,9 +472,15 @@ export function ChaosPanel() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={chaosDisabled}
+                  disabled={chaosDisabled || cacheNodes.length === 0}
                   onClick={handleFlushCache}
-                  title={chaosDisabled ? NOT_RUNNING_TITLE : CHAOS_TOOLTIPS.flushCache}
+                  title={
+                    chaosDisabled
+                      ? NOT_RUNNING_TITLE
+                      : cacheNodes.length === 0
+                        ? 'No cache nodes in the topology — drag one onto the canvas.'
+                        : CHAOS_TOOLTIPS.flushCache
+                  }
                   className="border-[#dfb357]/70 text-[#dfb357] hover:bg-[#dfb357]/15 hover:text-[#dfb357] disabled:border-[#5b5347]/30 disabled:text-[#f3ede2]/70"
                 >
                   <span>🔥</span>
@@ -469,7 +504,7 @@ export function ChaosPanel() {
                           ? 'The only database in this topology'
                           : 'Which database to take down'
                       }
-                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
+                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {dbNodes.length === 1 && <option value="">Any DB (1 in topology)</option>}
                       {dbNodes.map((node) => (
@@ -532,7 +567,7 @@ export function ChaosPanel() {
                     onChange={(e) => setSelectedDisableNodeId(e.target.value)}
                     disabled={disableNodeDisabled}
                     title={disableNodeDisabled ? NOT_RUNNING_TITLE : 'Which node to take offline'}
-                    className="h-7 max-w-[10rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
+                    className="h-7 max-w-[10rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">Select node…</option>
                     {allNodes.map((node) => (
@@ -550,7 +585,7 @@ export function ChaosPanel() {
                       setDisableDurationMs(Math.max(100, Math.min(600000, Number(e.target.value))))
                     }
                     disabled={disableNodeDisabled}
-                    className="h-7 w-20 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
+                    className="h-7 w-20 rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:cursor-not-allowed disabled:opacity-50"
                     title="Duration in simulated ms (100–600,000)"
                   />
                   <Button
@@ -583,7 +618,7 @@ export function ChaosPanel() {
                           ? 'The only dead letter queue in this topology'
                           : 'Which dead letter queue to redrive'
                       }
-                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:opacity-50"
+                      className="h-7 max-w-[9rem] rounded-md border border-[#5b5347]/30 bg-[#5b5347]/80 px-1.5 text-xs text-[#f3ede2] outline-none focus:border-[#8b2e1e] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {dlqNodes.length === 1 && <option value="">Any DLQ (1 in topology)</option>}
                       {dlqNodes.map((node) => (
